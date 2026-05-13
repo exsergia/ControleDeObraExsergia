@@ -47,6 +47,7 @@ export function serverTimestamp() {
   return new Date().toISOString();
 }
 
+<<<<<<< HEAD
 
 const OPERATOR_COLUMNS = ['nome', 'sobrenome', 'email', 'cpf', 'telefone', 'funcao', 'role'];
 
@@ -67,6 +68,10 @@ function unwrap(row: any) {
     }
   }
   return base;
+=======
+function unwrap(row: any) {
+  return { id: row.id, ...(row.data || {}) };
+>>>>>>> 971fc88 (verificação de código completo e resolução do problema de devolutiva da foto da parte de ferramenta)
 }
 
 function docSnap(id: string, data: any | null) {
@@ -119,13 +124,21 @@ function applyConstraints(items: any[], constraints: QueryConstraint[] = []) {
 }
 
 export async function getDoc(ref: DocRef) {
+<<<<<<< HEAD
   const { data, error } = await supabase.from(ref.table).select('*').eq('id', ref.id).maybeSingle();
+=======
+  const { data, error } = await supabase.from(ref.table).select('id,data').eq('id', ref.id).maybeSingle();
+>>>>>>> 971fc88 (verificação de código completo e resolução do problema de devolutiva da foto da parte de ferramenta)
   if (error) throw error;
   return docSnap(ref.id, data ? unwrap(data) : null);
 }
 
 export async function getDocs(ref: CollectionRef) {
+<<<<<<< HEAD
   const { data, error } = await supabase.from(ref.table).select('*');
+=======
+  const { data, error } = await supabase.from(ref.table).select('id,data');
+>>>>>>> 971fc88 (verificação de código completo e resolução do problema de devolutiva da foto da parte de ferramenta)
   if (error) throw error;
   const items = applyConstraints((data || []).map(unwrap), ref.constraints);
   return docsSnap(items);
@@ -133,8 +146,14 @@ export async function getDocs(ref: CollectionRef) {
 
 export async function setDoc(ref: DocRef, value: any) {
   const payload = { ...value, id: ref.id };
+<<<<<<< HEAD
   const { error } = await supabase.from(ref.table).upsert({ id: ref.id, data: payload, ...visibleColumnsForTable(ref.table, payload) });
   if (error) throw error;
+=======
+  const response = await supabase.from(ref.table).upsert({ id: ref.id, data: payload }).select('id').single();
+  if (response.error) throw response.error;
+  return response;
+>>>>>>> 971fc88 (verificação de código completo e resolução do problema de devolutiva da foto da parte de ferramenta)
 }
 
 export async function addDoc(ref: CollectionRef, value: any) {
@@ -156,7 +175,11 @@ export async function updateDoc(ref: DocRef, value: any) {
       next[key] = val;
     }
   }
+<<<<<<< HEAD
   await setDoc(ref, next);
+=======
+  return await setDoc(ref, next);
+>>>>>>> 971fc88 (verificação de código completo e resolução do problema de devolutiva da foto da parte de ferramenta)
 }
 
 export async function deleteDoc(ref: DocRef) {
@@ -173,7 +196,11 @@ export function arrayRemove(...values: any[]) {
 }
 
 export function writeBatch(_db: unknown) {
+<<<<<<< HEAD
   const ops: Array<() => Promise<void>> = [];
+=======
+  const ops: Array<() => Promise<unknown>> = [];
+>>>>>>> 971fc88 (verificação de código completo e resolução do problema de devolutiva da foto da parte de ferramenta)
   return {
     set: (ref: DocRef, value: any) => ops.push(() => setDoc(ref, value)),
     update: (ref: DocRef, value: any) => ops.push(() => updateDoc(ref, value)),

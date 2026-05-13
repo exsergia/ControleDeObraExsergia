@@ -1,6 +1,10 @@
 import React, { useState } from 'react';
 import { useCollection } from '../lib/supabaseHooks';
+<<<<<<< HEAD
 import { collection, addDoc, updateDoc, deleteDoc, doc, getDocs, serverTimestamp } from '../lib/supabaseDb';
+=======
+import { collection, addDoc, updateDoc, deleteDoc, doc, serverTimestamp } from '../lib/supabaseDb';
+>>>>>>> 971fc88 (verificação de código completo e resolução do problema de devolutiva da foto da parte de ferramenta)
 import { db, handleFirestoreError, OperationType } from '../lib/supabase';
 import { Operator } from '../types';
 import { useAuth } from '../App';
@@ -32,8 +36,11 @@ export default function Operadores() {
     sobrenome: '',
     funcao: '',
     email: '',
+<<<<<<< HEAD
     cpf: '',
     telefone: '',
+=======
+>>>>>>> 971fc88 (verificação de código completo e resolução do problema de devolutiva da foto da parte de ferramenta)
     role: 'operator' as 'admin' | 'operator'
   });
 
@@ -43,8 +50,11 @@ export default function Operadores() {
     op.nome?.toLowerCase().includes(search.toLowerCase()) ||
     op.sobrenome?.toLowerCase().includes(search.toLowerCase()) ||
     op.email?.toLowerCase().includes(search.toLowerCase()) ||
+<<<<<<< HEAD
     op.cpf?.toLowerCase().includes(search.toLowerCase()) ||
     op.telefone?.toLowerCase().includes(search.toLowerCase()) ||
+=======
+>>>>>>> 971fc88 (verificação de código completo e resolução do problema de devolutiva da foto da parte de ferramenta)
     op.funcao?.toLowerCase().includes(search.toLowerCase())
   );
 
@@ -75,8 +85,11 @@ export default function Operadores() {
       sobrenome: op.sobrenome || '',
       funcao: op.funcao || '',
       email: op.email,
+<<<<<<< HEAD
       cpf: op.cpf || '',
       telefone: op.telefone || '',
+=======
+>>>>>>> 971fc88 (verificação de código completo e resolução do problema de devolutiva da foto da parte de ferramenta)
       role: op.role || 'operator'
     });
     setIsModalOpen(true);
@@ -86,6 +99,7 @@ export default function Operadores() {
     if (!isAdmin) return;
     if (!confirm('Deseja realmente remover este operador?')) return;
     try {
+<<<<<<< HEAD
       const obrasSnap = await getDocs(collection(db, 'obras'));
       await Promise.all(obrasSnap.docs.map(async (obraDoc: any) => {
         const obra = obraDoc.data();
@@ -95,6 +109,8 @@ export default function Operadores() {
           await updateDoc(doc(db, 'obras', obraDoc.id), { operadoresIds, equipe });
         }
       }));
+=======
+>>>>>>> 971fc88 (verificação de código completo e resolução do problema de devolutiva da foto da parte de ferramenta)
       await deleteDoc(doc(db, 'operadores', id));
     } catch (err) {
       handleFirestoreError(err, OperationType.WRITE, 'operadores-delete');
@@ -104,7 +120,11 @@ export default function Operadores() {
   const handleCloseModal = () => {
     setIsModalOpen(false);
     setEditingOperator(null);
+<<<<<<< HEAD
     setFormData({ nome: '', sobrenome: '', funcao: '', email: '', cpf: '', telefone: '', role: 'operator' });
+=======
+    setFormData({ nome: '', sobrenome: '', funcao: '', email: '', role: 'operator' });
+>>>>>>> 971fc88 (verificação de código completo e resolução do problema de devolutiva da foto da parte de ferramenta)
   };
 
   return (
@@ -129,7 +149,11 @@ export default function Operadores() {
         <Search className="absolute left-7 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
         <input 
           type="text" 
+<<<<<<< HEAD
           placeholder="Buscar por nome, CPF, telefone, função ou email..." 
+=======
+          placeholder="Buscar por nome, função ou email..." 
+>>>>>>> 971fc88 (verificação de código completo e resolução do problema de devolutiva da foto da parte de ferramenta)
           className="w-full pl-12 pr-4 py-3 bg-zinc-50 border border-zinc-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900/10 transition-all"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
@@ -174,6 +198,7 @@ export default function Operadores() {
                   <Mail className="w-4 h-4 text-zinc-300" />
                   <span className="truncate">{op.email}</span>
                 </div>
+<<<<<<< HEAD
                 {op.telefone && (
                   <div className="flex items-center gap-2 text-xs text-zinc-500 font-medium">
                     <span className="w-4 h-4 text-zinc-300 flex items-center justify-center">☎</span>
@@ -187,6 +212,8 @@ export default function Operadores() {
                   </div>
                 )}
                 <div className="text-[10px] text-zinc-400 font-mono truncate pt-1">ID: {op.id}</div>
+=======
+>>>>>>> 971fc88 (verificação de código completo e resolução do problema de devolutiva da foto da parte de ferramenta)
               </div>
 
               {isAdmin && (
@@ -274,6 +301,7 @@ export default function Operadores() {
                   />
                 </div>
 
+<<<<<<< HEAD
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1.5">
                     <label className="text-xs font-bold text-zinc-500 uppercase tracking-widest pl-1">Telefone</label>
@@ -293,6 +321,8 @@ export default function Operadores() {
                   </div>
                 </div>
 
+=======
+>>>>>>> 971fc88 (verificação de código completo e resolução do problema de devolutiva da foto da parte de ferramenta)
                 <div className="space-y-1.5">
                   <label className="text-xs font-bold text-zinc-500 uppercase tracking-widest pl-1">Tipo de Acesso (Role)</label>
                   <select 

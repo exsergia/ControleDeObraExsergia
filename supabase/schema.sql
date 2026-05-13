@@ -31,6 +31,7 @@ create table if not exists public.checklists (
 
 create table if not exists public.operadores (
   id text primary key,
+<<<<<<< HEAD
   nome text,
   sobrenome text,
   email text,
@@ -38,10 +39,13 @@ create table if not exists public.operadores (
   telefone text,
   funcao text,
   role text default 'operator',
+=======
+>>>>>>> 971fc88 (verificação de código completo e resolução do problema de devolutiva da foto da parte de ferramenta)
   data jsonb not null default '{}'::jsonb,
   created_at timestamptz not null default now()
 );
 
+<<<<<<< HEAD
 -- Garante que projetos antigos também tenham colunas visíveis no Table Editor.
 alter table public.operadores add column if not exists nome text;
 alter table public.operadores add column if not exists sobrenome text;
@@ -63,6 +67,8 @@ set
   role = coalesce(role, data ->> 'role', 'operator');
 
 
+=======
+>>>>>>> 971fc88 (verificação de código completo e resolução do problema de devolutiva da foto da parte de ferramenta)
 create table if not exists public.cpfs (
   id text primary key,
   data jsonb not null default '{}'::jsonb,
@@ -97,11 +103,14 @@ create index if not exists idx_materiais_created_at on public.materiais (created
 create index if not exists idx_atividades_created_at on public.atividades (created_at desc);
 create index if not exists idx_tools_status on public.tools ((data ->> 'status'));
 
+<<<<<<< HEAD
 create index if not exists idx_operadores_nome on public.operadores (lower(coalesce(nome, data ->> 'nome', '')));
 create index if not exists idx_operadores_email on public.operadores (lower(coalesce(email, data ->> 'email', '')));
 create index if not exists idx_operadores_cpf on public.operadores (regexp_replace(coalesce(cpf, data ->> 'cpf', ''), '\D', '', 'g'));
 
 
+=======
+>>>>>>> 971fc88 (verificação de código completo e resolução do problema de devolutiva da foto da parte de ferramenta)
 -- ZERA DADOS DE TESTE/FICTÍCIOS.
 -- Não apaga auth.users. Usuários do Supabase Auth devem ser controlados em Authentication > Users.
 truncate table
@@ -141,7 +150,11 @@ as $$
     or exists (
       select 1
       from public.operadores o
+<<<<<<< HEAD
       join public.admin_access a on a.id = ('cpf:' || regexp_replace(coalesce(o.cpf, o.data ->> 'cpf', ''), '\\D', '', 'g'))
+=======
+      join public.admin_access a on a.id = ('cpf:' || regexp_replace(coalesce(o.data ->> 'cpf', ''), '\\D', '', 'g'))
+>>>>>>> 971fc88 (verificação de código completo e resolução do problema de devolutiva da foto da parte de ferramenta)
       where o.id = auth.uid()::text
         and coalesce((a.data ->> 'ativo')::boolean, true) = true
     );
@@ -198,16 +211,38 @@ insert into storage.buckets (id, name, public)
 values ('uploads', 'uploads', true)
 on conflict (id) do update set public = true;
 
+<<<<<<< HEAD
+=======
+insert into storage.buckets (id, name, public)
+values ('ferramentas', 'ferramentas', false)
+on conflict (id) do update set public = false;
+
+>>>>>>> 971fc88 (verificação de código completo e resolução do problema de devolutiva da foto da parte de ferramenta)
 drop policy if exists "authenticated read uploads" on storage.objects;
 drop policy if exists "authenticated upload files" on storage.objects;
 drop policy if exists "authenticated update files" on storage.objects;
 drop policy if exists "authenticated delete files" on storage.objects;
+<<<<<<< HEAD
+=======
+drop policy if exists "authenticated read ferramentas" on storage.objects;
+drop policy if exists "authenticated upload ferramentas" on storage.objects;
+drop policy if exists "authenticated update ferramentas" on storage.objects;
+drop policy if exists "authenticated delete ferramentas" on storage.objects;
+>>>>>>> 971fc88 (verificação de código completo e resolução do problema de devolutiva da foto da parte de ferramenta)
 
 create policy "authenticated read uploads" on storage.objects for select to authenticated using (bucket_id = 'uploads');
 create policy "authenticated upload files" on storage.objects for insert to authenticated with check (bucket_id = 'uploads');
 create policy "authenticated update files" on storage.objects for update to authenticated using (bucket_id = 'uploads') with check (bucket_id = 'uploads');
 create policy "authenticated delete files" on storage.objects for delete to authenticated using (bucket_id = 'uploads');
 
+<<<<<<< HEAD
+=======
+create policy "authenticated read ferramentas" on storage.objects for select to authenticated using (bucket_id = 'ferramentas');
+create policy "authenticated upload ferramentas" on storage.objects for insert to authenticated with check (bucket_id = 'ferramentas');
+create policy "authenticated update ferramentas" on storage.objects for update to authenticated using (bucket_id = 'ferramentas') with check (bucket_id = 'ferramentas');
+create policy "authenticated delete ferramentas" on storage.objects for delete to authenticated using (bucket_id = 'ferramentas');
+
+>>>>>>> 971fc88 (verificação de código completo e resolução do problema de devolutiva da foto da parte de ferramenta)
 -- Ativa Supabase Realtime nas tabelas do aplicativo.
 -- Se aparecer aviso de que já existe na publicação, pode ignorar.
 do $$

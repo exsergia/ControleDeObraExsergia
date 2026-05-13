@@ -2,7 +2,11 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useCollection } from '../lib/supabaseHooks';
 import { collection, addDoc, updateDoc, doc, serverTimestamp, query, orderBy, limit, writeBatch, where, getDocs, deleteDoc } from '../lib/supabaseDb';
 import { db, handleFirestoreError, OperationType, auth } from '../lib/supabase';
+<<<<<<< HEAD
 import { Tool, ToolLog, Obra, Operator } from '../types';
+=======
+import { Tool, ToolLog, Obra } from '../types';
+>>>>>>> 971fc88 (verificação de código completo e resolução do problema de devolutiva da foto da parte de ferramenta)
 import { 
   Hammer, 
   Wrench, 
@@ -35,7 +39,10 @@ export default function Ferramentas() {
   const [toolsSnap] = useCollection(query(collection(db, 'tools'), orderBy('nome', 'asc')));
   const [logsSnap] = useCollection(query(collection(db, 'toolLogs'), orderBy('dataSaida', 'desc'), limit(50)));
   const [obrasSnap] = useCollection(query(collection(db, 'obras'), orderBy('nome', 'asc')));
+<<<<<<< HEAD
   const [operadoresSnap] = useCollection(collection(db, 'operadores'));
+=======
+>>>>>>> 971fc88 (verificação de código completo e resolução do problema de devolutiva da foto da parte de ferramenta)
 
   const [showAddTool, setShowAddTool] = useState(false);
   const [editingTool, setEditingTool] = useState<Tool | null>(null);
@@ -47,12 +54,15 @@ export default function Ferramentas() {
   const tools = (toolsSnap?.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Tool[]) || [];
   const logs = (logsSnap?.docs.map(doc => ({ id: doc.id, ...doc.data() })) as ToolLog[]) || [];
   const obras = (obrasSnap?.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Obra[]) || [];
+<<<<<<< HEAD
   const operadores = (operadoresSnap?.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Operator[]) || [];
 
   const getOperatorName = (id?: string, fallback?: string) => {
     const op = id ? operadores.find(o => o.id === id) : undefined;
     return op ? `${op.nome || ''} ${op.sobrenome || ''}`.trim() || op.email : (fallback || 'Responsável não informado');
   };
+=======
+>>>>>>> 971fc88 (verificação de código completo e resolução do problema de devolutiva da foto da parte de ferramenta)
 
   const handleScanSuccess = React.useCallback((decodedText: string) => {
     const tool = tools.find(t => t.codigo === decodedText || t.id === decodedText);
@@ -109,7 +119,10 @@ export default function Ferramentas() {
                 tool={tool} 
                 onCheckOut={() => setShowCheckOut(tool)} 
                 activeLog={logs.find(l => l.id === tool.lastLogId && l.statusLog === 'Aberta')}
+<<<<<<< HEAD
                 responsavelNome={getOperatorName(logs.find(l => l.id === tool.lastLogId && l.statusLog === 'Aberta')?.responsavelId, logs.find(l => l.id === tool.lastLogId && l.statusLog === 'Aberta')?.responsavelNome)}
+=======
+>>>>>>> 971fc88 (verificação de código completo e resolução do problema de devolutiva da foto da parte de ferramenta)
                 onCheckIn={(log) => setShowCheckIn(log)}
                 onEdit={() => setEditingTool(tool)}
                 onViewHistory={() => setShowHistory(tool)}
@@ -128,7 +141,11 @@ export default function Ferramentas() {
             </div>
             <div className="divide-y divide-zinc-100 max-h-[600px] overflow-y-auto">
               {logs.map((log) => (
+<<<<<<< HEAD
                 <LogItem key={log.id} log={log} tool={tools.find(t => t.id === log.toolId)} obra={obras.find(o => o.id === log.obraId)} responsavelNome={getOperatorName(log.responsavelId, log.responsavelNome)} />
+=======
+                <LogItem key={log.id} log={log} tool={tools.find(t => t.id === log.toolId)} obra={obras.find(o => o.id === log.obraId)} />
+>>>>>>> 971fc88 (verificação de código completo e resolução do problema de devolutiva da foto da parte de ferramenta)
               ))}
             </div>
           </div>
@@ -146,7 +163,10 @@ export default function Ferramentas() {
           <ToolHistoryModal 
             tool={showHistory} 
             obras={obras}
+<<<<<<< HEAD
             operadores={operadores}
+=======
+>>>>>>> 971fc88 (verificação de código completo e resolução do problema de devolutiva da foto da parte de ferramenta)
             onClose={() => setShowHistory(null)} 
           />
         )}
@@ -160,7 +180,16 @@ export default function Ferramentas() {
         {showCheckIn && (
           <CheckInModal 
             log={showCheckIn} 
+<<<<<<< HEAD
             tool={tools.find(t => t.id === showCheckIn.toolId)!}
+=======
+            tool={tools.find(t => t.id === showCheckIn.toolId) || {
+              id: showCheckIn.toolId,
+              nome: 'Ferramenta removida',
+              codigo: '---',
+              status: 'Em Uso'
+            } as Tool}
+>>>>>>> 971fc88 (verificação de código completo e resolução do problema de devolutiva da foto da parte de ferramenta)
             onClose={() => setShowCheckIn(null)} 
           />
         )}
@@ -311,12 +340,19 @@ function ScannerModal({ onSuccess, onClose }: { onSuccess: (text: string) => voi
   );
 }
 
+<<<<<<< HEAD
 function ToolCard({ tool, onCheckOut, activeLog, responsavelNome, onCheckIn, onEdit, onViewHistory }: { 
+=======
+function ToolCard({ tool, onCheckOut, activeLog, onCheckIn, onEdit, onViewHistory }: { 
+>>>>>>> 971fc88 (verificação de código completo e resolução do problema de devolutiva da foto da parte de ferramenta)
   key?: string | number,
   tool: Tool, 
   onCheckOut: () => void, 
   activeLog?: ToolLog,
+<<<<<<< HEAD
   responsavelNome?: string,
+=======
+>>>>>>> 971fc88 (verificação de código completo e resolução do problema de devolutiva da foto da parte de ferramenta)
   onCheckIn: (log: ToolLog) => void,
   onEdit?: () => void,
   onViewHistory?: () => void
@@ -328,7 +364,11 @@ function ToolCard({ tool, onCheckOut, activeLog, responsavelNome, onCheckIn, onE
     <div className="bg-white p-5 rounded-3xl border border-zinc-200 shadow-sm hover:shadow-md transition-all group relative">
       <div className="flex items-start justify-between mb-4">
         <div className="w-12 h-12 rounded-2xl bg-zinc-50 flex items-center justify-center text-zinc-900 group-hover:scale-110 transition-transform">
+<<<<<<< HEAD
           {tool.nome.toLowerCase().includes('furadeira') ? <Wrench className="w-6 h-6" /> : <Hammer className="w-6 h-6" />}
+=======
+          {(tool.nome || '').toLowerCase().includes('furadeira') ? <Wrench className="w-6 h-6" /> : <Hammer className="w-6 h-6" />}
+>>>>>>> 971fc88 (verificação de código completo e resolução do problema de devolutiva da foto da parte de ferramenta)
         </div>
         <div className="flex items-center gap-2">
           <div className="flex items-center gap-1">
@@ -393,7 +433,11 @@ function ToolCard({ tool, onCheckOut, activeLog, responsavelNome, onCheckIn, onE
           <div className="p-3 bg-zinc-50 rounded-xl space-y-2">
             <div className="flex items-center gap-2 text-[10px] text-zinc-500 font-bold uppercase">
               <User className="w-3 h-3" />
+<<<<<<< HEAD
               {responsavelNome || activeLog.responsavelNome}
+=======
+              {activeLog.responsavelNome}
+>>>>>>> 971fc88 (verificação de código completo e resolução do problema de devolutiva da foto da parte de ferramenta)
             </div>
           </div>
           <button 
@@ -421,7 +465,11 @@ function ToolCard({ tool, onCheckOut, activeLog, responsavelNome, onCheckIn, onE
   );
 }
 
+<<<<<<< HEAD
 function LogItem({ log, tool, obra, showToolInfo = true, responsavelNome }: { key?: string | number, log: ToolLog, tool?: Tool, obra?: Obra, showToolInfo?: boolean, responsavelNome?: string }) {
+=======
+function LogItem({ log, tool, obra, showToolInfo = true }: { key?: string | number, log: ToolLog, tool?: Tool, obra?: Obra, showToolInfo?: boolean }) {
+>>>>>>> 971fc88 (verificação de código completo e resolução do problema de devolutiva da foto da parte de ferramenta)
   const isPending = log.statusLog === 'Aberta';
   const outDate = log.dataSaida?.toDate ? log.dataSaida.toDate() : new Date();
   const inDate = log.dataDevolucao?.toDate ? log.dataDevolucao.toDate() : null;
@@ -446,7 +494,11 @@ function LogItem({ log, tool, obra, showToolInfo = true, responsavelNome }: { ke
                 </div>
                 <div>
                   <p className="text-[9px] text-zinc-400 font-bold uppercase tracking-tight">Responsável</p>
+<<<<<<< HEAD
                   <p className="text-xs font-bold text-zinc-900 truncate">{responsavelNome || log.responsavelNome}</p>
+=======
+                  <p className="text-xs font-bold text-zinc-900 truncate">{log.responsavelNome}</p>
+>>>>>>> 971fc88 (verificação de código completo e resolução do problema de devolutiva da foto da parte de ferramenta)
                 </div>
               </div>
 
@@ -504,7 +556,11 @@ function LogItem({ log, tool, obra, showToolInfo = true, responsavelNome }: { ke
   );
 }
 
+<<<<<<< HEAD
 function ToolHistoryModal({ tool, obras, operadores, onClose }: { tool: Tool, obras: Obra[], operadores: Operator[], onClose: () => void }) {
+=======
+function ToolHistoryModal({ tool, obras, onClose }: { tool: Tool, obras: Obra[], onClose: () => void }) {
+>>>>>>> 971fc88 (verificação de código completo e resolução do problema de devolutiva da foto da parte de ferramenta)
   const [historySnap, loading] = useCollection(
     query(
       collection(db, 'toolLogs'), 
@@ -515,10 +571,13 @@ function ToolHistoryModal({ tool, obras, operadores, onClose }: { tool: Tool, ob
   );
   
   const history = historySnap?.docs.map(doc => ({ id: doc.id, ...doc.data() })) as ToolLog[] || [];
+<<<<<<< HEAD
   const getOperatorName = (id?: string, fallback?: string) => {
     const op = id ? operadores.find(o => o.id === id) : undefined;
     return op ? `${op.nome || ''} ${op.sobrenome || ''}`.trim() || op.email : (fallback || 'Responsável não informado');
   };
+=======
+>>>>>>> 971fc88 (verificação de código completo e resolução do problema de devolutiva da foto da parte de ferramenta)
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-900/60 backdrop-blur-sm">
@@ -566,8 +625,12 @@ function ToolHistoryModal({ tool, obras, operadores, onClose }: { tool: Tool, ob
                   key={log.id} 
                   log={log} 
                   obra={obras.find(o => o.id === log.obraId)} 
+<<<<<<< HEAD
                   showToolInfo={false}
                   responsavelNome={getOperatorName(log.responsavelId, log.responsavelNome)}
+=======
+                  showToolInfo={false} 
+>>>>>>> 971fc88 (verificação de código completo e resolução do problema de devolutiva da foto da parte de ferramenta)
                 />
               ))}
             </div>
@@ -847,6 +910,10 @@ function CheckOutModal({ tool, obras, onClose }: { tool: Tool, obras: Obra[], on
 
   const handleCheckOut = async (e: React.FormEvent) => {
     e.preventDefault();
+<<<<<<< HEAD
+=======
+    if (loading) return;
+>>>>>>> 971fc88 (verificação de código completo e resolução do problema de devolutiva da foto da parte de ferramenta)
     if (!obraId) {
       notify('warning', 'Atenção', 'Selecione uma obra de destino antes de confirmar.');
       return;
@@ -861,7 +928,10 @@ function CheckOutModal({ tool, obras, onClose }: { tool: Tool, obras: Obra[], on
       batch.set(logRef, {
         toolId: tool.id,
         obraId,
+<<<<<<< HEAD
         responsavelId: userProfile?.id || auth.currentUser?.id,
+=======
+>>>>>>> 971fc88 (verificação de código completo e resolução do problema de devolutiva da foto da parte de ferramenta)
         responsavelNome: responsavel,
         dataSaida: serverTimestamp(),
         statusLog: 'Aberta'
@@ -877,7 +947,10 @@ function CheckOutModal({ tool, obras, onClose }: { tool: Tool, obras: Obra[], on
 
       await batch.commit();
       notify('success', 'Retirada Concluída', `O material "${tool.nome}" foi registrado para a obra selecionada.`);
+<<<<<<< HEAD
       if (!tool) localStorage.removeItem('rascunho-nova-ferramenta');
+=======
+>>>>>>> 971fc88 (verificação de código completo e resolução do problema de devolutiva da foto da parte de ferramenta)
       onClose();
     } catch (err: any) {
       notify('error', 'Erro na Retirada', err.message || 'Não foi possível registrar a saída.');
@@ -973,8 +1046,12 @@ function CheckOutModal({ tool, obras, onClose }: { tool: Tool, obras: Obra[], on
           </div>
 
           <button 
+<<<<<<< HEAD
             type="button"
             onClick={handleCheckIn}
+=======
+            type="submit"
+>>>>>>> 971fc88 (verificação de código completo e resolução do problema de devolutiva da foto da parte de ferramenta)
             disabled={loading}
             className="w-full py-4 bg-zinc-900 text-white rounded-2xl font-bold hover:bg-zinc-800 transition-all flex items-center justify-center gap-2 shadow-lg"
           >
@@ -1002,13 +1079,18 @@ function CheckOutModal({ tool, obras, onClose }: { tool: Tool, obras: Obra[], on
 
 function CheckInModal({ log, tool, onClose }: { log: ToolLog, tool: Tool, onClose: () => void }) {
   const { notify } = useAuth();
+<<<<<<< HEAD
   const draftKey = `rascunho-devolucao-ferramenta-${log.id}`;
+=======
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+>>>>>>> 971fc88 (verificação de código completo e resolução do problema de devolutiva da foto da parte de ferramenta)
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
+<<<<<<< HEAD
   const dataUrlToFile = (dataUrl: string, fileName: string, mimeType = 'image/jpeg') => {
     const arr = dataUrl.split(',');
     const mime = arr[0]?.match(/:(.*?);/)?.[1] || mimeType;
@@ -1092,11 +1174,55 @@ function CheckInModal({ log, tool, onClose }: { log: ToolLog, tool: Tool, onClos
   const handleCheckIn = async () => {
     setError(null);
     
+=======
+  useEffect(() => {
+    return () => {
+      if (photoPreview) URL.revokeObjectURL(photoPreview);
+    };
+  }, [photoPreview]);
+
+  const handlePhotoChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      setError('Selecione uma imagem válida para a devolução.');
+      event.target.value = '';
+      return;
+    }
+
+    if (photoPreview) URL.revokeObjectURL(photoPreview);
+
+    setPhotoFile(file);
+    setPhotoPreview(URL.createObjectURL(file));
+    setError(null);
+  };
+
+  const clearPhoto = () => {
+    if (photoPreview) URL.revokeObjectURL(photoPreview);
+    setPhotoPreview(null);
+    setPhotoFile(null);
+    setError(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const handleCheckIn = async (event?: React.MouseEvent<HTMLButtonElement>) => {
+    event?.preventDefault();
+    event?.stopPropagation();
+    setError(null);
+
+    if (loading) return;
+
+>>>>>>> 971fc88 (verificação de código completo e resolução do problema de devolutiva da foto da parte de ferramenta)
     if (!photoFile) {
       setError('A foto da devolução é obrigatória para comprovar o estado do material.');
       return;
     }
 
+<<<<<<< HEAD
     if (loading) return;
 
     setLoading(true);
@@ -1118,10 +1244,40 @@ function CheckInModal({ log, tool, onClose }: { log: ToolLog, tool: Tool, onClos
       // 2. Grava o link da foto e a data da devolução no banco.
       const logRef = doc(db, 'toolLogs', log.id);
       batch.update(logRef, {
+=======
+    setLoading(true);
+    setUploadProgress(0);
+
+    console.group('[DEVOLUCAO_FERRAMENTA] Iniciando devolução');
+    console.log('Ferramenta:', { id: tool.id, nome: tool.nome, status: tool.status });
+    console.log('Log:', { id: log.id, toolId: log.toolId, statusLog: log.statusLog });
+    console.log('Arquivo selecionado:', {
+      name: photoFile.name,
+      type: photoFile.type,
+      size: photoFile.size,
+      lastModified: photoFile.lastModified,
+    });
+
+    try {
+      console.log('Enviando imagem para Supabase Storage...');
+      const photoUrl = await uploadPhoto(
+        photoFile,
+        `tools/${tool.id}/returns`,
+        (progress) => {
+          console.log('Progresso upload devolução:', progress);
+          setUploadProgress(progress);
+        }
+      );
+      console.log('URL assinada retornada:', photoUrl);
+
+      console.log('Atualizando log de devolução no banco...', { logId: log.id });
+      const updateLogResponse = await updateDoc(doc(db, 'toolLogs', log.id), {
+>>>>>>> 971fc88 (verificação de código completo e resolução do problema de devolutiva da foto da parte de ferramenta)
         dataDevolucao: serverTimestamp(),
         fotoDevolucaoUrl: photoUrl,
         statusLog: 'Concluída'
       });
+<<<<<<< HEAD
 
       // 3. Libera a ferramenta para nova retirada.
       const toolRef = doc(db, 'tools', tool.id);
@@ -1148,13 +1304,46 @@ function CheckInModal({ log, tool, onClose }: { log: ToolLog, tool: Tool, onClos
       setError(errorMsg);
       handleFirestoreError(err, OperationType.WRITE, 'tool-checkin');
     } finally {
+=======
+      console.log('UPDATE LOG RESPONSE:', updateLogResponse);
+      if (!updateLogResponse?.data?.id) {
+        throw new Error('updateLogResponse não retornou confirmação ao atualizar toolLogs.');
+      }
+      console.log('Log de devolução atualizado com sucesso.');
+
+      console.log('Atualizando status da ferramenta...', { toolId: tool.id });
+      const updateToolResponse = await updateDoc(doc(db, 'tools', tool.id), {
+        status: 'Disponível',
+        updatedAt: serverTimestamp()
+      });
+      console.log('UPDATE TOOL RESPONSE:', updateToolResponse);
+      if (!updateToolResponse?.data?.id) {
+        throw new Error('updateToolResponse não retornou confirmação ao atualizar tools.');
+      }
+      console.log('Ferramenta atualizada com sucesso.');
+
+      notify('success', 'Devolução Concluída', 'Material entregue e já está disponível para retirada.');
+      clearPhoto();
+      onClose();
+    } catch (err: any) {
+      console.error('[DEVOLUCAO_FERRAMENTA] Erro completo:', err);
+      const errorMsg = err?.message || err?.error_description || 'Falha ao processar devolução.';
+      setError(errorMsg);
+      handleFirestoreError(err, OperationType.WRITE, 'tool-checkin');
+    } finally {
+      console.groupEnd();
+>>>>>>> 971fc88 (verificação de código completo e resolução do problema de devolutiva da foto da parte de ferramenta)
       setLoading(false);
     }
   };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-900/60 backdrop-blur-sm">
+<<<<<<< HEAD
       <motion.div 
+=======
+      <motion.div
+>>>>>>> 971fc88 (verificação de código completo e resolução do problema de devolutiva da foto da parte de ferramenta)
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.95 }}
@@ -1170,10 +1359,18 @@ function CheckInModal({ log, tool, onClose }: { log: ToolLog, tool: Tool, onClos
               <p className="text-xs text-zinc-400">{tool.nome}</p>
             </div>
           </div>
+<<<<<<< HEAD
           <button type="button" onClick={onClose} className="p-2 hover:bg-white/10 rounded-xl transition-colors">
             <X className="w-5 h-5" />
           </button>
         </div>
+=======
+          <button type="button" onClick={onClose} disabled={loading} className="p-2 hover:bg-white/10 rounded-xl transition-colors disabled:opacity-50">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+>>>>>>> 971fc88 (verificação de código completo e resolução do problema de devolutiva da foto da parte de ferramenta)
         <div className="p-6 space-y-5">
           {error && (
             <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-100 text-red-600 rounded-xl text-xs font-bold animate-in fade-in slide-in-from-top-1">
@@ -1184,6 +1381,7 @@ function CheckInModal({ log, tool, onClose }: { log: ToolLog, tool: Tool, onClos
 
           <div className="space-y-3">
             <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest pl-1">Foto do Estado do Material (Obrigatório)</label>
+<<<<<<< HEAD
             {photoPreview ? (
               <div className="relative aspect-video rounded-2xl overflow-hidden bg-zinc-100 border border-zinc-200">
                 <img src={photoPreview} className="w-full h-full object-cover" alt="Estado do material" />
@@ -1213,12 +1411,64 @@ function CheckInModal({ log, tool, onClose }: { log: ToolLog, tool: Tool, onClos
                 />
               </label>
             )}
+=======
+
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              className="hidden"
+              onClick={(event) => event.stopPropagation()}
+              onChange={handlePhotoChange}
+            />
+
+            <button
+              type="button"
+              disabled={loading}
+              onClick={() => fileInputRef.current?.click()}
+              className={cn(
+                'relative w-full aspect-video rounded-2xl overflow-hidden border-2 border-dashed transition-all group disabled:opacity-60 disabled:cursor-not-allowed',
+                photoPreview ? 'border-zinc-200 bg-zinc-100' : error ? 'border-red-200 bg-red-50/30 hover:bg-red-50' : 'border-zinc-200 bg-zinc-50 hover:bg-zinc-100'
+              )}
+            >
+              {photoPreview ? (
+                <>
+                  <img src={photoPreview} className="w-full h-full object-cover" alt="Pré-visualização da devolução" />
+                  <div className="absolute inset-x-0 bottom-0 p-3 bg-gradient-to-t from-black/70 to-transparent text-white text-xs font-bold text-left">
+                    Foto selecionada. Clique para trocar.
+                  </div>
+                </>
+              ) : (
+                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                  <div className="w-12 h-12 rounded-full bg-white flex items-center justify-center shadow-sm mb-2 group-hover:scale-110 transition-transform">
+                    <Camera className={cn('w-6 h-6', error ? 'text-red-400' : 'text-zinc-400')} />
+                  </div>
+                  <span className={cn('text-xs font-bold', error ? 'text-red-500' : 'text-zinc-500')}>TIRAR FOTO DO MATERIAL</span>
+                </div>
+              )}
+            </button>
+
+            {photoPreview && (
+              <button
+                type="button"
+                onClick={clearPhoto}
+                disabled={loading}
+                className="inline-flex items-center gap-2 text-xs font-bold text-red-600 hover:text-red-700 disabled:opacity-50"
+              >
+                <X className="w-3 h-3" />
+                Remover foto
+              </button>
+            )}
+
+>>>>>>> 971fc88 (verificação de código completo e resolução do problema de devolutiva da foto da parte de ferramenta)
             <div className="flex items-start gap-2 text-zinc-400 italic">
               <AlertCircle className="w-3 h-3 mt-0.5" />
               <p className="text-[10px] leading-tight">Certifique-se que o equipamento está visível e em bom estado antes de confirmar.</p>
             </div>
           </div>
 
+<<<<<<< HEAD
           <button 
             type="button"
             onClick={handleCheckIn}
@@ -1226,18 +1476,36 @@ function CheckInModal({ log, tool, onClose }: { log: ToolLog, tool: Tool, onClos
             className={cn(
               "w-full py-4 rounded-2xl font-bold transition-all flex items-center justify-center gap-2 shadow-lg",
               loading ? "bg-zinc-100 text-zinc-300 cursor-not-allowed" : "bg-zinc-900 text-white hover:bg-zinc-800"
+=======
+          <button
+            type="button"
+            onClick={(event) => handleCheckIn(event)}
+            disabled={loading}
+            className={cn(
+              'w-full py-4 rounded-2xl font-bold transition-all flex items-center justify-center gap-2 shadow-lg',
+              loading ? 'bg-zinc-100 text-zinc-300 cursor-not-allowed' : 'bg-zinc-900 text-white hover:bg-zinc-800'
+>>>>>>> 971fc88 (verificação de código completo e resolução do problema de devolutiva da foto da parte de ferramenta)
             )}
           >
             {loading ? (
               <div className="flex flex-col items-center gap-1">
                 <span className="text-[10px] uppercase tracking-widest">{uploadProgress > 0 && uploadProgress < 100 ? `Enviando Foto... ${uploadProgress.toFixed(0)}%` : 'Finalizando...'}</span>
+<<<<<<< HEAD
                 <div className="w-32 h-1 bg-white/20 rounded-full overflow-hidden mt-1">
                   <div className="h-full bg-white transition-all duration-300" style={{ width: `${uploadProgress}%` }} />
+=======
+                <div className="w-32 h-1 bg-zinc-300 rounded-full overflow-hidden mt-1">
+                  <div className="h-full bg-zinc-900 transition-all duration-300" style={{ width: `${uploadProgress}%` }} />
+>>>>>>> 971fc88 (verificação de código completo e resolução do problema de devolutiva da foto da parte de ferramenta)
                 </div>
               </div>
             ) : (
               <>
+<<<<<<< HEAD
                 Confirmar Devolução
+=======
+                Devolver Ferramenta
+>>>>>>> 971fc88 (verificação de código completo e resolução do problema de devolutiva da foto da parte de ferramenta)
                 <CheckCircle2 className="w-5 h-5" />
               </>
             )}

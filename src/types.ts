@@ -77,8 +77,14 @@ export interface ToolLog {
   id: string;
   toolId: string;
   obraId: string;
+<<<<<<< HEAD
   responsavelId?: string;
   responsavelNome: string;
+=======
+  responsavelNome: string;
+  responsavelId?: string;
+  responsavelEmail?: string;
+>>>>>>> 971fc88 (verificação de código completo e resolução do problema de devolutiva da foto da parte de ferramenta)
   dataSaida: any;
   dataDevolucao?: any;
   fotoDevolucaoUrl?: string;
