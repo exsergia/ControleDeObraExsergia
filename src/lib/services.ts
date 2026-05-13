@@ -16,39 +16,6 @@ export const sendBrowserNotification = (title: string, body: string) => {
   }
 };
 
-<<<<<<< HEAD
-const buildPublicUrl = (bucket: string, path: string) => {
-  const { data } = supabase.storage.from(bucket).getPublicUrl(path);
-  return data.publicUrl;
-};
-
-export const uploadImage = async (file: File, path = 'uploads', onProgress?: (progress: number) => void): Promise<string> => {
-  const fileExt = file.name.split('.').pop() || 'jpg';
-  const fileName = `${path}/${Date.now()}-${Math.random().toString(36).slice(2)}.${fileExt}`;
-  onProgress?.(10);
-  const { error } = await supabase.storage.from('uploads').upload(fileName, file, {
-    cacheControl: '3600',
-    upsert: false,
-  });
-  if (error) throw error;
-  onProgress?.(100);
-  return buildPublicUrl('uploads', fileName);
-};
-
-export const uploadFile = async (file: File, path = 'uploads', onProgress?: (progress: number) => void): Promise<string> => {
-  const fileName = `${path}/${Date.now()}-${Math.random().toString(36).slice(2)}-${file.name}`;
-  onProgress?.(10);
-  const { error } = await supabase.storage.from('uploads').upload(fileName, file, {
-    cacheControl: '3600',
-    upsert: false,
-  });
-  if (error) throw error;
-  onProgress?.(100);
-  return buildPublicUrl('uploads', fileName);
-};
-
-export const uploadPhoto = uploadImage;
-=======
 const SIGNED_URL_TTL_SECONDS = 60 * 60 * 24 * 7; // 7 dias
 
 const createSignedStorageUrl = async (bucket: string, path: string) => {
@@ -115,4 +82,3 @@ export const uploadFile = async (file: File, path = 'uploads', onProgress?: (pro
 export const uploadPhoto = async (file: File, path = 'uploads', onProgress?: (progress: number) => void): Promise<string> => {
   return uploadToStorage(file, path, onProgress, 'ferramentas');
 };
->>>>>>> 971fc88 (verificação de código completo e resolução do problema de devolutiva da foto da parte de ferramenta)
