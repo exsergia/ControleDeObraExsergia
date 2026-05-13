@@ -81,7 +81,9 @@ export interface ToolLog {
   responsavelId?: string;
   responsavelEmail?: string;
   dataSaida: any;
-statusLog: 'Aberta' | 'Concluída';
+  dataDevolucao?: any;
+  fotoDevolucaoUrl?: string;
+  statusLog: 'Aberta' | 'Concluída';
 }
 
 export interface Checklist {

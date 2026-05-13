@@ -30,30 +30,6 @@ import { uploadPhoto } from '../lib/services';
 import { Html5QrcodeScanner, Html5Qrcode } from 'html5-qrcode';
 import { useAuth } from '../App';
 
-<<<<<<< HEAD
-const parseMovementDate = (value: any): Date | null => {
-  if (!value) return null;
-  if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value;
-  if (typeof value?.toDate === 'function') {
-    const parsed = value.toDate();
-    return parsed instanceof Date && !Number.isNaN(parsed.getTime()) ? parsed : null;
-  }
-  if (typeof value === 'string' || typeof value === 'number') {
-    const parsed = new Date(value);
-    return Number.isNaN(parsed.getTime()) ? null : parsed;
-  }
-  if (typeof value === 'object') {
-    if (typeof value.seconds === 'number') return new Date(value.seconds * 1000);
-    if (typeof value._seconds === 'number') return new Date(value._seconds * 1000);
-  }
-  return null;
-};
-
-const formatMovementDate = (date: Date | null) => date ? format(date, 'dd/MM/yyyy') : '--/--/----';
-const formatMovementTime = (date: Date | null) => date ? format(date, 'HH:mm') : '--:--';
-
-=======
->>>>>>> a338a237fe6232d6665886b8d7bd3b28f88a5f54
 export default function Ferramentas() {
   const { isAdmin, notify } = useAuth();
   const [toolsSnap] = useCollection(query(collection(db, 'tools'), orderBy('nome', 'asc')));
@@ -282,15 +258,6 @@ function ScannerModal({ onSuccess, onClose }: { onSuccess: (text: string) => voi
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.95 }}
         className="bg-white w-full max-w-2xl rounded-3xl overflow-hidden shadow-2xl"
-<<<<<<< HEAD
-=======
-<<<<<<< HEAD
-=======
-        onClick={stopModalEvent}
-        onMouseDown={stopModalEvent}
-        onTouchStart={stopModalEvent}
->>>>>>> 69f73cb29dea7c5f16fa7294cb434d343bcc9f1f
->>>>>>> a338a237fe6232d6665886b8d7bd3b28f88a5f54
       >
         <div className="p-6 border-b border-zinc-100 flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -451,13 +418,8 @@ function ToolCard({ tool, onCheckOut, activeLog, onCheckIn, onEdit, onViewHistor
 
 function LogItem({ log, tool, obra, showToolInfo = true }: { key?: string | number, log: ToolLog, tool?: Tool, obra?: Obra, showToolInfo?: boolean }) {
   const isPending = log.statusLog === 'Aberta';
-<<<<<<< HEAD
-  const outDate = parseMovementDate(log.dataSaida);
-  const inDate = parseMovementDate(log.dataDevolucao);
-=======
   const outDate = log.dataSaida?.toDate ? log.dataSaida.toDate() : new Date();
   const inDate = log.dataDevolucao?.toDate ? log.dataDevolucao.toDate() : null;
->>>>>>> a338a237fe6232d6665886b8d7bd3b28f88a5f54
   
   return (
     <div className="p-5 hover:bg-zinc-50 transition-colors border-b border-zinc-100 last:border-0">
@@ -495,24 +457,10 @@ function LogItem({ log, tool, obra, showToolInfo = true }: { key?: string | numb
             </div>
           </div>
 
-<<<<<<< HEAD
-          <div className="text-right shrink-0 min-w-[92px] space-y-2">
-            <div>
-              <div className="text-[10px] font-bold text-blue-500 uppercase tracking-tighter">Retirada em</div>
-              <div className="text-xs font-bold text-zinc-900">{formatMovementDate(outDate)}</div>
-              <div className="text-[10px] text-blue-600 font-bold">{formatMovementTime(outDate)}</div>
-            </div>
-            <div>
-              <div className="text-[10px] font-bold text-green-600 uppercase tracking-tighter">Devolução em</div>
-              <div className="text-xs font-bold text-zinc-900">{formatMovementDate(inDate)}</div>
-              <div className="text-[10px] text-green-600 font-bold">{formatMovementTime(inDate)}</div>
-            </div>
-=======
           <div className="text-right shrink-0">
             <div className="text-[10px] font-bold text-zinc-400 uppercase tracking-tighter">Saída em</div>
             <div className="text-xs font-bold text-zinc-900">{format(outDate, "dd/MM/yyyy")}</div>
             <div className="text-[10px] text-zinc-500 font-medium">{format(outDate, "HH:mm")}</div>
->>>>>>> a338a237fe6232d6665886b8d7bd3b28f88a5f54
           </div>
         </div>
 
@@ -539,14 +487,10 @@ function LogItem({ log, tool, obra, showToolInfo = true }: { key?: string | numb
           {!isPending && inDate && (
             <div className="flex items-center gap-1.5 px-3 py-1.5 bg-green-50 rounded-xl border border-green-100">
               <ArrowDownLeft className="w-3 h-3 text-green-600" />
-<<<<<<< HEAD
-              <span className="text-[9px] font-bold text-green-700 uppercase tracking-tight">Devolução registrada</span>
-=======
               <div className="text-left">
                 <span className="block text-[8px] font-bold text-green-600 uppercase tracking-tighter leading-none">Devolvido em</span>
                 <span className="text-[10px] font-bold text-green-700">{format(inDate, "dd/MM HH:mm")}</span>
               </div>
->>>>>>> a338a237fe6232d6665886b8d7bd3b28f88a5f54
             </div>
           )}
         </div>
@@ -902,10 +846,6 @@ function CheckOutModal({ tool, obras, onClose }: { tool: Tool, obras: Obra[], on
 
     try {
       const batch = writeBatch(db);
-<<<<<<< HEAD
-      const retiradaEm = serverTimestamp();
-=======
->>>>>>> a338a237fe6232d6665886b8d7bd3b28f88a5f54
       
       // 1. Create Log
       const logRef = doc(collection(db, 'toolLogs'));
@@ -913,13 +853,7 @@ function CheckOutModal({ tool, obras, onClose }: { tool: Tool, obras: Obra[], on
         toolId: tool.id,
         obraId,
         responsavelNome: responsavel,
-<<<<<<< HEAD
-        dataSaida: retiradaEm,
-        dataDevolucao: null,
-        fotoDevolucaoUrl: null,
-=======
         dataSaida: serverTimestamp(),
->>>>>>> a338a237fe6232d6665886b8d7bd3b28f88a5f54
         statusLog: 'Aberta'
       });
 
@@ -928,11 +862,7 @@ function CheckOutModal({ tool, obras, onClose }: { tool: Tool, obras: Obra[], on
       batch.update(toolRef, {
         status: 'Em Uso',
         lastLogId: logRef.id,
-<<<<<<< HEAD
-        updatedAt: retiradaEm
-=======
         updatedAt: serverTimestamp()
->>>>>>> a338a237fe6232d6665886b8d7bd3b28f88a5f54
       });
 
       await batch.commit();
@@ -966,14 +896,8 @@ function CheckOutModal({ tool, obras, onClose }: { tool: Tool, obras: Obra[], on
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.95 }}
-<<<<<<< HEAD
         className="bg-white w-full max-w-2xl rounded-3xl overflow-hidden shadow-2xl"
       >
-=======
-        className="bg-white w-full max-w-2xl rounded-3xl overflow-hidden shadow-2xl">
-
-          
->>>>>>> a338a237fe6232d6665886b8d7bd3b28f88a5f54
         <div className="p-6 bg-zinc-900 text-white flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center">
@@ -1067,167 +991,20 @@ function CheckOutModal({ tool, obras, onClose }: { tool: Tool, obras: Obra[], on
 function CheckInModal({ log, tool, onClose }: { log: ToolLog, tool: Tool, onClose: () => void }) {
   const { notify } = useAuth();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-<<<<<<< HEAD
-  const mobileCameraInputRef = useRef<HTMLInputElement | null>(null);
-  const videoRef = useRef<HTMLVideoElement | null>(null);
-  const streamRef = useRef<MediaStream | null>(null);
-  const [cameraActive, setCameraActive] = useState(false);
-=======
-<<<<<<< HEAD
-  const videoRef = useRef<HTMLVideoElement | null>(null);
-  const streamRef = useRef<MediaStream | null>(null);
-  const [cameraActive, setCameraActive] = useState(false);
-=======
->>>>>>> 69f73cb29dea7c5f16fa7294cb434d343bcc9f1f
->>>>>>> a338a237fe6232d6665886b8d7bd3b28f88a5f54
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
-<<<<<<< HEAD
-  const isMobileDevice = () => {
-    if (typeof navigator === 'undefined') return false;
-    return /Android|iPhone|iPad|iPod|Mobile|Windows Phone/i.test(navigator.userAgent);
-  };
-
-=======
-<<<<<<< HEAD
->>>>>>> a338a237fe6232d6665886b8d7bd3b28f88a5f54
-  const stopCamera = () => {
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach((track) => track.stop());
-      streamRef.current = null;
-    }
-    setCameraActive(false);
-  };
-
-  useEffect(() => {
-    return () => {
-      if (photoPreview) URL.revokeObjectURL(photoPreview);
-      stopCamera();
-    };
-  }, [photoPreview]);
-
-  const startCamera = async () => {
-    setError(null);
-
-<<<<<<< HEAD
-    // Em celular, o caminho mais estável é usar o seletor nativo com capture.
-    // getUserMedia em PWA/Safari/WebView pode falhar, ficar preto ou perder permissão.
-    if (isMobileDevice()) {
-      mobileCameraInputRef.current?.click();
-      return;
-    }
-
-    if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia) {
-=======
-    if (!navigator.mediaDevices?.getUserMedia) {
->>>>>>> a338a237fe6232d6665886b8d7bd3b28f88a5f54
-      fileInputRef.current?.click();
-      return;
-    }
-
-    try {
-      stopCamera();
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: { ideal: 'environment' } },
-        audio: false,
-      });
-
-      streamRef.current = stream;
-      setCameraActive(true);
-
-      setTimeout(() => {
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-          videoRef.current.play().catch((err) => {
-            console.error('[CAMERA_DEVOLUCAO] Falha ao iniciar preview:', err);
-            setError('Não foi possível abrir a câmera. Use a opção de selecionar foto.');
-            stopCamera();
-          });
-        }
-      }, 0);
-    } catch (err: any) {
-      console.error('[CAMERA_DEVOLUCAO] Erro ao acessar câmera:', err);
-      setError(err?.message || 'Não foi possível acessar a câmera. Use a opção de selecionar foto.');
-      fileInputRef.current?.click();
-    }
-  };
-
-  const captureCameraPhoto = async () => {
-    const video = videoRef.current;
-    if (!video || !streamRef.current) {
-      setError('Câmera não inicializada. Tente novamente.');
-      return;
-    }
-
-    const width = video.videoWidth || 1280;
-    const height = video.videoHeight || 720;
-    const canvas = document.createElement('canvas');
-    canvas.width = width;
-    canvas.height = height;
-    const ctx = canvas.getContext('2d');
-
-    if (!ctx) {
-      setError('Não foi possível capturar a imagem da câmera.');
-      return;
-    }
-
-    ctx.drawImage(video, 0, 0, width, height);
-
-    canvas.toBlob((blob) => {
-      if (!blob) {
-        setError('Não foi possível gerar o arquivo da foto.');
-        return;
-      }
-
-      const file = new File([blob], `devolucao-${tool.id}-${Date.now()}.jpg`, { type: 'image/jpeg' });
-      if (photoPreview) URL.revokeObjectURL(photoPreview);
-      setPhotoFile(file);
-      setPhotoPreview(URL.createObjectURL(file));
-      setError(null);
-      stopCamera();
-    }, 'image/jpeg', 0.9);
-  };
-
-  const handlePhotoChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    event.preventDefault();
-<<<<<<< HEAD
-=======
-=======
   useEffect(() => {
     return () => {
       if (photoPreview) URL.revokeObjectURL(photoPreview);
     };
   }, [photoPreview]);
 
-  const stopModalEvent = (event: React.SyntheticEvent) => {
-    event.stopPropagation();
-  };
-
-  const handleClose = (event?: React.MouseEvent<HTMLButtonElement>) => {
-    event?.preventDefault();
-    event?.stopPropagation();
-    if (loading) return;
-    onClose();
-  };
-
-  const openPhotoPicker = (event: React.MouseEvent<HTMLButtonElement>) => {
-    event.preventDefault();
-    event.stopPropagation();
-    if (loading) return;
-    // Garante que selecionar a mesma foto novamente dispare o onChange, sem submit/reload.
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-      fileInputRef.current.click();
-    }
-  };
-
   const handlePhotoChange = (event: React.ChangeEvent<HTMLInputElement>) => {
->>>>>>> 69f73cb29dea7c5f16fa7294cb434d343bcc9f1f
->>>>>>> a338a237fe6232d6665886b8d7bd3b28f88a5f54
+    event.preventDefault();
     event.stopPropagation();
 
     const file = event.target.files?.[0];
@@ -1246,28 +1023,7 @@ function CheckInModal({ log, tool, onClose }: { log: ToolLog, tool: Tool, onClos
     setError(null);
   };
 
-<<<<<<< HEAD
   const clearPhoto = () => {
-    stopCamera();
-=======
-<<<<<<< HEAD
-  const clearPhoto = () => {
-    stopCamera();
-=======
-  const clearPhoto = (event?: React.MouseEvent<HTMLButtonElement>) => {
-    event?.preventDefault();
-    event?.stopPropagation();
-    if (loading) return;
-    if (photoPreview) URL.revokeObjectURL(photoPreview);
-    setPhotoPreview(null);
-    setPhotoFile(null);
-    setError(null);
-    if (fileInputRef.current) fileInputRef.current.value = '';
-  };
-
-  const resetPhotoStateAfterSuccess = () => {
->>>>>>> 69f73cb29dea7c5f16fa7294cb434d343bcc9f1f
->>>>>>> a338a237fe6232d6665886b8d7bd3b28f88a5f54
     if (photoPreview) URL.revokeObjectURL(photoPreview);
     setPhotoPreview(null);
     setPhotoFile(null);
@@ -1310,55 +1066,25 @@ function CheckInModal({ log, tool, onClose }: { log: ToolLog, tool: Tool, onClos
           setUploadProgress(progress);
         }
       );
-      console.log('URL assinada retornada:', photoUrl);
+      console.log('URL pública retornada:', photoUrl);
 
-<<<<<<< HEAD
-      const devolucaoEm = serverTimestamp();
-      console.log('Atualizando log de devolução no banco...', { logId: log.id, dataSaidaOriginal: log.dataSaida, dataDevolucao: devolucaoEm });
-      const updateLogResponse = await updateDoc(doc(db, 'toolLogs', log.id), {
-        dataSaida: log.dataSaida || null,
-        dataDevolucao: devolucaoEm,
-=======
       console.log('Atualizando log de devolução no banco...', { logId: log.id });
-      const updateLogResponse = await updateDoc(doc(db, 'toolLogs', log.id), {
+      await updateDoc(doc(db, 'toolLogs', log.id), {
         dataDevolucao: serverTimestamp(),
->>>>>>> a338a237fe6232d6665886b8d7bd3b28f88a5f54
         fotoDevolucaoUrl: photoUrl,
         statusLog: 'Concluída'
       });
-      console.log('UPDATE LOG RESPONSE:', updateLogResponse);
-      if (!updateLogResponse?.data?.id) {
-        throw new Error('updateLogResponse não retornou confirmação ao atualizar toolLogs.');
-      }
       console.log('Log de devolução atualizado com sucesso.');
 
       console.log('Atualizando status da ferramenta...', { toolId: tool.id });
-      const updateToolResponse = await updateDoc(doc(db, 'tools', tool.id), {
+      await updateDoc(doc(db, 'tools', tool.id), {
         status: 'Disponível',
-<<<<<<< HEAD
-        updatedAt: devolucaoEm
-=======
         updatedAt: serverTimestamp()
->>>>>>> a338a237fe6232d6665886b8d7bd3b28f88a5f54
       });
-      console.log('UPDATE TOOL RESPONSE:', updateToolResponse);
-      if (!updateToolResponse?.data?.id) {
-        throw new Error('updateToolResponse não retornou confirmação ao atualizar tools.');
-      }
       console.log('Ferramenta atualizada com sucesso.');
 
       notify('success', 'Devolução Concluída', 'Material entregue e já está disponível para retirada.');
-<<<<<<< HEAD
       clearPhoto();
-=======
-<<<<<<< HEAD
-      clearPhoto();
-=======
-      // Fecha o modal somente após upload + updateLog + updateTool concluírem com sucesso.
-      // Qualquer erro mantém o modal aberto e exibe a mensagem na tela.
-      resetPhotoStateAfterSuccess();
->>>>>>> 69f73cb29dea7c5f16fa7294cb434d343bcc9f1f
->>>>>>> a338a237fe6232d6665886b8d7bd3b28f88a5f54
       onClose();
     } catch (err: any) {
       console.error('[DEVOLUCAO_FERRAMENTA] Erro completo:', err);
@@ -1372,20 +1098,7 @@ function CheckInModal({ log, tool, onClose }: { log: ToolLog, tool: Tool, onClos
   };
 
   return (
-<<<<<<< HEAD
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-900/60 backdrop-blur-sm">
-=======
-<<<<<<< HEAD
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-900/60 backdrop-blur-sm">
-=======
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-900/60 backdrop-blur-sm"
-      onClick={stopModalEvent}
-      onMouseDown={stopModalEvent}
-      onTouchStart={stopModalEvent}
-    >
->>>>>>> 69f73cb29dea7c5f16fa7294cb434d343bcc9f1f
->>>>>>> a338a237fe6232d6665886b8d7bd3b28f88a5f54
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
@@ -1402,36 +1115,12 @@ function CheckInModal({ log, tool, onClose }: { log: ToolLog, tool: Tool, onClos
               <p className="text-xs text-zinc-400">{tool.nome}</p>
             </div>
           </div>
-<<<<<<< HEAD
           <button type="button" onClick={onClose} disabled={loading} className="p-2 hover:bg-white/10 rounded-xl transition-colors disabled:opacity-50">
-=======
-<<<<<<< HEAD
-          <button type="button" onClick={onClose} disabled={loading} className="p-2 hover:bg-white/10 rounded-xl transition-colors disabled:opacity-50">
-=======
-          <button type="button" onClick={handleClose} disabled={loading} className="p-2 hover:bg-white/10 rounded-xl transition-colors disabled:opacity-50">
->>>>>>> 69f73cb29dea7c5f16fa7294cb434d343bcc9f1f
->>>>>>> a338a237fe6232d6665886b8d7bd3b28f88a5f54
             <X className="w-5 h-5" />
           </button>
         </div>
 
-<<<<<<< HEAD
         <div className="p-6 space-y-5">
-=======
-<<<<<<< HEAD
-        <div className="p-6 space-y-5">
-=======
-        <div
-          className="p-6 space-y-5"
-          onClick={stopModalEvent}
-          onMouseDown={stopModalEvent}
-          onSubmit={(event) => {
-            event.preventDefault();
-            event.stopPropagation();
-          }}
-        >
->>>>>>> 69f73cb29dea7c5f16fa7294cb434d343bcc9f1f
->>>>>>> a338a237fe6232d6665886b8d7bd3b28f88a5f54
           {error && (
             <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-100 text-red-600 rounded-xl text-xs font-bold animate-in fade-in slide-in-from-top-1">
               <AlertCircle className="w-4 h-4 shrink-0" />
@@ -1443,82 +1132,29 @@ function CheckInModal({ log, tool, onClose }: { log: ToolLog, tool: Tool, onClos
             <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest pl-1">Foto do Estado do Material (Obrigatório)</label>
 
             <input
-<<<<<<< HEAD
-              ref={mobileCameraInputRef}
+              ref={fileInputRef}
               type="file"
               accept="image/*"
               capture="environment"
               className="hidden"
               onClick={(event) => event.stopPropagation()}
-              onChange={handlePhotoChange}
-            />
-
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onClick={(event) => event.stopPropagation()}
-=======
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-<<<<<<< HEAD
-              className="hidden"
-              onClick={(event) => event.stopPropagation()}
-=======
-              capture="environment"
-              className="hidden"
-              onClick={(event) => event.stopPropagation()}
-              onMouseDown={(event) => event.stopPropagation()}
->>>>>>> 69f73cb29dea7c5f16fa7294cb434d343bcc9f1f
->>>>>>> a338a237fe6232d6665886b8d7bd3b28f88a5f54
               onChange={handlePhotoChange}
             />
 
             <button
               type="button"
               disabled={loading}
-<<<<<<< HEAD
-              onClick={startCamera}
-=======
-<<<<<<< HEAD
-              onClick={startCamera}
-=======
-              onClick={openPhotoPicker}
->>>>>>> 69f73cb29dea7c5f16fa7294cb434d343bcc9f1f
->>>>>>> a338a237fe6232d6665886b8d7bd3b28f88a5f54
+              onClick={() => fileInputRef.current?.click()}
               className={cn(
                 'relative w-full aspect-video rounded-2xl overflow-hidden border-2 border-dashed transition-all group disabled:opacity-60 disabled:cursor-not-allowed',
                 photoPreview ? 'border-zinc-200 bg-zinc-100' : error ? 'border-red-200 bg-red-50/30 hover:bg-red-50' : 'border-zinc-200 bg-zinc-50 hover:bg-zinc-100'
               )}
             >
-<<<<<<< HEAD
-=======
-<<<<<<< HEAD
->>>>>>> a338a237fe6232d6665886b8d7bd3b28f88a5f54
-              {cameraActive ? (
-                <>
-                  <video ref={videoRef} className="w-full h-full object-cover bg-black" playsInline muted autoPlay />
-                  <div className="absolute inset-x-0 bottom-0 p-3 bg-gradient-to-t from-black/70 to-transparent text-white text-xs font-bold text-left">
-                    Câmera aberta. Use o botão abaixo para capturar.
-                  </div>
-                </>
-              ) : photoPreview ? (
-                <>
-                  <img src={photoPreview} className="w-full h-full object-cover" alt="Pré-visualização da devolução" />
-                  <div className="absolute inset-x-0 bottom-0 p-3 bg-gradient-to-t from-black/70 to-transparent text-white text-xs font-bold text-left">
-                    Foto selecionada. Clique para tirar outra.
-<<<<<<< HEAD
-=======
-=======
               {photoPreview ? (
                 <>
                   <img src={photoPreview} className="w-full h-full object-cover" alt="Pré-visualização da devolução" />
                   <div className="absolute inset-x-0 bottom-0 p-3 bg-gradient-to-t from-black/70 to-transparent text-white text-xs font-bold text-left">
                     Foto selecionada. Clique para trocar.
->>>>>>> 69f73cb29dea7c5f16fa7294cb434d343bcc9f1f
->>>>>>> a338a237fe6232d6665886b8d7bd3b28f88a5f54
                   </div>
                 </>
               ) : (
@@ -1526,61 +1162,11 @@ function CheckInModal({ log, tool, onClose }: { log: ToolLog, tool: Tool, onClos
                   <div className="w-12 h-12 rounded-full bg-white flex items-center justify-center shadow-sm mb-2 group-hover:scale-110 transition-transform">
                     <Camera className={cn('w-6 h-6', error ? 'text-red-400' : 'text-zinc-400')} />
                   </div>
-<<<<<<< HEAD
                   <span className={cn('text-xs font-bold', error ? 'text-red-500' : 'text-zinc-500')}>TIRAR FOTO DO MATERIAL</span>
-=======
-<<<<<<< HEAD
-                  <span className={cn('text-xs font-bold', error ? 'text-red-500' : 'text-zinc-500')}>ABRIR CÂMERA DO MATERIAL</span>
-=======
-                  <span className={cn('text-xs font-bold', error ? 'text-red-500' : 'text-zinc-500')}>TIRAR FOTO DO MATERIAL</span>
->>>>>>> 69f73cb29dea7c5f16fa7294cb434d343bcc9f1f
->>>>>>> a338a237fe6232d6665886b8d7bd3b28f88a5f54
                 </div>
               )}
             </button>
 
-<<<<<<< HEAD
-=======
-<<<<<<< HEAD
->>>>>>> a338a237fe6232d6665886b8d7bd3b28f88a5f54
-            {cameraActive && (
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={captureCameraPhoto}
-                  disabled={loading}
-                  className="py-3 rounded-xl bg-zinc-900 text-white text-xs font-bold hover:bg-zinc-800 disabled:opacity-50"
-                >
-                  Capturar Foto
-                </button>
-                <button
-                  type="button"
-                  onClick={stopCamera}
-                  disabled={loading}
-                  className="py-3 rounded-xl bg-zinc-100 text-zinc-700 text-xs font-bold hover:bg-zinc-200 disabled:opacity-50"
-                >
-                  Cancelar Câmera
-                </button>
-              </div>
-            )}
-
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={loading || cameraActive}
-              className="text-xs font-bold text-zinc-500 hover:text-zinc-900 disabled:opacity-50"
-            >
-<<<<<<< HEAD
-Selecionar foto da galeria/arquivo
-            </button>
-
-=======
-              Selecionar foto da galeria/arquivo
-            </button>
-
-=======
->>>>>>> 69f73cb29dea7c5f16fa7294cb434d343bcc9f1f
->>>>>>> a338a237fe6232d6665886b8d7bd3b28f88a5f54
             {photoPreview && (
               <button
                 type="button"
@@ -1602,23 +1188,10 @@ Selecionar foto da galeria/arquivo
           <button
             type="button"
             onClick={(event) => handleCheckIn(event)}
-<<<<<<< HEAD
-=======
-<<<<<<< HEAD
->>>>>>> a338a237fe6232d6665886b8d7bd3b28f88a5f54
-            disabled={loading || cameraActive}
-            className={cn(
-              'w-full py-4 rounded-2xl font-bold transition-all flex items-center justify-center gap-2 shadow-lg',
-              loading || cameraActive ? 'bg-zinc-100 text-zinc-300 cursor-not-allowed' : 'bg-zinc-900 text-white hover:bg-zinc-800'
-<<<<<<< HEAD
-=======
-=======
             disabled={loading}
             className={cn(
               'w-full py-4 rounded-2xl font-bold transition-all flex items-center justify-center gap-2 shadow-lg',
               loading ? 'bg-zinc-100 text-zinc-300 cursor-not-allowed' : 'bg-zinc-900 text-white hover:bg-zinc-800'
->>>>>>> 69f73cb29dea7c5f16fa7294cb434d343bcc9f1f
->>>>>>> a338a237fe6232d6665886b8d7bd3b28f88a5f54
             )}
           >
             {loading ? (

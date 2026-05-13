@@ -1,0 +1,357 @@
+import React, { useMemo } from 'react';
+import { useCollection } from '../lib/supabaseHooks';
+import { collection, query, limit, orderBy } from '../lib/supabaseDb';
+import { db } from '../lib/supabase';
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  LineChart,
+  Line
+} from 'recharts';
+import {
+  Activity,
+  HardHat,
+  Package,
+  CheckCircle2,
+  ArrowUpRight
+} from 'lucide-react';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
+import { useAuth } from '../App';
+import { Atividade, Checklist, Material } from '../types';
+
+const DIAS_SEMANA = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+
+function toDate(value: any): Date | null {
+  if (!value) return null;
+  if (value instanceof Date) return value;
+  if (typeof value === 'string') {
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  }
+  if (typeof value === 'number') {
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  }
+  if (typeof value === 'object') {
+    if ('seconds' in value) return new Date(value.seconds * 1000);
+    if ('_seconds' in value) return new Date(value._seconds * 1000);
+  }
+  return null;
+}
+
+function inicioDaSemanaAtual() {
+  const hoje = new Date();
+  const dia = hoje.getDay();
+  const diferencaParaSegunda = dia === 0 ? -6 : 1 - dia;
+  const segunda = new Date(hoje);
+  segunda.setDate(hoje.getDate() + diferencaParaSegunda);
+  segunda.setHours(0, 0, 0, 0);
+  return segunda;
+}
+
+function getDiaIndex(date: Date, inicioSemana: Date) {
+  const start = new Date(inicioSemana);
+  start.setHours(0, 0, 0, 0);
+  const current = new Date(date);
+  current.setHours(0, 0, 0, 0);
+  return Math.floor((current.getTime() - start.getTime()) / 86400000);
+}
+
+function formatNumber(value: number) {
+  return Number(value || 0).toLocaleString('pt-BR', { maximumFractionDigits: 2 });
+}
+
+export default function Dashboard() {
+  const { user, userProfile } = useAuth();
+  const [obrasSnap] = useCollection(collection(db, 'obras'));
+  const [materiaisSnap] = useCollection(collection(db, 'materiais'));
+  const [atividadesSnap] = useCollection(collection(db, 'atividades'));
+  const [checklistsSnap] = useCollection(collection(db, 'checklists'));
+  const [ultimasEntregasSnap] = useCollection(query(collection(db, 'materiais'), orderBy('dataEntrega', 'desc'), limit(5)));
+  const [ultimosChecklistsSnap] = useCollection(query(collection(db, 'checklists'), orderBy('data', 'desc'), limit(5)));
+
+  const materiais = (materiaisSnap?.docs.map((doc: any) => ({ id: doc.id, ...doc.data() })) as Material[]) || [];
+  const atividades = (atividadesSnap?.docs.map((doc: any) => ({ id: doc.id, ...doc.data() })) as Atividade[]) || [];
+  const checklists = (checklistsSnap?.docs.map((doc: any) => ({ id: doc.id, ...doc.data() })) as Checklist[]) || [];
+
+  const chartData = useMemo(() => {
+    const inicioSemana = inicioDaSemanaAtual();
+    const hojeIndex = getDiaIndex(new Date(), inicioSemana);
+
+    const entregasPorDia = DIAS_SEMANA.map((name, index) => ({
+      name,
+      entregas: 0,
+      progresso: 0,
+    }));
+
+    materiais.forEach((material) => {
+      const dataEntrega = toDate(material.dataEntrega);
+      if (!dataEntrega) return;
+
+      const diaIndex = getDiaIndex(dataEntrega, inicioSemana);
+      if (diaIndex < 0 || diaIndex >= DIAS_SEMANA.length) return;
+
+      entregasPorDia[diaIndex].entregas += Number(material.quantidade || 0);
+    });
+
+    const totalPrevisto = atividades.reduce((sum, atividade) => sum + Number(atividade.quantidadePrevista || 0), 0);
+    const progressoChecklist = checklists.flatMap((checklist) => {
+      const dataChecklist = toDate(checklist.data);
+      return (checklist.progresso || []).map((item) => ({
+        ...item,
+        data: dataChecklist,
+      }));
+    }).filter((item) => item.data && Number(item.qtdExecutadaNoDia || 0) > 0);
+
+    const progressoAtual = totalPrevisto > 0
+      ? Math.min(100, (atividades.reduce((sum, atividade) => sum + Number(atividade.quantidadeExecutada || 0), 0) / totalPrevisto) * 100)
+      : 0;
+
+    entregasPorDia.forEach((dia, index) => {
+      if (!totalPrevisto) {
+        dia.progresso = 0;
+        return;
+      }
+
+      if (progressoChecklist.length) {
+        const fimDoDia = new Date(inicioSemana);
+        fimDoDia.setDate(inicioSemana.getDate() + index);
+        fimDoDia.setHours(23, 59, 59, 999);
+
+        const executadoAteODia = progressoChecklist.reduce((sum, item) => {
+          if (!item.data || item.data.getTime() > fimDoDia.getTime()) return sum;
+          return sum + Number(item.qtdExecutadaNoDia || 0);
+        }, 0);
+
+        dia.progresso = Math.min(100, (executadoAteODia / totalPrevisto) * 100);
+      } else {
+        // Sem histórico de checklist, o gráfico permanece zerado até existir progresso real.
+        // Quando houver progresso lançado manualmente, mostra o percentual atual a partir do dia atual.
+        dia.progresso = index >= hojeIndex && progressoAtual > 0 ? progressoAtual : 0;
+      }
+    });
+
+    return entregasPorDia.map((item) => ({
+      ...item,
+      entregas: Number(item.entregas.toFixed(2)),
+      progresso: Number(item.progresso.toFixed(2)),
+    }));
+  }, [materiais, atividades, checklists]);
+
+  const stats = [
+    {
+      label: 'Obras Ativas',
+      value: obrasSnap?.docs.filter((d: any) => d.data().status === 'Ativa').length || 0,
+      icon: HardHat,
+      color: 'bg-blue-50 text-blue-600 border-blue-100'
+    },
+    {
+      label: 'Materiais Entregues',
+      value: formatNumber(materiais.reduce((sum, material) => sum + Number(material.quantidade || 0), 0)),
+      icon: Package,
+      color: 'bg-amber-50 text-amber-600 border-amber-100'
+    },
+    {
+      label: 'Checklists',
+      value: checklistsSnap?.size || 0,
+      icon: CheckCircle2,
+      color: 'bg-green-50 text-green-600 border-green-100'
+    },
+    {
+      label: 'Atividades Pendentes',
+      value: atividades.filter((atividade) => Number(atividade.percentual || 0) < 100).length,
+      icon: Activity,
+      color: 'bg-purple-50 text-purple-600 border-purple-100'
+    },
+  ];
+
+  return (
+    <div className="space-y-8 animate-in fade-in duration-700">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h2 className="text-2xl font-bold tracking-tight text-zinc-900">
+            Bom dia, {userProfile?.nome || user?.email?.split('@')[0] || 'Usuário'}
+          </h2>
+          <p className="text-zinc-500">
+            Você está logado como <span className="font-bold text-zinc-900 uppercase text-xs">{userProfile?.role || 'operador'}</span>.
+          </p>
+        </div>
+        <div className="text-sm font-medium text-zinc-400 bg-zinc-100 px-3 py-1.5 rounded-lg border border-zinc-200 uppercase tracking-wider">
+          {format(new Date(), "eeee, d 'de' MMMM", { locale: ptBR })}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {stats.map((stat, i) => (
+          <div key={i} className="bg-white p-5 rounded-xl border border-zinc-200 shadow-sm flex items-start gap-4 hover:shadow-md transition-shadow">
+            <div className={`p-3 rounded-lg ${stat.color} border`}>
+              <stat.icon className="w-6 h-6" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-zinc-500">{stat.label}</p>
+              <p className="text-2xl font-bold text-zinc-900">{stat.value}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="grid lg:grid-cols-2 gap-6">
+        <div className="bg-white p-6 rounded-xl border border-zinc-200 shadow-sm">
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="font-semibold text-zinc-900">Entregas da Semana</h3>
+            <div className="text-[10px] uppercase font-bold tracking-widest text-zinc-400">Materiais</div>
+          </div>
+          <div className="h-[250px] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={chartData}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f1f1" />
+                <XAxis dataKey="name" fontSize={11} axisLine={false} tickLine={false} />
+                <YAxis fontSize={11} axisLine={false} tickLine={false} allowDecimals={false} />
+                <Tooltip
+                  formatter={(value: any) => [formatNumber(Number(value)), 'Qtd. entregue']}
+                  contentStyle={{ borderRadius: '8px', border: '1px solid #e4e4e7', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                  cursor={{ fill: '#fafafa' }}
+                />
+                <Bar dataKey="entregas" fill="#18181b" radius={[4, 4, 0, 0]} barSize={32} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+          {!materiais.length && (
+            <p className="mt-3 text-xs text-zinc-400 text-center">Sem entregas registradas. O gráfico será atualizado quando materiais forem cadastrados.</p>
+          )}
+        </div>
+
+        <div className="bg-white p-6 rounded-xl border border-zinc-200 shadow-sm">
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="font-semibold text-zinc-900">Progresso Geral</h3>
+            <div className="text-[10px] uppercase font-bold tracking-widest text-zinc-400">Mão de obra %</div>
+          </div>
+          <div className="h-[250px] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={chartData}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f1f1" />
+                <XAxis dataKey="name" fontSize={11} axisLine={false} tickLine={false} />
+                <YAxis fontSize={11} axisLine={false} tickLine={false} domain={[0, 100]} />
+                <Tooltip
+                  formatter={(value: any) => [`${formatNumber(Number(value))}%`, 'Progresso geral']}
+                  contentStyle={{ borderRadius: '8px', border: '1px solid #e4e4e7' }}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="progresso"
+                  stroke="#18181b"
+                  strokeWidth={2}
+                  dot={{ r: 4, fill: '#fff', strokeWidth: 2, stroke: '#18181b' }}
+                  activeDot={{ r: 6, fill: '#18181b' }}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+          {!atividades.length && (
+            <p className="mt-3 text-xs text-zinc-400 text-center">Sem atividades cadastradas. O progresso será atualizado quando houver avanço físico.</p>
+          )}
+        </div>
+      </div>
+
+      <div className="grid lg:grid-cols-2 gap-6 pb-8">
+        <div className="bg-white rounded-xl border border-zinc-200 shadow-sm overflow-hidden flex flex-col">
+          <div className="p-5 border-b border-zinc-100 flex items-center justify-between">
+            <h3 className="font-semibold text-zinc-900">Últimas Entregas</h3>
+            <button className="text-xs font-semibold text-zinc-400 hover:text-zinc-900 transition-colors uppercase tracking-widest">
+              Ver Todas
+            </button>
+          </div>
+          <div className="divide-y divide-zinc-100 flex-1">
+            {ultimasEntregasSnap?.docs.length ? ultimasEntregasSnap.docs.map((doc: any) => {
+              const data = doc.data();
+              return (
+                <div key={doc.id} className="p-4 flex items-center justify-between hover:bg-zinc-50 group cursor-default">
+                  <div className="flex items-center gap-4">
+                    <div className="w-10 h-10 rounded-lg bg-zinc-100 flex items-center justify-center border border-zinc-200">
+                      <Package className="w-5 h-5 text-zinc-400" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-zinc-900 tracking-tight">{data.descricao}</p>
+                      <p className="text-xs text-zinc-500">{data.fornecedor} • {data.unidade}</p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm font-bold text-zinc-900">+{formatNumber(Number(data.quantidade || 0))}</p>
+                    <p className="text-[10px] text-zinc-400">{data.codigoEntrega}</p>
+                  </div>
+                </div>
+              );
+            }) : (
+              <div className="p-12 text-center">
+                <p className="text-sm text-zinc-400">Nenhuma entrega registrada.</p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="bg-white rounded-xl border border-zinc-200 shadow-sm overflow-hidden flex flex-col">
+          <div className="p-5 border-b border-zinc-100 flex items-center justify-between">
+            <h3 className="font-semibold text-zinc-900">Checklists Recentes</h3>
+            <button className="text-xs font-semibold text-zinc-400 hover:text-zinc-900 transition-colors uppercase tracking-widest">
+              Ver Todos
+            </button>
+          </div>
+          <div className="divide-y divide-zinc-100 flex-1">
+            {ultimosChecklistsSnap?.docs.length ? ultimosChecklistsSnap.docs.map((doc: any) => {
+               const data = doc.data();
+               return (
+                <div key={doc.id} className="p-4 flex items-center justify-between hover:bg-zinc-50 group cursor-default">
+                  <div className="flex items-center gap-4">
+                    <div className="w-10 h-10 rounded-lg bg-zinc-100 flex items-center justify-center border border-zinc-200">
+                      <ClipboardCheck className="w-5 h-5 text-zinc-400" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-zinc-900 tracking-tight">Relatório de Conferência</p>
+                      <p className="text-xs text-zinc-500">Resp: {data.nomeResponsavel}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="h-2 w-2 rounded-full bg-green-500" />
+                    <span className="text-xs font-medium text-zinc-600">Finalizado</span>
+                    <ArrowUpRight className="w-4 h-4 text-zinc-300 group-hover:text-zinc-900 transition-colors ml-2" />
+                  </div>
+                </div>
+              );
+            }) : (
+              <div className="p-12 text-center">
+                <p className="text-sm text-zinc-400">Nenhum checklist registrado.</p>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ClipboardCheck(props: any) {
+  return (
+    <svg
+      {...props}
+      xmlns="http://www.w3.org/2000/svg"
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <rect x="8" y="2" width="8" height="4" rx="1" ry="1" />
+      <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
+      <path d="m9 14 2 2 4-4" />
+    </svg>
+  );
+}
