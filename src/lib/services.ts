@@ -23,36 +23,6 @@ const buildPublicUrl = (bucket: string, path: string) => {
 
 export const uploadImage = async (file: File, path = 'uploads', onProgress?: (progress: number) => void): Promise<string> => {
   const fileExt = file.name.split('.').pop() || 'jpg';
-<<<<<<< HEAD
-  const safeExt = fileExt.replace(/[^a-zA-Z0-9]/g, '') || 'jpg';
-  const fileName = `${path}/${Date.now()}-${Math.random().toString(36).slice(2)}.${safeExt}`;
-
-  console.group('[SUPABASE_STORAGE_UPLOAD] Upload de imagem');
-  console.log('Bucket:', 'uploads');
-  console.log('Path:', fileName);
-  console.log('Arquivo:', { name: file.name, type: file.type, size: file.size, lastModified: file.lastModified });
-
-  onProgress?.(10);
-  const uploadResponse = await supabase.storage.from('uploads').upload(fileName, file, {
-    cacheControl: '3600',
-    upsert: false,
-    contentType: file.type || 'image/jpeg',
-  });
-
-  console.log('UPLOAD RESPONSE:', uploadResponse);
-
-  if (uploadResponse.error) {
-    console.error('UPLOAD ERROR:', uploadResponse.error);
-    console.groupEnd();
-    throw uploadResponse.error;
-  }
-
-  onProgress?.(100);
-  const publicUrlResponse = supabase.storage.from('uploads').getPublicUrl(fileName);
-  console.log('PUBLIC URL RESPONSE:', publicUrlResponse);
-  console.groupEnd();
-  return publicUrlResponse.data.publicUrl;
-=======
   const fileName = `${path}/${Date.now()}-${Math.random().toString(36).slice(2)}.${fileExt}`;
   onProgress?.(10);
   const { error } = await supabase.storage.from('uploads').upload(fileName, file, {
@@ -62,7 +32,6 @@ export const uploadImage = async (file: File, path = 'uploads', onProgress?: (pr
   if (error) throw error;
   onProgress?.(100);
   return buildPublicUrl('uploads', fileName);
->>>>>>> f0aeb024cf291bd8597030c021460b6556c65a17
 };
 
 export const uploadFile = async (file: File, path = 'uploads', onProgress?: (progress: number) => void): Promise<string> => {
