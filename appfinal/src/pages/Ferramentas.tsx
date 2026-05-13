@@ -258,12 +258,6 @@ function ScannerModal({ onSuccess, onClose }: { onSuccess: (text: string) => voi
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.95 }}
         className="bg-white w-full max-w-2xl rounded-3xl overflow-hidden shadow-2xl"
-<<<<<<< HEAD
-=======
-        onClick={stopModalEvent}
-        onMouseDown={stopModalEvent}
-        onTouchStart={stopModalEvent}
->>>>>>> 69f73cb29dea7c5f16fa7294cb434d343bcc9f1f
       >
         <div className="p-6 border-b border-zinc-100 flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -902,9 +896,8 @@ function CheckOutModal({ tool, obras, onClose }: { tool: Tool, obras: Obra[], on
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.95 }}
-        className="bg-white w-full max-w-2xl rounded-3xl overflow-hidden shadow-2xl">
-
-          
+        className="bg-white w-full max-w-2xl rounded-3xl overflow-hidden shadow-2xl"
+      >
         <div className="p-6 bg-zinc-900 text-white flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center">
@@ -998,138 +991,20 @@ function CheckOutModal({ tool, obras, onClose }: { tool: Tool, obras: Obra[], on
 function CheckInModal({ log, tool, onClose }: { log: ToolLog, tool: Tool, onClose: () => void }) {
   const { notify } = useAuth();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-<<<<<<< HEAD
-  const videoRef = useRef<HTMLVideoElement | null>(null);
-  const streamRef = useRef<MediaStream | null>(null);
-  const [cameraActive, setCameraActive] = useState(false);
-=======
->>>>>>> 69f73cb29dea7c5f16fa7294cb434d343bcc9f1f
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
-<<<<<<< HEAD
-  const stopCamera = () => {
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach((track) => track.stop());
-      streamRef.current = null;
-    }
-    setCameraActive(false);
-  };
-
-  useEffect(() => {
-    return () => {
-      if (photoPreview) URL.revokeObjectURL(photoPreview);
-      stopCamera();
-    };
-  }, [photoPreview]);
-
-  const startCamera = async () => {
-    setError(null);
-
-    if (!navigator.mediaDevices?.getUserMedia) {
-      fileInputRef.current?.click();
-      return;
-    }
-
-    try {
-      stopCamera();
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: { ideal: 'environment' } },
-        audio: false,
-      });
-
-      streamRef.current = stream;
-      setCameraActive(true);
-
-      setTimeout(() => {
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-          videoRef.current.play().catch((err) => {
-            console.error('[CAMERA_DEVOLUCAO] Falha ao iniciar preview:', err);
-            setError('Não foi possível abrir a câmera. Use a opção de selecionar foto.');
-            stopCamera();
-          });
-        }
-      }, 0);
-    } catch (err: any) {
-      console.error('[CAMERA_DEVOLUCAO] Erro ao acessar câmera:', err);
-      setError(err?.message || 'Não foi possível acessar a câmera. Use a opção de selecionar foto.');
-      fileInputRef.current?.click();
-    }
-  };
-
-  const captureCameraPhoto = async () => {
-    const video = videoRef.current;
-    if (!video || !streamRef.current) {
-      setError('Câmera não inicializada. Tente novamente.');
-      return;
-    }
-
-    const width = video.videoWidth || 1280;
-    const height = video.videoHeight || 720;
-    const canvas = document.createElement('canvas');
-    canvas.width = width;
-    canvas.height = height;
-    const ctx = canvas.getContext('2d');
-
-    if (!ctx) {
-      setError('Não foi possível capturar a imagem da câmera.');
-      return;
-    }
-
-    ctx.drawImage(video, 0, 0, width, height);
-
-    canvas.toBlob((blob) => {
-      if (!blob) {
-        setError('Não foi possível gerar o arquivo da foto.');
-        return;
-      }
-
-      const file = new File([blob], `devolucao-${tool.id}-${Date.now()}.jpg`, { type: 'image/jpeg' });
-      if (photoPreview) URL.revokeObjectURL(photoPreview);
-      setPhotoFile(file);
-      setPhotoPreview(URL.createObjectURL(file));
-      setError(null);
-      stopCamera();
-    }, 'image/jpeg', 0.9);
-  };
-
-  const handlePhotoChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    event.preventDefault();
-=======
   useEffect(() => {
     return () => {
       if (photoPreview) URL.revokeObjectURL(photoPreview);
     };
   }, [photoPreview]);
 
-  const stopModalEvent = (event: React.SyntheticEvent) => {
-    event.stopPropagation();
-  };
-
-  const handleClose = (event?: React.MouseEvent<HTMLButtonElement>) => {
-    event?.preventDefault();
-    event?.stopPropagation();
-    if (loading) return;
-    onClose();
-  };
-
-  const openPhotoPicker = (event: React.MouseEvent<HTMLButtonElement>) => {
-    event.preventDefault();
-    event.stopPropagation();
-    if (loading) return;
-    // Garante que selecionar a mesma foto novamente dispare o onChange, sem submit/reload.
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-      fileInputRef.current.click();
-    }
-  };
-
   const handlePhotoChange = (event: React.ChangeEvent<HTMLInputElement>) => {
->>>>>>> 69f73cb29dea7c5f16fa7294cb434d343bcc9f1f
+    event.preventDefault();
     event.stopPropagation();
 
     const file = event.target.files?.[0];
@@ -1148,23 +1023,7 @@ function CheckInModal({ log, tool, onClose }: { log: ToolLog, tool: Tool, onClos
     setError(null);
   };
 
-<<<<<<< HEAD
   const clearPhoto = () => {
-    stopCamera();
-=======
-  const clearPhoto = (event?: React.MouseEvent<HTMLButtonElement>) => {
-    event?.preventDefault();
-    event?.stopPropagation();
-    if (loading) return;
-    if (photoPreview) URL.revokeObjectURL(photoPreview);
-    setPhotoPreview(null);
-    setPhotoFile(null);
-    setError(null);
-    if (fileInputRef.current) fileInputRef.current.value = '';
-  };
-
-  const resetPhotoStateAfterSuccess = () => {
->>>>>>> 69f73cb29dea7c5f16fa7294cb434d343bcc9f1f
     if (photoPreview) URL.revokeObjectURL(photoPreview);
     setPhotoPreview(null);
     setPhotoFile(null);
@@ -1207,39 +1066,25 @@ function CheckInModal({ log, tool, onClose }: { log: ToolLog, tool: Tool, onClos
           setUploadProgress(progress);
         }
       );
-      console.log('URL assinada retornada:', photoUrl);
+      console.log('URL pública retornada:', photoUrl);
 
       console.log('Atualizando log de devolução no banco...', { logId: log.id });
-      const updateLogResponse = await updateDoc(doc(db, 'toolLogs', log.id), {
+      await updateDoc(doc(db, 'toolLogs', log.id), {
         dataDevolucao: serverTimestamp(),
         fotoDevolucaoUrl: photoUrl,
         statusLog: 'Concluída'
       });
-      console.log('UPDATE LOG RESPONSE:', updateLogResponse);
-      if (!updateLogResponse?.data?.id) {
-        throw new Error('updateLogResponse não retornou confirmação ao atualizar toolLogs.');
-      }
       console.log('Log de devolução atualizado com sucesso.');
 
       console.log('Atualizando status da ferramenta...', { toolId: tool.id });
-      const updateToolResponse = await updateDoc(doc(db, 'tools', tool.id), {
+      await updateDoc(doc(db, 'tools', tool.id), {
         status: 'Disponível',
         updatedAt: serverTimestamp()
       });
-      console.log('UPDATE TOOL RESPONSE:', updateToolResponse);
-      if (!updateToolResponse?.data?.id) {
-        throw new Error('updateToolResponse não retornou confirmação ao atualizar tools.');
-      }
       console.log('Ferramenta atualizada com sucesso.');
 
       notify('success', 'Devolução Concluída', 'Material entregue e já está disponível para retirada.');
-<<<<<<< HEAD
       clearPhoto();
-=======
-      // Fecha o modal somente após upload + updateLog + updateTool concluírem com sucesso.
-      // Qualquer erro mantém o modal aberto e exibe a mensagem na tela.
-      resetPhotoStateAfterSuccess();
->>>>>>> 69f73cb29dea7c5f16fa7294cb434d343bcc9f1f
       onClose();
     } catch (err: any) {
       console.error('[DEVOLUCAO_FERRAMENTA] Erro completo:', err);
@@ -1253,16 +1098,7 @@ function CheckInModal({ log, tool, onClose }: { log: ToolLog, tool: Tool, onClos
   };
 
   return (
-<<<<<<< HEAD
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-900/60 backdrop-blur-sm">
-=======
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-900/60 backdrop-blur-sm"
-      onClick={stopModalEvent}
-      onMouseDown={stopModalEvent}
-      onTouchStart={stopModalEvent}
-    >
->>>>>>> 69f73cb29dea7c5f16fa7294cb434d343bcc9f1f
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
@@ -1279,28 +1115,12 @@ function CheckInModal({ log, tool, onClose }: { log: ToolLog, tool: Tool, onClos
               <p className="text-xs text-zinc-400">{tool.nome}</p>
             </div>
           </div>
-<<<<<<< HEAD
           <button type="button" onClick={onClose} disabled={loading} className="p-2 hover:bg-white/10 rounded-xl transition-colors disabled:opacity-50">
-=======
-          <button type="button" onClick={handleClose} disabled={loading} className="p-2 hover:bg-white/10 rounded-xl transition-colors disabled:opacity-50">
->>>>>>> 69f73cb29dea7c5f16fa7294cb434d343bcc9f1f
             <X className="w-5 h-5" />
           </button>
         </div>
 
-<<<<<<< HEAD
         <div className="p-6 space-y-5">
-=======
-        <div
-          className="p-6 space-y-5"
-          onClick={stopModalEvent}
-          onMouseDown={stopModalEvent}
-          onSubmit={(event) => {
-            event.preventDefault();
-            event.stopPropagation();
-          }}
-        >
->>>>>>> 69f73cb29dea7c5f16fa7294cb434d343bcc9f1f
           {error && (
             <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-100 text-red-600 rounded-xl text-xs font-bold animate-in fade-in slide-in-from-top-1">
               <AlertCircle className="w-4 h-4 shrink-0" />
@@ -1315,51 +1135,26 @@ function CheckInModal({ log, tool, onClose }: { log: ToolLog, tool: Tool, onClos
               ref={fileInputRef}
               type="file"
               accept="image/*"
-<<<<<<< HEAD
-              className="hidden"
-              onClick={(event) => event.stopPropagation()}
-=======
               capture="environment"
               className="hidden"
               onClick={(event) => event.stopPropagation()}
-              onMouseDown={(event) => event.stopPropagation()}
->>>>>>> 69f73cb29dea7c5f16fa7294cb434d343bcc9f1f
               onChange={handlePhotoChange}
             />
 
             <button
               type="button"
               disabled={loading}
-<<<<<<< HEAD
-              onClick={startCamera}
-=======
-              onClick={openPhotoPicker}
->>>>>>> 69f73cb29dea7c5f16fa7294cb434d343bcc9f1f
+              onClick={() => fileInputRef.current?.click()}
               className={cn(
                 'relative w-full aspect-video rounded-2xl overflow-hidden border-2 border-dashed transition-all group disabled:opacity-60 disabled:cursor-not-allowed',
                 photoPreview ? 'border-zinc-200 bg-zinc-100' : error ? 'border-red-200 bg-red-50/30 hover:bg-red-50' : 'border-zinc-200 bg-zinc-50 hover:bg-zinc-100'
               )}
             >
-<<<<<<< HEAD
-              {cameraActive ? (
-                <>
-                  <video ref={videoRef} className="w-full h-full object-cover bg-black" playsInline muted autoPlay />
-                  <div className="absolute inset-x-0 bottom-0 p-3 bg-gradient-to-t from-black/70 to-transparent text-white text-xs font-bold text-left">
-                    Câmera aberta. Use o botão abaixo para capturar.
-                  </div>
-                </>
-              ) : photoPreview ? (
-                <>
-                  <img src={photoPreview} className="w-full h-full object-cover" alt="Pré-visualização da devolução" />
-                  <div className="absolute inset-x-0 bottom-0 p-3 bg-gradient-to-t from-black/70 to-transparent text-white text-xs font-bold text-left">
-                    Foto selecionada. Clique para tirar outra.
-=======
               {photoPreview ? (
                 <>
                   <img src={photoPreview} className="w-full h-full object-cover" alt="Pré-visualização da devolução" />
                   <div className="absolute inset-x-0 bottom-0 p-3 bg-gradient-to-t from-black/70 to-transparent text-white text-xs font-bold text-left">
                     Foto selecionada. Clique para trocar.
->>>>>>> 69f73cb29dea7c5f16fa7294cb434d343bcc9f1f
                   </div>
                 </>
               ) : (
@@ -1367,48 +1162,11 @@ function CheckInModal({ log, tool, onClose }: { log: ToolLog, tool: Tool, onClos
                   <div className="w-12 h-12 rounded-full bg-white flex items-center justify-center shadow-sm mb-2 group-hover:scale-110 transition-transform">
                     <Camera className={cn('w-6 h-6', error ? 'text-red-400' : 'text-zinc-400')} />
                   </div>
-<<<<<<< HEAD
-                  <span className={cn('text-xs font-bold', error ? 'text-red-500' : 'text-zinc-500')}>ABRIR CÂMERA DO MATERIAL</span>
-=======
                   <span className={cn('text-xs font-bold', error ? 'text-red-500' : 'text-zinc-500')}>TIRAR FOTO DO MATERIAL</span>
->>>>>>> 69f73cb29dea7c5f16fa7294cb434d343bcc9f1f
                 </div>
               )}
             </button>
 
-<<<<<<< HEAD
-            {cameraActive && (
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={captureCameraPhoto}
-                  disabled={loading}
-                  className="py-3 rounded-xl bg-zinc-900 text-white text-xs font-bold hover:bg-zinc-800 disabled:opacity-50"
-                >
-                  Capturar Foto
-                </button>
-                <button
-                  type="button"
-                  onClick={stopCamera}
-                  disabled={loading}
-                  className="py-3 rounded-xl bg-zinc-100 text-zinc-700 text-xs font-bold hover:bg-zinc-200 disabled:opacity-50"
-                >
-                  Cancelar Câmera
-                </button>
-              </div>
-            )}
-
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={loading || cameraActive}
-              className="text-xs font-bold text-zinc-500 hover:text-zinc-900 disabled:opacity-50"
-            >
-              Selecionar foto da galeria/arquivo
-            </button>
-
-=======
->>>>>>> 69f73cb29dea7c5f16fa7294cb434d343bcc9f1f
             {photoPreview && (
               <button
                 type="button"
@@ -1430,17 +1188,10 @@ function CheckInModal({ log, tool, onClose }: { log: ToolLog, tool: Tool, onClos
           <button
             type="button"
             onClick={(event) => handleCheckIn(event)}
-<<<<<<< HEAD
-            disabled={loading || cameraActive}
-            className={cn(
-              'w-full py-4 rounded-2xl font-bold transition-all flex items-center justify-center gap-2 shadow-lg',
-              loading || cameraActive ? 'bg-zinc-100 text-zinc-300 cursor-not-allowed' : 'bg-zinc-900 text-white hover:bg-zinc-800'
-=======
             disabled={loading}
             className={cn(
               'w-full py-4 rounded-2xl font-bold transition-all flex items-center justify-center gap-2 shadow-lg',
               loading ? 'bg-zinc-100 text-zinc-300 cursor-not-allowed' : 'bg-zinc-900 text-white hover:bg-zinc-800'
->>>>>>> 69f73cb29dea7c5f16fa7294cb434d343bcc9f1f
             )}
           >
             {loading ? (
