@@ -1,7 +1,3 @@
-<<<<<<< HEAD
-=======
-<<<<<<< HEAD
->>>>>>> 33aa679aaf74b179a54b890ef345d8f4d8f85265
 import React, { useState, useEffect, useRef } from 'react';
 import { useCollection } from '../lib/supabaseHooks';
 import { collection, addDoc, updateDoc, doc, serverTimestamp, query, orderBy, limit, writeBatch, where, getDocs, deleteDoc } from '../lib/supabaseDb';
@@ -33,88 +29,6 @@ import { motion, AnimatePresence } from 'motion/react';
 import { uploadPhoto } from '../lib/services';
 import { Html5QrcodeScanner, Html5Qrcode } from 'html5-qrcode';
 import { useAuth } from '../App';
-
-const MOVEMENT_TIME_ZONE = 'America/Sao_Paulo';
-
-const parseMovementDate = (value: any): Date | null => {
-  if (!value) return null;
-  if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value;
-  if (typeof value?.toDate === 'function') {
-    const parsed = value.toDate();
-    return parsed instanceof Date && !Number.isNaN(parsed.getTime()) ? parsed : null;
-  }
-<<<<<<< HEAD
-=======
-=======
-function parseMovementDate(value: any): Date | null {
-  if (!value) return null;
-
-  if (value instanceof Date) {
-    return Number.isNaN(value.getTime()) ? null : value;
-  }
-
-  if (typeof value?.toDate === 'function') {
-    const parsed = value.toDate();
-    return parsed instanceof Date && !Number.isNaN(parsed.getTime())
-      ? parsed
-      : null;
-  }
-
->>>>>>> 25697a34e65b6e23541e809b2443de2ce5662121
->>>>>>> 33aa679aaf74b179a54b890ef345d8f4d8f85265
-  if (typeof value === 'string' || typeof value === 'number') {
-    const parsed = new Date(value);
-    return Number.isNaN(parsed.getTime()) ? null : parsed;
-  }
-<<<<<<< HEAD
-=======
-<<<<<<< HEAD
->>>>>>> 33aa679aaf74b179a54b890ef345d8f4d8f85265
-  if (typeof value === 'object') {
-    if (typeof value.seconds === 'number') return new Date(value.seconds * 1000);
-    if (typeof value._seconds === 'number') return new Date(value._seconds * 1000);
-  }
-  return null;
-};
-
-const formatMovementDate = (date: Date | null) => {
-  if (!date) return '--/--/----';
-  return new Intl.DateTimeFormat('pt-BR', {
-    timeZone: MOVEMENT_TIME_ZONE,
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-  }).format(date);
-};
-
-const formatMovementTime = (date: Date | null) => {
-  if (!date) return '--:--';
-  return new Intl.DateTimeFormat('pt-BR', {
-    timeZone: MOVEMENT_TIME_ZONE,
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  }).format(date);
-};
-
-const formatMovementDateTime = (date: Date | null) => {
-  if (!date) return '--/--/---- --:--';
-  return `${formatMovementDate(date)} ${formatMovementTime(date)}`;
-};
-
-const formatUsageDuration = (start: Date | null, end: Date | null) => {
-  if (!start || !end) return null;
-  const totalMinutes = Math.max(0, Math.round((end.getTime() - start.getTime()) / 60000));
-  const days = Math.floor(totalMinutes / 1440);
-  const hours = Math.floor((totalMinutes % 1440) / 60);
-  const minutes = totalMinutes % 60;
-
-  if (days > 0) return `${days}d ${hours}h ${minutes}min`;
-  if (hours > 0) return `${hours}h ${minutes}min`;
-  return `${minutes}min`;
-};
-
-const getMovementTimestamp = () => new Date().toISOString();
 
 export default function Ferramentas() {
   const { isAdmin, notify } = useAuth();
@@ -504,9 +418,8 @@ function ToolCard({ tool, onCheckOut, activeLog, onCheckIn, onEdit, onViewHistor
 
 function LogItem({ log, tool, obra, showToolInfo = true }: { key?: string | number, log: ToolLog, tool?: Tool, obra?: Obra, showToolInfo?: boolean }) {
   const isPending = log.statusLog === 'Aberta';
-  const outDate = parseMovementDate(log.dataSaida);
-  const inDate = parseMovementDate(log.dataDevolucao);
-  const usageDuration = formatUsageDuration(outDate, inDate);
+  const outDate = log.dataSaida?.toDate ? log.dataSaida.toDate() : new Date();
+  const inDate = log.dataDevolucao?.toDate ? log.dataDevolucao.toDate() : null;
   
   return (
     <div className="p-5 hover:bg-zinc-50 transition-colors border-b border-zinc-100 last:border-0">
@@ -522,111 +435,13 @@ function LogItem({ log, tool, obra, showToolInfo = true }: { key?: string | numb
             )}
             
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-2 gap-x-4">
-<<<<<<< HEAD
-=======
-=======
-
-  if (typeof value === 'object') {
-    if (typeof value.seconds === 'number') {
-      return new Date(value.seconds * 1000);
-    }
-
-    if (typeof value._seconds === 'number') {
-      return new Date(value._seconds * 1000);
-    }
-  }
-
-  return null;
-}
-
-function formatMovementDate(date: Date | null) {
-  if (!date) return '--/--/----';
-  return format(date, 'dd/MM/yyyy');
-}
-
-function formatMovementTime(date: Date | null) {
-  if (!date) return '--:--';
-  return format(date, 'HH:mm');
-}
-
-function LogItem({
-  log,
-  tool,
-  obra,
-  showToolInfo = true
-}: {
-  key?: string | number,
-  log: ToolLog,
-  tool?: Tool,
-  obra?: Obra,
-  showToolInfo?: boolean
-}) {
-
-  const isPending = log.statusLog === 'Aberta';
-
-  // HORÁRIOS FIXOS VINDOS DO BANCO
-  const retiradaDate = parseMovementDate(log.dataSaida);
-  const devolucaoDate = parseMovementDate(log.dataDevolucao);
-
-  return (
-    <div className="p-5 hover:bg-zinc-50 transition-colors border-b border-zinc-100 last:border-0">
-
-      <div className="flex flex-col gap-3">
-
-        <div className="flex items-start justify-between gap-4">
-
-          <div className="flex-1 min-w-0">
-
-            {showToolInfo && (
-              <div className="flex items-center gap-2 mb-2">
-                <div
-                  className={cn(
-                    "w-2 h-2 rounded-full",
-                    isPending
-                      ? "bg-orange-500 animate-pulse"
-                      : "bg-green-500"
-                  )}
-                />
-
-                <span className="text-sm font-bold text-zinc-900 truncate">
-                  {tool?.nome || 'Ferramenta Removida'}
-                </span>
-
-                <span className="text-[10px] text-zinc-400 font-mono">
-                  #{tool?.codigo || '---'}
-                </span>
-              </div>
-            )}
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-2 gap-x-4">
-
->>>>>>> 25697a34e65b6e23541e809b2443de2ce5662121
->>>>>>> 33aa679aaf74b179a54b890ef345d8f4d8f85265
               <div className="flex items-center gap-2">
                 <div className="w-7 h-7 rounded-lg bg-zinc-100 flex items-center justify-center shrink-0">
                   <User className="w-3.5 h-3.5 text-zinc-500" />
                 </div>
-<<<<<<< HEAD
                 <div>
                   <p className="text-[9px] text-zinc-400 font-bold uppercase tracking-tight">Responsável</p>
                   <p className="text-xs font-bold text-zinc-900 truncate">{log.responsavelNome}</p>
-=======
-<<<<<<< HEAD
-                <div>
-                  <p className="text-[9px] text-zinc-400 font-bold uppercase tracking-tight">Responsável</p>
-                  <p className="text-xs font-bold text-zinc-900 truncate">{log.responsavelNome}</p>
-=======
-
-                <div>
-                  <p className="text-[9px] text-zinc-400 font-bold uppercase tracking-tight">
-                    Responsável
-                  </p>
-
-                  <p className="text-xs font-bold text-zinc-900 truncate">
-                    {log.responsavelNome}
-                  </p>
->>>>>>> 25697a34e65b6e23541e809b2443de2ce5662121
->>>>>>> 33aa679aaf74b179a54b890ef345d8f4d8f85265
                 </div>
               </div>
 
@@ -634,10 +449,6 @@ function LogItem({
                 <div className="w-7 h-7 rounded-lg bg-zinc-100 flex items-center justify-center shrink-0">
                   <Building2 className="w-3.5 h-3.5 text-zinc-500" />
                 </div>
-<<<<<<< HEAD
-=======
-<<<<<<< HEAD
->>>>>>> 33aa679aaf74b179a54b890ef345d8f4d8f85265
                 <div>
                   <p className="text-[9px] text-zinc-400 font-bold uppercase tracking-tight">Obra / Local</p>
                   <p className="text-xs font-bold text-zinc-900 truncate">{obra?.nome || 'Obra Removida'}</p>
@@ -646,76 +457,14 @@ function LogItem({
             </div>
           </div>
 
-          <div className="text-right shrink-0 min-w-[92px] space-y-2">
-            <div>
-              <div className="text-[10px] font-bold text-blue-500 uppercase tracking-tighter">Retirada em</div>
-              <div className="text-xs font-bold text-zinc-900">{formatMovementDate(outDate)}</div>
-              <div className="text-[10px] text-blue-600 font-bold">{formatMovementTime(outDate)}</div>
-            </div>
-            <div>
-              <div className="text-[10px] font-bold text-green-600 uppercase tracking-tighter">Devolução em</div>
-              <div className="text-xs font-bold text-zinc-900">{formatMovementDate(inDate)}</div>
-              <div className="text-[10px] text-green-600 font-bold">{formatMovementTime(inDate)}</div>
-            </div>
-<<<<<<< HEAD
-=======
-=======
-
-                <div>
-                  <p className="text-[9px] text-zinc-400 font-bold uppercase tracking-tight">
-                    Obra / Local
-                  </p>
-
-                  <p className="text-xs font-bold text-zinc-900 truncate">
-                    {obra?.nome || 'Obra Removida'}
-                  </p>
-                </div>
-              </div>
-
-            </div>
-          </div>
-
-          {/* HORÁRIOS FIXOS */}
-          <div className="text-right shrink-0 min-w-[110px] space-y-3">
-
-            <div>
-              <div className="text-[10px] font-bold text-blue-500 uppercase tracking-tighter">
-                Retirada em
-              </div>
-
-              <div className="text-xs font-bold text-zinc-900">
-                {formatMovementDate(retiradaDate)}
-              </div>
-
-              <div className="text-[10px] text-blue-600 font-bold">
-                {formatMovementTime(retiradaDate)}
-              </div>
-            </div>
-
-            <div>
-              <div className="text-[10px] font-bold text-green-600 uppercase tracking-tighter">
-                Devolução em
-              </div>
-
-              <div className="text-xs font-bold text-zinc-900">
-                {formatMovementDate(devolucaoDate)}
-              </div>
-
-              <div className="text-[10px] text-green-600 font-bold">
-                {formatMovementTime(devolucaoDate)}
-              </div>
-            </div>
-
->>>>>>> 25697a34e65b6e23541e809b2443de2ce5662121
->>>>>>> 33aa679aaf74b179a54b890ef345d8f4d8f85265
+          <div className="text-right shrink-0">
+            <div className="text-[10px] font-bold text-zinc-400 uppercase tracking-tighter">Saída em</div>
+            <div className="text-xs font-bold text-zinc-900">{format(outDate, "dd/MM/yyyy")}</div>
+            <div className="text-[10px] text-zinc-500 font-medium">{format(outDate, "HH:mm")}</div>
           </div>
         </div>
 
         <div className="flex items-center justify-between pt-1">
-<<<<<<< HEAD
-=======
-<<<<<<< HEAD
->>>>>>> 33aa679aaf74b179a54b890ef345d8f4d8f85265
           <div className="flex items-center gap-2">
             <span className={cn(
               "text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-tight flex items-center gap-1",
@@ -739,10 +488,8 @@ function LogItem({
             <div className="flex items-center gap-1.5 px-3 py-1.5 bg-green-50 rounded-xl border border-green-100">
               <ArrowDownLeft className="w-3 h-3 text-green-600" />
               <div className="text-left">
-                <span className="block text-[9px] font-bold text-green-700 uppercase tracking-tight">Devolução registrada</span>
-                {usageDuration && (
-                  <span className="block text-[9px] text-green-600 font-semibold">Tempo em uso: {usageDuration}</span>
-                )}
+                <span className="block text-[8px] font-bold text-green-600 uppercase tracking-tighter leading-none">Devolvido em</span>
+                <span className="text-[10px] font-bold text-green-700">{format(inDate, "dd/MM HH:mm")}</span>
               </div>
             </div>
           )}
@@ -1099,7 +846,6 @@ function CheckOutModal({ tool, obras, onClose }: { tool: Tool, obras: Obra[], on
 
     try {
       const batch = writeBatch(db);
-      const retiradaEm = getMovementTimestamp();
       
       // 1. Create Log
       const logRef = doc(collection(db, 'toolLogs'));
@@ -1107,9 +853,7 @@ function CheckOutModal({ tool, obras, onClose }: { tool: Tool, obras: Obra[], on
         toolId: tool.id,
         obraId,
         responsavelNome: responsavel,
-        dataSaida: retiradaEm,
-        dataDevolucao: null,
-        fotoDevolucaoUrl: null,
+        dataSaida: serverTimestamp(),
         statusLog: 'Aberta'
       });
 
@@ -1118,7 +862,7 @@ function CheckOutModal({ tool, obras, onClose }: { tool: Tool, obras: Obra[], on
       batch.update(toolRef, {
         status: 'Em Uso',
         lastLogId: logRef.id,
-        updatedAt: retiradaEm
+        updatedAt: serverTimestamp()
       });
 
       await batch.commit();
@@ -1247,113 +991,17 @@ function CheckOutModal({ tool, obras, onClose }: { tool: Tool, obras: Obra[], on
 function CheckInModal({ log, tool, onClose }: { log: ToolLog, tool: Tool, onClose: () => void }) {
   const { notify } = useAuth();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const mobileCameraInputRef = useRef<HTMLInputElement | null>(null);
-  const videoRef = useRef<HTMLVideoElement | null>(null);
-  const streamRef = useRef<MediaStream | null>(null);
-  const [cameraActive, setCameraActive] = useState(false);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
-  const isMobileDevice = () => {
-    if (typeof navigator === 'undefined') return false;
-    return /Android|iPhone|iPad|iPod|Mobile|Windows Phone/i.test(navigator.userAgent);
-  };
-
-  const stopCamera = () => {
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach((track) => track.stop());
-      streamRef.current = null;
-    }
-    setCameraActive(false);
-  };
-
   useEffect(() => {
     return () => {
       if (photoPreview) URL.revokeObjectURL(photoPreview);
-      stopCamera();
     };
   }, [photoPreview]);
-
-  const startCamera = async () => {
-    setError(null);
-
-    // Em celular, o caminho mais estável é usar o seletor nativo com capture.
-    // getUserMedia em PWA/Safari/WebView pode falhar, ficar preto ou perder permissão.
-    if (isMobileDevice()) {
-      mobileCameraInputRef.current?.click();
-      return;
-    }
-
-    if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia) {
-      fileInputRef.current?.click();
-      return;
-    }
-
-    try {
-      stopCamera();
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: { ideal: 'environment' } },
-        audio: false,
-      });
-
-      streamRef.current = stream;
-      setCameraActive(true);
-
-      setTimeout(() => {
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-          videoRef.current.play().catch((err) => {
-            console.error('[CAMERA_DEVOLUCAO] Falha ao iniciar preview:', err);
-            setError('Não foi possível abrir a câmera. Use a opção de selecionar foto.');
-            stopCamera();
-          });
-        }
-      }, 0);
-    } catch (err: any) {
-      console.error('[CAMERA_DEVOLUCAO] Erro ao acessar câmera:', err);
-      setError(err?.message || 'Não foi possível acessar a câmera. Use a opção de selecionar foto.');
-      fileInputRef.current?.click();
-    }
-  };
-
-  const captureCameraPhoto = async () => {
-    const video = videoRef.current;
-    if (!video || !streamRef.current) {
-      setError('Câmera não inicializada. Tente novamente.');
-      return;
-    }
-
-    const width = video.videoWidth || 1280;
-    const height = video.videoHeight || 720;
-    const canvas = document.createElement('canvas');
-    canvas.width = width;
-    canvas.height = height;
-    const ctx = canvas.getContext('2d');
-
-    if (!ctx) {
-      setError('Não foi possível capturar a imagem da câmera.');
-      return;
-    }
-
-    ctx.drawImage(video, 0, 0, width, height);
-
-    canvas.toBlob((blob) => {
-      if (!blob) {
-        setError('Não foi possível gerar o arquivo da foto.');
-        return;
-      }
-
-      const file = new File([blob], `devolucao-${tool.id}-${Date.now()}.jpg`, { type: 'image/jpeg' });
-      if (photoPreview) URL.revokeObjectURL(photoPreview);
-      setPhotoFile(file);
-      setPhotoPreview(URL.createObjectURL(file));
-      setError(null);
-      stopCamera();
-    }, 'image/jpeg', 0.9);
-  };
 
   const handlePhotoChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     event.preventDefault();
@@ -1376,7 +1024,6 @@ function CheckInModal({ log, tool, onClose }: { log: ToolLog, tool: Tool, onClos
   };
 
   const clearPhoto = () => {
-    stopCamera();
     if (photoPreview) URL.revokeObjectURL(photoPreview);
     setPhotoPreview(null);
     setPhotoFile(null);
@@ -1419,30 +1066,21 @@ function CheckInModal({ log, tool, onClose }: { log: ToolLog, tool: Tool, onClos
           setUploadProgress(progress);
         }
       );
-      console.log('URL assinada retornada:', photoUrl);
+      console.log('URL pública retornada:', photoUrl);
 
-      const devolucaoEm = getMovementTimestamp();
-      console.log('Atualizando log de devolução no banco...', { logId: log.id, dataSaidaOriginal: log.dataSaida, dataDevolucao: devolucaoEm });
-      const updateLogResponse = await updateDoc(doc(db, 'toolLogs', log.id), {
-        dataDevolucao: devolucaoEm,
+      console.log('Atualizando log de devolução no banco...', { logId: log.id });
+      await updateDoc(doc(db, 'toolLogs', log.id), {
+        dataDevolucao: serverTimestamp(),
         fotoDevolucaoUrl: photoUrl,
         statusLog: 'Concluída'
       });
-      console.log('UPDATE LOG RESPONSE:', updateLogResponse);
-      if (!updateLogResponse?.data?.id) {
-        throw new Error('updateLogResponse não retornou confirmação ao atualizar toolLogs.');
-      }
       console.log('Log de devolução atualizado com sucesso.');
 
       console.log('Atualizando status da ferramenta...', { toolId: tool.id });
-      const updateToolResponse = await updateDoc(doc(db, 'tools', tool.id), {
+      await updateDoc(doc(db, 'tools', tool.id), {
         status: 'Disponível',
-        updatedAt: devolucaoEm
+        updatedAt: serverTimestamp()
       });
-      console.log('UPDATE TOOL RESPONSE:', updateToolResponse);
-      if (!updateToolResponse?.data?.id) {
-        throw new Error('updateToolResponse não retornou confirmação ao atualizar tools.');
-      }
       console.log('Ferramenta atualizada com sucesso.');
 
       notify('success', 'Devolução Concluída', 'Material entregue e já está disponível para retirada.');
@@ -1494,7 +1132,7 @@ function CheckInModal({ log, tool, onClose }: { log: ToolLog, tool: Tool, onClos
             <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest pl-1">Foto do Estado do Material (Obrigatório)</label>
 
             <input
-              ref={mobileCameraInputRef}
+              ref={fileInputRef}
               type="file"
               accept="image/*"
               capture="environment"
@@ -1503,36 +1141,20 @@ function CheckInModal({ log, tool, onClose }: { log: ToolLog, tool: Tool, onClos
               onChange={handlePhotoChange}
             />
 
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onClick={(event) => event.stopPropagation()}
-              onChange={handlePhotoChange}
-            />
-
             <button
               type="button"
               disabled={loading}
-              onClick={startCamera}
+              onClick={() => fileInputRef.current?.click()}
               className={cn(
                 'relative w-full aspect-video rounded-2xl overflow-hidden border-2 border-dashed transition-all group disabled:opacity-60 disabled:cursor-not-allowed',
                 photoPreview ? 'border-zinc-200 bg-zinc-100' : error ? 'border-red-200 bg-red-50/30 hover:bg-red-50' : 'border-zinc-200 bg-zinc-50 hover:bg-zinc-100'
               )}
             >
-              {cameraActive ? (
-                <>
-                  <video ref={videoRef} className="w-full h-full object-cover bg-black" playsInline muted autoPlay />
-                  <div className="absolute inset-x-0 bottom-0 p-3 bg-gradient-to-t from-black/70 to-transparent text-white text-xs font-bold text-left">
-                    Câmera aberta. Use o botão abaixo para capturar.
-                  </div>
-                </>
-              ) : photoPreview ? (
+              {photoPreview ? (
                 <>
                   <img src={photoPreview} className="w-full h-full object-cover" alt="Pré-visualização da devolução" />
                   <div className="absolute inset-x-0 bottom-0 p-3 bg-gradient-to-t from-black/70 to-transparent text-white text-xs font-bold text-left">
-                    Foto selecionada. Clique para tirar outra.
+                    Foto selecionada. Clique para trocar.
                   </div>
                 </>
               ) : (
@@ -1543,36 +1165,6 @@ function CheckInModal({ log, tool, onClose }: { log: ToolLog, tool: Tool, onClos
                   <span className={cn('text-xs font-bold', error ? 'text-red-500' : 'text-zinc-500')}>TIRAR FOTO DO MATERIAL</span>
                 </div>
               )}
-            </button>
-
-            {cameraActive && (
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={captureCameraPhoto}
-                  disabled={loading}
-                  className="py-3 rounded-xl bg-zinc-900 text-white text-xs font-bold hover:bg-zinc-800 disabled:opacity-50"
-                >
-                  Capturar Foto
-                </button>
-                <button
-                  type="button"
-                  onClick={stopCamera}
-                  disabled={loading}
-                  className="py-3 rounded-xl bg-zinc-100 text-zinc-700 text-xs font-bold hover:bg-zinc-200 disabled:opacity-50"
-                >
-                  Cancelar Câmera
-                </button>
-              </div>
-            )}
-
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={loading || cameraActive}
-              className="text-xs font-bold text-zinc-500 hover:text-zinc-900 disabled:opacity-50"
-            >
-Selecionar foto da galeria/arquivo
             </button>
 
             {photoPreview && (
@@ -1596,10 +1188,10 @@ Selecionar foto da galeria/arquivo
           <button
             type="button"
             onClick={(event) => handleCheckIn(event)}
-            disabled={loading || cameraActive}
+            disabled={loading}
             className={cn(
               'w-full py-4 rounded-2xl font-bold transition-all flex items-center justify-center gap-2 shadow-lg',
-              loading || cameraActive ? 'bg-zinc-100 text-zinc-300 cursor-not-allowed' : 'bg-zinc-900 text-white hover:bg-zinc-800'
+              loading ? 'bg-zinc-100 text-zinc-300 cursor-not-allowed' : 'bg-zinc-900 text-white hover:bg-zinc-800'
             )}
           >
             {loading ? (
@@ -1621,36 +1213,3 @@ Selecionar foto da galeria/arquivo
     </div>
   );
 }
-<<<<<<< HEAD
-=======
-=======
-
-          <span
-            className={cn(
-              "text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-tight flex items-center gap-1",
-              isPending
-                ? "bg-orange-100 text-orange-700"
-                : "bg-green-100 text-green-700"
-            )}
-          >
-            {isPending ? (
-              <>
-                <Clock className="w-2.5 h-2.5" />
-                Pendente
-              </>
-            ) : (
-              <>
-                <CheckCircle2 className="w-2.5 h-2.5" />
-                Concluído
-              </>
-            )}
-          </span>
-
-        </div>
-
-      </div>
-    </div>
-  );
-}
->>>>>>> 25697a34e65b6e23541e809b2443de2ce5662121
->>>>>>> 33aa679aaf74b179a54b890ef345d8f4d8f85265
