@@ -81,13 +81,9 @@ export interface ToolLog {
   responsavelId?: string;
   responsavelEmail?: string;
   dataSaida: any;
-<<<<<<< HEAD
-  dataDevolucao?: any | null;
-  fotoDevolucaoUrl?: string | null;
+  dataDevolucao?: any;
+  fotoDevolucaoUrl?: string;
   statusLog: 'Aberta' | 'Concluída';
-=======
-statusLog: 'Aberta' | 'Concluída';
->>>>>>> 25697a34e65b6e23541e809b2443de2ce5662121
 }
 
 export interface Checklist {
