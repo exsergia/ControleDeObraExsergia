@@ -91,6 +91,61 @@ const formatUsageDuration = (start: Date | null, end: Date | null) => {
 
 const getMovementTimestamp = () => new Date().toISOString();
 
+const exportToolsReport = (logs: ToolLog[], tools: Tool[], obras: Obra[]) => {
+  const header = [
+    'Ferramenta',
+    'Código',
+    'Responsável',
+    'Obra',
+    'Status',
+    'Data Retirada',
+    'Hora Retirada',
+    'Data Devolução',
+    'Hora Devolução',
+    'Tempo em Uso'
+  ];
+
+  const rows = logs.map((log) => {
+    const tool = tools.find(t => t.id === log.toolId);
+    const obra = obras.find(o => o.id === log.obraId);
+
+    const retirada = parseMovementDate(log.dataSaida);
+    const devolucao = parseMovementDate(log.dataDevolucao);
+
+    return [
+      tool?.nome || 'Ferramenta Removida',
+      tool?.codigo || '---',
+      log.responsavelNome || '',
+      obra?.nome || 'Obra Removida',
+      log.statusLog || '',
+      formatMovementDate(retirada),
+      formatMovementTime(retirada),
+      formatMovementDate(devolucao),
+      formatMovementTime(devolucao),
+      formatUsageDuration(retirada, devolucao) || ''
+    ];
+  });
+
+  const csvContent = [header, ...rows]
+    .map(row => row.map(value => `"${String(value).replace(/"/g, '""')}"`).join(';'))
+    .join('\n');
+
+  const blob = new Blob([`\uFEFF${csvContent}`], {
+    type: 'text/csv;charset=utf-8;'
+  });
+
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+
+  link.href = url;
+  link.download = `relatorio-movimentacao-ferramentas-${new Date().toISOString().slice(0, 10)}.csv`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+};
+
+
 export default function Ferramentas() {
   const { isAdmin, notify } = useAuth();
 
@@ -193,6 +248,16 @@ export default function Ferramentas() {
             <div className="p-4 bg-zinc-50 border-b border-zinc-200 flex items-center gap-2">
               <History className="w-4 h-4 text-zinc-400" />
               <span className="text-xs font-bold text-zinc-600">Logs de Movimentação</span>
+            </div>
+
+            <div className="p-4 border-b border-zinc-100">
+              <button
+                type="button"
+                onClick={() => exportToolsReport(logs, tools, obras)}
+                className="w-full py-3 bg-zinc-900 text-white rounded-xl text-xs font-bold hover:bg-zinc-800 transition-all active:scale-95"
+              >
+                Baixar Relatório de Movimentação
+              </button>
             </div>
 
             <div className="divide-y divide-zinc-100 max-h-[600px] overflow-y-auto">
