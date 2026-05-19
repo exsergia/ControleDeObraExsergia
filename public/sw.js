@@ -1,8 +1,4 @@
-<<<<<<< HEAD
 const CACHE_NAME = 'exsergia-controle-obra-v3-historico-ferramentas';
-=======
-const CACHE_NAME = 'exsergia-controle-obra-v1';
->>>>>>> 33aa679aaf74b179a54b890ef345d8f4d8f85265
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();
