@@ -18,7 +18,13 @@ export const sendBrowserNotification = (title: string, body: string) => {
 
 const SIGNED_URL_TTL_SECONDS = 60 * 60 * 24 * 7; // 7 dias
 
-const createSignedStorageUrl = async (bucket: string, path: string) => {
+export interface StorageUploadResult {
+  bucket: string;
+  path: string;
+  url: string;
+}
+
+export const createSignedStorageUrl = async (bucket: string, path: string) => {
   const signedUrlResponse = await supabase.storage
     .from(bucket)
     .createSignedUrl(path, SIGNED_URL_TTL_SECONDS);
@@ -37,7 +43,7 @@ const uploadToStorage = async (
   path = 'uploads',
   onProgress?: (progress: number) => void,
   bucket = 'uploads'
-): Promise<string> => {
+): Promise<StorageUploadResult> => {
   const fileExt = file.name.split('.').pop() || 'jpg';
   const safeExt = fileExt.replace(/[^a-zA-Z0-9]/g, '') || 'jpg';
   const fileName = `${path}/${Date.now()}-${Math.random().toString(36).slice(2)}.${safeExt}`;
@@ -68,18 +74,30 @@ const uploadToStorage = async (
   // usamos createSignedUrl para acessar a imagem após o upload.
   const signedUrl = await createSignedStorageUrl(bucket, fileName);
   console.groupEnd();
-  return signedUrl;
+  return {
+    bucket,
+    path: fileName,
+    url: signedUrl,
+  };
 };
 
 export const uploadImage = async (file: File, path = 'uploads', onProgress?: (progress: number) => void): Promise<string> => {
-  return uploadToStorage(file, path, onProgress, 'uploads');
+  return (await uploadToStorage(file, path, onProgress, 'uploads')).url;
 };
 
 export const uploadFile = async (file: File, path = 'uploads', onProgress?: (progress: number) => void): Promise<string> => {
-  return uploadToStorage(file, path, onProgress, 'uploads');
+  return (await uploadToStorage(file, path, onProgress, 'uploads')).url;
 };
 
 export const uploadPhoto = async (file: File, path = 'uploads', onProgress?: (progress: number) => void): Promise<string> => {
+  return (await uploadToStorage(file, path, onProgress, 'ferramentas')).url;
+};
+
+export const uploadPhotoWithMetadata = async (
+  file: File,
+  path = 'uploads',
+  onProgress?: (progress: number) => void
+): Promise<StorageUploadResult> => {
   return uploadToStorage(file, path, onProgress, 'ferramentas');
 };
 

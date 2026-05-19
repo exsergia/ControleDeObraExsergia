@@ -23,7 +23,7 @@ import {
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
-import { uploadPhoto } from '../lib/services';
+import { createSignedStorageUrl, uploadPhotoWithMetadata } from '../lib/services';
 import { Html5Qrcode } from 'html5-qrcode';
 import { useAuth } from '../App';
 
@@ -91,6 +91,18 @@ const formatUsageDuration = (start: Date | null, end: Date | null) => {
 
 const getMovementTimestamp = () => new Date().toISOString();
 
+const sortLogsByMovementDateDesc = (items: ToolLog[]) => {
+  return [...items].sort((a, b) => {
+    const bDate = parseMovementDate(b.dataSaida)?.getTime() || 0;
+    const aDate = parseMovementDate(a.dataSaida)?.getTime() || 0;
+    return bDate - aDate;
+  });
+};
+
+const findOpenLogForTool = (logs: ToolLog[], toolId: string) => {
+  return sortLogsByMovementDateDesc(logs).find(log => log.toolId === toolId && log.statusLog === 'Aberta');
+};
+
 const exportToolsReport = (logs: ToolLog[], tools: Tool[], obras: Obra[]) => {
   const header = [
     'Ferramenta',
@@ -150,7 +162,7 @@ export default function Ferramentas() {
   const { isAdmin, notify } = useAuth();
 
   const [toolsSnap] = useCollection(query(collection(db, 'tools'), orderBy('nome', 'asc')));
-  const [logsSnap] = useCollection(query(collection(db, 'toolLogs'), orderBy('dataSaida', 'desc'), limit(50)));
+  const [logsSnap] = useCollection(query(collection(db, 'toolLogs'), orderBy('dataSaida', 'desc')));
   const [obrasSnap] = useCollection(query(collection(db, 'obras'), orderBy('nome', 'asc')));
 
   const [showAddTool, setShowAddTool] = useState(false);
@@ -161,7 +173,8 @@ export default function Ferramentas() {
   const [showScanner, setShowScanner] = useState(false);
 
   const tools = (toolsSnap?.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Tool[]) || [];
-  const logs = (logsSnap?.docs.map(doc => ({ id: doc.id, ...doc.data() })) as ToolLog[]) || [];
+  const logs = sortLogsByMovementDateDesc((logsSnap?.docs.map(doc => ({ id: doc.id, ...doc.data() })) as ToolLog[]) || []);
+  const recentLogs = logs.slice(0, 50);
   const obras = (obrasSnap?.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Obra[]) || [];
 
   const handleScanSuccess = React.useCallback((decodedText: string) => {
@@ -174,7 +187,7 @@ export default function Ferramentas() {
 
     setShowScanner(false);
 
-    const activeLog = logs.find(l => l.id === tool.lastLogId && l.statusLog === 'Aberta');
+    const activeLog = findOpenLogForTool(logs, tool.id);
 
     if (activeLog) {
       setShowCheckIn(activeLog);
@@ -230,7 +243,7 @@ export default function Ferramentas() {
                 key={tool.id}
                 tool={tool}
                 onCheckOut={() => setShowCheckOut(tool)}
-                activeLog={logs.find(l => l.id === tool.lastLogId && l.statusLog === 'Aberta')}
+                activeLog={findOpenLogForTool(logs, tool.id)}
                 onCheckIn={(log) => setShowCheckIn(log)}
                 onEdit={() => setEditingTool(tool)}
                 onViewHistory={() => setShowHistory(tool)}
@@ -261,7 +274,7 @@ export default function Ferramentas() {
             </div>
 
             <div className="divide-y divide-zinc-100 max-h-[600px] overflow-y-auto">
-              {logs.map((log) => (
+              {recentLogs.map((log) => (
                 <LogItem
                   key={log.id}
                   log={log}
@@ -587,6 +600,30 @@ function LogItem({
   const outDate = parseMovementDate(log.dataSaida);
   const inDate = parseMovementDate(log.dataDevolucao);
   const usageDuration = formatUsageDuration(outDate, inDate);
+  const [returnPhotoUrl, setReturnPhotoUrl] = useState(log.fotoDevolucaoUrl || '');
+
+  useEffect(() => {
+    let alive = true;
+
+    if (!log.fotoDevolucaoPath) {
+      setReturnPhotoUrl(log.fotoDevolucaoUrl || '');
+      return () => {
+        alive = false;
+      };
+    }
+
+    createSignedStorageUrl(log.fotoDevolucaoBucket || 'ferramentas', log.fotoDevolucaoPath)
+      .then((url) => {
+        if (alive) setReturnPhotoUrl(url);
+      })
+      .catch(() => {
+        if (alive) setReturnPhotoUrl(log.fotoDevolucaoUrl || '');
+      });
+
+    return () => {
+      alive = false;
+    };
+  }, [log.fotoDevolucaoBucket, log.fotoDevolucaoPath, log.fotoDevolucaoUrl]);
 
   return (
     <div className="p-5 hover:bg-zinc-50 transition-colors border-b border-zinc-100 last:border-0">
@@ -702,6 +739,18 @@ function LogItem({
                 )}
               </div>
             </div>
+          )}
+
+          {!isPending && returnPhotoUrl && (
+            <a
+              href={returnPhotoUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 rounded-xl border border-blue-100 text-[9px] font-bold text-blue-700 uppercase tracking-tight hover:bg-blue-100 transition-colors"
+            >
+              <Camera className="w-3 h-3" />
+              Foto da devolucao
+            </a>
           )}
         </div>
       </div>
@@ -1055,6 +1104,22 @@ function CheckOutModal({ tool, obras, onClose }: { tool: Tool, obras: Obra[], on
     setLoading(true);
 
     try {
+      const openLogsSnap = await getDocs(query(
+        collection(db, 'toolLogs'),
+        where('toolId', '==', tool.id),
+        where('statusLog', '==', 'Aberta')
+      ));
+
+      if (!openLogsSnap.empty) {
+        notify('warning', 'Ferramenta em uso', 'Esta ferramenta ja possui uma retirada aberta. Devolva o registro atual antes de retirar novamente.');
+        return;
+      }
+
+      if (tool.status !== 'Dispon\u00edvel') {
+        notify('warning', 'Ferramenta indisponivel', 'Esta ferramenta nao esta disponivel para retirada.');
+        return;
+      }
+
       const batch = writeBatch(db);
       const retiradaEm = getMovementTimestamp();
 
@@ -1067,6 +1132,8 @@ function CheckOutModal({ tool, obras, onClose }: { tool: Tool, obras: Obra[], on
         dataSaida: retiradaEm,
         dataDevolucao: null,
         fotoDevolucaoUrl: null,
+        fotoDevolucaoBucket: null,
+        fotoDevolucaoPath: null,
         statusLog: 'Aberta'
       });
 
@@ -1368,7 +1435,7 @@ function CheckInModal({ log, tool, onClose }: { log: ToolLog, tool: Tool, onClos
 
     try {
       console.log('Enviando imagem para Supabase Storage...');
-      const photoUrl = await uploadPhoto(
+      const photoUpload = await uploadPhotoWithMetadata(
         photoFile,
         `tools/${tool.id}/returns`,
         (progress) => {
@@ -1376,13 +1443,15 @@ function CheckInModal({ log, tool, onClose }: { log: ToolLog, tool: Tool, onClos
           setUploadProgress(progress);
         }
       );
-      console.log('URL assinada retornada:', photoUrl);
+      console.log('Foto salva no Supabase Storage:', photoUpload);
 
       const devolucaoEm = getMovementTimestamp();
       console.log('Atualizando log de devolução no banco...', { logId: log.id, dataSaidaOriginal: log.dataSaida, dataDevolucao: devolucaoEm });
       const updateLogResponse = await updateDoc(doc(db, 'toolLogs', log.id), {
         dataDevolucao: devolucaoEm,
-        fotoDevolucaoUrl: photoUrl,
+        fotoDevolucaoUrl: photoUpload.url,
+        fotoDevolucaoBucket: photoUpload.bucket,
+        fotoDevolucaoPath: photoUpload.path,
         statusLog: 'Concluída'
       });
       console.log('UPDATE LOG RESPONSE:', updateLogResponse);
@@ -1393,7 +1462,8 @@ function CheckInModal({ log, tool, onClose }: { log: ToolLog, tool: Tool, onClos
 
       console.log('Atualizando status da ferramenta...', { toolId: tool.id });
       const updateToolResponse = await updateDoc(doc(db, 'tools', tool.id), {
-        status: 'Disponível',
+        status: 'Dispon\u00edvel',
+        lastLogId: null,
         updatedAt: devolucaoEm
       });
       console.log('UPDATE TOOL RESPONSE:', updateToolResponse);

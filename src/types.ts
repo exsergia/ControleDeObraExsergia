@@ -83,6 +83,8 @@ export interface ToolLog {
   dataSaida: any;
   dataDevolucao?: any | null;
   fotoDevolucaoUrl?: string | null;
+  fotoDevolucaoBucket?: string | null;
+  fotoDevolucaoPath?: string | null;
   statusLog: 'Aberta' | 'Concluída';
 }
 
