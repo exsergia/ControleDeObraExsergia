@@ -1,7 +1,6 @@
--- EXSERGIA CONTROLE DE OBRA - SUPABASE LIMPO
--- Rode este arquivo no SQL Editor do Supabase.
--- Ele cria a estrutura zerada, sem obras/materiais/checklists fictícios.
--- Mantém somente os administradores iniciais em admin_access.
+-- MIGRACAO SEM APAGAR DADOS
+-- Use quando o Supabase ja esta em uso e voce quer alinhar banco, storage,
+-- RLS e indices com o codigo atual sem rodar o schema.sql que trunca tabelas.
 
 create extension if not exists "pgcrypto";
 
@@ -59,23 +58,11 @@ create table if not exists public.admin_access (
   created_at timestamptz not null default now()
 );
 
--- Tabelas criadas acima; os dados serao zerados antes dos indices.
+insert into public.admin_access (id, data) values
+  ('email:nascimentoerick446@gmail.com', '{"tipo":"email","valor":"nascimentoerick446@gmail.com","ativo":true}'::jsonb),
+  ('email:exsergiacel7234@gmail.com', '{"tipo":"email","valor":"exsergiacel7234@gmail.com","ativo":true}'::jsonb)
+on conflict (id) do update set data = excluded.data;
 
--- ZERA DADOS DE TESTE/FICTÍCIOS.
--- Não apaga auth.users. Usuários do Supabase Auth devem ser controlados em Authentication > Users.
-truncate table
-  public.obras,
-  public.materiais,
-  public.atividades,
-  public.checklists,
-  public.operadores,
-  public.cpfs,
-  public.tools,
-  public."toolLogs",
-  public.admin_access
-restart identity cascade;
-
--- Indices de performance e bloqueios contra cadastros duplicados.
 create unique index if not exists obras_nome_cliente_unico
   on public.obras (lower(coalesce(data ->> 'nome', '')), lower(coalesce(data ->> 'cliente', '')))
   where coalesce(data ->> 'nome', '') <> '';
@@ -84,9 +71,6 @@ create index if not exists idx_obras_created_at on public.obras (created_at desc
 create index if not exists idx_materiais_created_at on public.materiais (created_at desc);
 create index if not exists idx_atividades_created_at on public.atividades (created_at desc);
 create index if not exists idx_tools_status on public.tools ((data ->> 'status'));
-create unique index if not exists tools_codigo_unico
-  on public.tools (upper(coalesce(data ->> 'codigo', '')))
-  where coalesce(data ->> 'codigo', '') <> '';
 create index if not exists idx_tools_nome on public.tools (lower(coalesce(data ->> 'nome', '')));
 create index if not exists idx_tools_last_log_id on public.tools ((data ->> 'lastLogId'));
 create index if not exists idx_tool_logs_tool_id on public."toolLogs" ((data ->> 'toolId'));
@@ -99,13 +83,24 @@ create index if not exists idx_checklists_data on public.checklists ((data ->> '
 create index if not exists idx_operadores_email_data on public.operadores (lower(coalesce(data ->> 'email', '')));
 create index if not exists idx_operadores_cpf_data on public.operadores (regexp_replace(coalesce(data ->> 'cpf', ''), '\D', '', 'g'));
 
--- Administradores iniciais reais.
--- Para adicionar outro admin, insira novo registro no padrão:
--- id = email:email@dominio.com ou cpf:00000000000
-insert into public.admin_access (id, data) values
-  ('email:nascimentoerick446@gmail.com', '{"tipo":"email","valor":"nascimentoerick446@gmail.com","ativo":true}'::jsonb),
-  ('email:exsergiacel7234@gmail.com', '{"tipo":"email","valor":"exsergiacel7234@gmail.com","ativo":true}'::jsonb)
-on conflict (id) do update set data = excluded.data;
+do $$
+begin
+  if not exists (
+    select 1
+    from public.tools
+    where coalesce(data ->> 'codigo', '') <> ''
+    group by upper(coalesce(data ->> 'codigo', ''))
+    having count(*) > 1
+  ) then
+    execute $sql$
+      create unique index if not exists tools_codigo_unico
+      on public.tools (upper(coalesce(data ->> 'codigo', '')))
+      where coalesce(data ->> 'codigo', '') <> ''
+    $sql$;
+  else
+    raise notice 'Indice unico tools_codigo_unico nao criado: existem ferramentas com codigo duplicado.';
+  end if;
+end $$;
 
 create or replace function public.is_app_admin()
 returns boolean
@@ -204,8 +199,6 @@ create policy "authenticated upload ferramentas" on storage.objects for insert t
 create policy "authenticated update ferramentas" on storage.objects for update to authenticated using (bucket_id = 'ferramentas') with check (bucket_id = 'ferramentas');
 create policy "authenticated delete ferramentas" on storage.objects for delete to authenticated using (bucket_id = 'ferramentas');
 
--- Ativa Supabase Realtime nas tabelas do aplicativo.
--- Se aparecer aviso de que já existe na publicação, pode ignorar.
 do $$
 begin
   begin alter publication supabase_realtime add table public.obras; exception when duplicate_object then null; end;
