@@ -82,3 +82,41 @@ export const uploadFile = async (file: File, path = 'uploads', onProgress?: (pro
 export const uploadPhoto = async (file: File, path = 'uploads', onProgress?: (progress: number) => void): Promise<string> => {
   return uploadToStorage(file, path, onProgress, 'ferramentas');
 };
+
+export const checkCameraPermission = async (): Promise<boolean> => {
+  try {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      console.warn('Camera API não suportada neste dispositivo');
+      return false;
+    }
+
+    const stream = await navigator.mediaDevices.getUserMedia({ 
+      video: { facingMode: 'environment' } 
+    });
+    
+    stream.getTracks().forEach(track => track.stop());
+    return true;
+  } catch (error) {
+    console.error('Erro ao verificar permissão de câmera:', error);
+    return false;
+  }
+};
+
+export const requestCameraPermission = async (): Promise<boolean> => {
+  try {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      console.warn('Camera API não suportada neste dispositivo');
+      return false;
+    }
+
+    const stream = await navigator.mediaDevices.getUserMedia({ 
+      video: { facingMode: 'environment' } 
+    });
+    
+    stream.getTracks().forEach(track => track.stop());
+    return true;
+  } catch (error) {
+    console.error('Permissão de câmera negada ou erro ao solicitar:', error);
+    return false;
+  }
+};
