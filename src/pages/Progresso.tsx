@@ -1,6 +1,4 @@
 import React, { useState, useEffect, useCallback, memo } from 'react';
-import { useCollection } from '../lib/supabaseHooks';
-import { collection, query, where, addDoc, updateDoc, doc, serverTimestamp, deleteDoc } from '../lib/supabaseDb';
 import { db, handleFirestoreError, OperationType } from '../lib/supabase';
 import { Obra, Atividade } from '../types';
 import {
@@ -43,24 +41,67 @@ const parseNumberBR = (value: string) => {
 
 export default function ProgressoFisico() {
   const { isAdmin, notify } = useAuth();
+
+  const [obras, setObras] = useState<Obra[]>([]);
+  const [atividades, setAtividades] = useState<Atividade[]>([]);
+  const [loading, setLoading] = useState(true);
+
   const [selectedObraId, setSelectedObraId] = useState<string>('all');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [search, setSearch] = useState('');
 
-  const [obrasSnap] = useCollection(collection(db, 'obras'));
+  const [formData, setFormData, limparRascunhoProgresso] = useAutoSaveForm(
+    'rascunho-progresso-fisico',
+    {
+      obraId: '',
+      descricao: '',
+      unidade: 'm',
+      quantidadePrevista: 0,
+      quantidadeExecutada: 0,
+      valorUnitario: 0,
+      equipeResponsavel: ''
+    }
+  );
 
-  const actividadesQuery =
-    selectedObraId === 'all'
-      ? collection(db, 'atividades')
-      : query(collection(db, 'atividades'), where('obraId', '==', selectedObraId));
+  const carregarDados = useCallback(async () => {
+    try {
+      setLoading(true);
 
-  const [atividadesSnap, loading] = useCollection(actividadesQuery);
+      const { data: obrasData, error: obrasError } = await db
+        .from('obras')
+        .select('*')
+        .order('nome', { ascending: true });
 
-  const obras = (obrasSnap?.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Obra[]) || [];
-  const atividades = (atividadesSnap?.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Atividade[]) || [];
+      if (obrasError) throw obrasError;
+
+      let atividadesQuery = db
+        .from('atividades')
+        .select('*')
+        .order('createdAt', { ascending: false });
+
+      if (selectedObraId !== 'all') {
+        atividadesQuery = atividadesQuery.eq('obraId', selectedObraId);
+      }
+
+      const { data: atividadesData, error: atividadesError } = await atividadesQuery;
+
+      if (atividadesError) throw atividadesError;
+
+      setObras((obrasData || []) as Obra[]);
+      setAtividades((atividadesData || []) as Atividade[]);
+    } catch (err) {
+      handleFirestoreError(err, OperationType.READ, 'progresso-fisico-load');
+    } finally {
+      setLoading(false);
+    }
+  }, [selectedObraId]);
+
+  useEffect(() => {
+    carregarDados();
+  }, [carregarDados]);
 
   const filteredAtividades = atividades.filter(a =>
-    a.descricao.toLowerCase().includes(search.toLowerCase())
+    a.descricao?.toLowerCase().includes(search.toLowerCase())
   );
 
   const handleExportBI = () => {
@@ -91,58 +132,87 @@ export default function ProgressoFisico() {
     notify('success', 'Relatório de Progresso', 'Dados consolidados para Power BI exportados com sucesso!');
   };
 
-  const [formData, setFormData, limparRascunhoProgresso] = useAutoSaveForm('rascunho-progresso-fisico', {
-    obraId: '',
-    descricao: '',
-    unidade: 'm',
-    quantidadePrevista: 0,
-    quantidadeExecutada: 0,
-    valorUnitario: 0,
-    equipeResponsavel: ''
-  });
-
   const handleAddAtividade = async (e: React.FormEvent) => {
     e.preventDefault();
 
     try {
-      await addDoc(collection(db, 'atividades'), {
-        ...formData,
+      const quantidadePrevista = Number(formData.quantidadePrevista || 0);
+      const quantidadeExecutada = Number(formData.quantidadeExecutada || 0);
+      const valorUnitario = Number(formData.valorUnitario || 0);
+
+      const { error } = await db.from('atividades').insert({
+        obraId: formData.obraId,
+        descricao: formData.descricao,
+        unidade: formData.unidade,
+        quantidadePrevista,
+        quantidadeExecutada,
+        valorUnitario,
+        equipeResponsavel: formData.equipeResponsavel,
         percentual:
-          formData.quantidadePrevista > 0
-            ? (formData.quantidadeExecutada / formData.quantidadePrevista) * 100
+          quantidadePrevista > 0
+            ? Math.min(100, (quantidadeExecutada / quantidadePrevista) * 100)
             : 0,
-        valorUnitario: Number(formData.valorUnitario),
-        createdAt: serverTimestamp()
+        createdAt: new Date().toISOString()
       });
+
+      if (error) throw error;
 
       setIsModalOpen(false);
       limparRascunhoProgresso();
       notify('success', 'Atividade Adicionada', 'A nova atividade de progresso físico foi registrada.');
+      carregarDados();
     } catch (err: any) {
       notify('error', 'Erro ao Registrar', err.message || 'Não foi possível registrar a atividade.');
       handleFirestoreError(err, OperationType.WRITE, 'atividades');
     }
   };
 
-  const handleUpdateProgress = useCallback(async (id: string, currentVal: number, total: number) => {
-    try {
-      const valorFinal = Number(currentVal.toFixed(2));
+  const handleUpdateProgress = useCallback(
+    async (id: string, currentVal: number, total: number) => {
+      try {
+        const valorFinal = Number(currentVal.toFixed(2));
 
-      await updateDoc(doc(db, 'atividades', id), {
-        quantidadeExecutada: valorFinal,
-        percentual: total > 0 ? Math.min(100, (valorFinal / total) * 100) : 0
-      });
-    } catch (err) {
-      handleFirestoreError(err, OperationType.WRITE, 'atividades-update');
-    }
-  }, []);
+        const { error } = await db
+          .from('atividades')
+          .update({
+            quantidadeExecutada: valorFinal,
+            percentual: total > 0 ? Math.min(100, (valorFinal / total) * 100) : 0
+          })
+          .eq('id', id);
+
+        if (error) throw error;
+
+        setAtividades(prev =>
+          prev.map(item =>
+            item.id === id
+              ? {
+                  ...item,
+                  quantidadeExecutada: valorFinal,
+                  percentual: total > 0 ? Math.min(100, (valorFinal / total) * 100) : 0
+                }
+              : item
+          )
+        );
+      } catch (err) {
+        handleFirestoreError(err, OperationType.WRITE, 'atividades-update');
+      }
+    },
+    []
+  );
 
   const handleDelete = useCallback(
     async (id: string) => {
       if (!confirm('Deseja excluir esta atividade?')) return;
 
       try {
-        await deleteDoc(doc(db, 'atividades', id));
+        const { error } = await db
+          .from('atividades')
+          .delete()
+          .eq('id', id);
+
+        if (error) throw error;
+
+        setAtividades(prev => prev.filter(item => item.id !== id));
         notify('success', 'Atividade Removida', 'O registro de progresso foi excluído com sucesso.');
       } catch (err) {
         notify('error', 'Erro ao Excluir', 'Não foi possível remover a atividade.');
@@ -219,7 +289,10 @@ export default function ProgressoFisico() {
       <div className="grid gap-6">
         {loading ? (
           Array(3).fill(0).map((_, i) => (
-            <div key={i} className="h-64 bg-white animate-pulse rounded-[2.5rem] border border-zinc-100" />
+            <div
+              key={i}
+              className="h-64 bg-white animate-pulse rounded-[2.5rem] border border-zinc-100"
+            />
           ))
         ) : filteredAtividades.length > 0 ? (
           filteredAtividades.map(ativ => (
@@ -306,7 +379,7 @@ export default function ProgressoFisico() {
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-1.5">
                     <label className="text-xs font-bold text-zinc-500 uppercase tracking-widest pl-1">
                       Quantidade Prevista
@@ -355,7 +428,7 @@ export default function ProgressoFisico() {
                     />
                   </div>
 
-                  <div className="space-y-1.5">
+                  <div className="space-y-1.5 sm:col-span-2">
                     <label className="text-xs font-bold text-zinc-500 uppercase tracking-widest pl-1">
                       Equipe Resp.
                     </label>
@@ -408,8 +481,20 @@ const ActivityCard = memo(function ActivityCard({
   readOnly?: boolean;
 }) {
   const perc = Math.round(ativ.percentual || 0);
-  const status = perc < 50 ? 'Abaixo de 50%' : perc < 100 ? 'Entre 50% e 99%' : 'Concluído';
-  const colorClass = perc < 50 ? 'bg-red-500' : perc < 100 ? 'bg-amber-500' : 'bg-green-500';
+
+  const status =
+    perc < 50
+      ? 'Abaixo de 50%'
+      : perc < 100
+        ? 'Entre 50% e 99%'
+        : 'Concluído';
+
+  const colorClass =
+    perc < 50
+      ? 'bg-red-500'
+      : perc < 100
+        ? 'bg-amber-500'
+        : 'bg-green-500';
 
   const badgeClass =
     perc < 50
@@ -426,7 +511,9 @@ const ActivityCard = memo(function ActivityCard({
 
   useEffect(() => {
     if (!isEditing) {
-      setExecutadoInput(ativ.quantidadeExecutada ? formatNumberBR(ativ.quantidadeExecutada) : '');
+      setExecutadoInput(
+        ativ.quantidadeExecutada ? formatNumberBR(ativ.quantidadeExecutada) : ''
+      );
     }
   }, [ativ.quantidadeExecutada, isEditing]);
 
@@ -437,6 +524,7 @@ const ActivityCard = memo(function ActivityCard({
 
     setIsEditing(false);
     setExecutadoInput(numero ? formatNumberBR(numero) : '');
+
     onUpdate(ativ.id, numero, ativ.quantidadePrevista);
   }, [readOnly, executadoInput, onUpdate, ativ.id, ativ.quantidadePrevista]);
 
@@ -497,8 +585,8 @@ const ActivityCard = memo(function ActivityCard({
           </div>
         </div>
 
-        <div className="grid grid-cols-2 sm:flex sm:items-center gap-3 w-full sm:w-auto">
-          <div className="text-center space-y-2">
+        <div className="flex flex-col gap-3 w-full sm:w-32">
+          <div className="text-center space-y-2 order-1">
             <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block">
               Executado ({ativ.unidade})
             </span>
@@ -507,7 +595,7 @@ const ActivityCard = memo(function ActivityCard({
               type="text"
               inputMode="decimal"
               className={cn(
-                'w-full sm:w-28 py-4 border-2 border-zinc-100 rounded-3xl text-xl font-black text-zinc-900 focus:outline-none focus:border-zinc-900 transition-colors text-center shadow-lg',
+                'w-full py-4 border-2 border-zinc-100 rounded-3xl text-xl font-black text-zinc-900 focus:outline-none focus:border-zinc-900 transition-colors text-center shadow-lg',
                 readOnly ? 'bg-zinc-50 cursor-not-allowed' : 'bg-white'
               )}
               value={executadoInput}
@@ -531,17 +619,17 @@ const ActivityCard = memo(function ActivityCard({
             />
           </div>
 
-          <div className="text-center space-y-2">
+          <div className="text-center space-y-2 order-2">
             <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block">
               Total ({ativ.unidade})
             </span>
 
-            <div className="w-full sm:w-28 py-4 bg-zinc-50 border border-zinc-100 rounded-3xl text-xl font-black text-zinc-900 shadow-inner">
+            <div className="w-full py-4 bg-zinc-50 border border-zinc-100 rounded-3xl text-xl font-black text-zinc-900 shadow-inner">
               {formatNumberBR(ativ.quantidadePrevista)}
             </div>
           </div>
 
-          <div className="text-center space-y-2 col-span-2 sm:col-span-1">
+          <div className="text-center space-y-2 order-3">
             <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block">
               Resumo
             </span>
@@ -567,7 +655,12 @@ const ActivityCard = memo(function ActivityCard({
 
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <span className={cn('px-4 py-1.5 rounded-full text-[11px] font-black uppercase tracking-[0.1em] border-2', badgeClass)}>
+          <span
+            className={cn(
+              'px-4 py-1.5 rounded-full text-[11px] font-black uppercase tracking-[0.1em] border-2',
+              badgeClass
+            )}
+          >
             {status}
           </span>
 
