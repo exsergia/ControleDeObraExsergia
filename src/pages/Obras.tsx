@@ -25,6 +25,7 @@ import {
 import { cn } from '../lib/utils';
 import { useAuth } from '../App';
 import { useAutoSaveForm } from '../hooks/useAutoSaveForm';
+import { useNavigate } from 'react-router-dom';
 
 export default function Obras() {
   const { isAdmin, notify } = useAuth();
@@ -465,6 +466,7 @@ function ObraDetails({
   onUpdateStatus: (obraId: string, status: ObraStatus) => void 
 }) {
   const { isAdmin } = useAuth();
+  const navigate = useNavigate();
   const [atividadesSnap] = useCollection(query(collection(db, 'atividades'), where('obraId', '==', obra.id)));
   const [operadoresSnap] = useCollection(collection(db, 'operadores'));
   const [activeTab, setActiveTab] = useState<'progresso' | 'equipe' | 'informacoes'>('progresso');
@@ -600,7 +602,7 @@ function ObraDetails({
               <p className="text-zinc-500 text-sm">Prévia editável com linha de progressão por atividade executada.</p>
             </div>
             <button 
-              onClick={() => window.location.href = '/atividades'}
+              onClick={() => navigate('/atividades')}
               className="flex items-center gap-2 px-4 py-2 bg-white border border-zinc-200 rounded-xl text-xs font-bold text-zinc-900 hover:bg-zinc-50 transition-all shadow-sm"
             >
               <Plus className="w-4 h-4" />
@@ -677,7 +679,7 @@ function ObraDetails({
                 <Activity className="w-12 h-12 text-zinc-200 mx-auto mb-4" />
                 <p className="text-zinc-500 font-medium">Nenhuma atividade de mão de obra cadastrada para esta obra.</p>
                 <button 
-                  onClick={() => window.location.href = '/atividades'}
+                  onClick={() => navigate('/atividades')}
                   className="mt-4 text-zinc-900 font-bold underline"
                 >
                   Cadastrar atividades agora

@@ -26,9 +26,11 @@ import { cn } from '../lib/utils';
 import { uploadPhoto, uploadFile, sendBrowserNotification } from '../lib/services';
 import { useAuth } from '../App';
 import { useAutoSaveForm } from '../hooks/useAutoSaveForm';
+import { Link, useNavigate } from 'react-router-dom';
 
 export default function ChecklistPage() {
   const { notify } = useAuth();
+  const navigate = useNavigate();
   const [activeStep, setActiveStep, limparRascunhoEtapa] = useAutoSaveForm('rascunho-checklist-etapa', 1);
   const [selectedObraId, setSelectedObraId, limparRascunhoObraChecklist] = useAutoSaveForm('rascunho-checklist-obra', '');
   
@@ -140,7 +142,7 @@ export default function ChecklistPage() {
       limparRascunhoAvancos();
       limparRascunhoEquipe();
       limparRascunhoObs();
-      window.location.href = '/relatorios';
+      navigate('/relatorios');
     } catch (err: any) {
       console.error('Erro detalhado no checklist:', err);
       const errorMessage = err instanceof Error ? err.message : 'Erro desconhecido';
@@ -386,7 +388,7 @@ export default function ChecklistPage() {
             <div className="p-12 text-center bg-white rounded-2xl border border-dashed border-zinc-200">
               <Users className="w-12 h-12 text-zinc-200 mx-auto mb-4" />
               <p className="text-zinc-500 font-medium">Nenhum operador {selectedObra?.operadoresIds?.length ? 'atribuído a esta obra' : 'cadastrado'}.</p>
-              <a href="/equipe" className="text-sm font-bold text-zinc-900 underline block mt-2">Gerenciar Operadores</a>
+              <Link to="/operadores" className="text-sm font-bold text-zinc-900 underline block mt-2">Gerenciar Operadores</Link>
             </div>
           )}
 
@@ -465,7 +467,7 @@ export default function ChecklistPage() {
                  <div className="p-12 text-center flex flex-col items-center gap-4">
                   <AlertCircle className="w-8 h-8 text-zinc-300" />
                   <p className="text-zinc-500 font-medium">Nenhuma atividade cadastrada para esta obra.</p>
-                  <a href="/atividades" className="text-sm font-bold text-zinc-900 underline active:opacity-50">Cadastrar Atividades</a>
+                  <Link to="/atividades" className="text-sm font-bold text-zinc-900 underline active:opacity-50">Cadastrar Atividades</Link>
                 </div>
               )}
             </div>

@@ -1,22 +1,25 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from './supabase';
-import { CollectionRef, getDocs } from './supabaseDb';
+import { CollectionRef, getDocs, LOCAL_DB_CHANGE_EVENT } from './supabaseDb';
 
 /**
- * Hook padrão de leitura com atualização em tempo real pelo Supabase Realtime.
- * Sempre que houver INSERT, UPDATE ou DELETE na tabela usada pela tela,
- * os dados são buscados novamente automaticamente, sem precisar apertar F5.
+ * Leitura padrao com atualizacao imediata local e Realtime do Supabase.
+ * Escritas feitas nesta aba disparam um evento local; alteracoes de outras
+ * abas/dispositivos chegam pelo canal postgres_changes.
  */
 export function useCollection(ref: CollectionRef | null | undefined): [any | undefined, boolean, Error | undefined] {
   const [snap, setSnap] = useState<any>();
   const [loading, setLoading] = useState(!!ref);
   const [error, setError] = useState<Error>();
   const refreshTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const requestIdRef = useRef(0);
   const hasLoadedRef = useRef(false);
 
   const refKey = useMemo(() => JSON.stringify(ref || null), [ref]);
 
   const loadData = useCallback(async (showLoading = false) => {
+    const requestId = ++requestIdRef.current;
+
     if (!ref) {
       setSnap(undefined);
       setLoading(false);
@@ -27,27 +30,22 @@ export function useCollection(ref: CollectionRef | null | undefined): [any | und
       if (showLoading || !hasLoadedRef.current) setLoading(true);
       setError(undefined);
       const result = await getDocs(ref);
+      if (requestId !== requestIdRef.current) return;
       setSnap(result);
       hasLoadedRef.current = true;
     } catch (err) {
+      if (requestId !== requestIdRef.current) return;
       setError(err instanceof Error ? err : new Error(String(err)));
     } finally {
-      setLoading(false);
+      if (requestId === requestIdRef.current) setLoading(false);
     }
   }, [refKey]);
 
   useEffect(() => {
-    let alive = true;
-
-    const safeLoad = async () => {
-      if (!alive) return;
-      await loadData(true);
-    };
-
-    safeLoad();
+    hasLoadedRef.current = false;
+    loadData(true);
 
     return () => {
-      alive = false;
       if (refreshTimer.current) clearTimeout(refreshTimer.current);
     };
   }, [loadData]);
@@ -55,8 +53,21 @@ export function useCollection(ref: CollectionRef | null | undefined): [any | und
   useEffect(() => {
     if (!ref?.table) return;
 
-    const channelName = `realtime-${ref.table}-${Math.random().toString(36).slice(2)}`;
+    const refreshSoon = (delay = 80) => {
+      if (refreshTimer.current) clearTimeout(refreshTimer.current);
+      refreshTimer.current = setTimeout(() => {
+        loadData(false);
+      }, delay);
+    };
 
+    const handleLocalChange = (event: Event) => {
+      const detail = (event as CustomEvent<{ table?: string }>).detail;
+      if (detail?.table === ref.table) refreshSoon(0);
+    };
+
+    window.addEventListener(LOCAL_DB_CHANGE_EVENT, handleLocalChange);
+
+    const channelName = `realtime-${ref.table}-${Math.random().toString(36).slice(2)}`;
     const channel = supabase
       .channel(channelName)
       .on(
@@ -66,18 +77,13 @@ export function useCollection(ref: CollectionRef | null | undefined): [any | und
           schema: 'public',
           table: ref.table,
         },
-        () => {
-          // Debounce simples para evitar várias consultas seguidas quando muitos dados chegam juntos.
-          if (refreshTimer.current) clearTimeout(refreshTimer.current);
-          refreshTimer.current = setTimeout(() => {
-            loadData(false);
-          }, 500);
-        }
+        () => refreshSoon(120)
       )
       .subscribe();
 
     return () => {
       if (refreshTimer.current) clearTimeout(refreshTimer.current);
+      window.removeEventListener(LOCAL_DB_CHANGE_EVENT, handleLocalChange);
       supabase.removeChannel(channel);
     };
   }, [ref?.table, loadData]);

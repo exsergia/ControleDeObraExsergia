@@ -73,6 +73,7 @@ const Financeiro = React.lazy(() => import('./pages/Financeiro'));
 const Relatorios = React.lazy(() => import('./pages/Relatorios'));
 const Progresso = React.lazy(() => import('./pages/Progresso'));
 const Ferramentas = React.lazy(() => import('./pages/Ferramentas'));
+const Atividades = React.lazy(() => import('./pages/Atividades'));
 const SettingsPage = React.lazy(() => import('./pages/Settings'));
 
 interface Notification {
@@ -295,6 +296,7 @@ function App() {
                   <Route path="/materiais" element={<ComingSoonPage />} />
                   <Route path="/checklist" element={isAdmin ? <Checklist /> : <Navigate to="/" replace />} />
                   <Route path="/operadores" element={isAdmin ? <Operadores /> : <Navigate to="/" replace />} />
+                  <Route path="/atividades" element={isAdmin ? <Atividades /> : <Navigate to="/" replace />} />
                   <Route path="/financeiro" element={<ComingSoonPage />} />
                   <Route path="/relatorios" element={<ComingSoonPage />} />
                   <Route path="/progresso" element={<Progresso />} />

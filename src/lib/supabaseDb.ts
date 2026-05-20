@@ -9,6 +9,12 @@ export type DocRef = { table: string; id: string };
 
 const normalizeTable = (table: string) => table;
 const newId = () => crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2);
+export const LOCAL_DB_CHANGE_EVENT = 'exsergia:supabase-local-change';
+
+function notifyLocalChange(table: string) {
+  if (typeof window === 'undefined') return;
+  window.dispatchEvent(new CustomEvent(LOCAL_DB_CHANGE_EVENT, { detail: { table } }));
+}
 
 export const db = {};
 
@@ -117,6 +123,7 @@ export async function setDoc(ref: DocRef, value: any) {
   const payload = { ...value, id: ref.id };
   const response = await supabase.from(ref.table).upsert({ id: ref.id, data: payload }).select('id').single();
   if (response.error) throw response.error;
+  notifyLocalChange(ref.table);
   return response;
 }
 
@@ -145,6 +152,7 @@ export async function updateDoc(ref: DocRef, value: any) {
 export async function deleteDoc(ref: DocRef) {
   const { error } = await supabase.from(ref.table).delete().eq('id', ref.id);
   if (error) throw error;
+  notifyLocalChange(ref.table);
 }
 
 export function arrayUnion(...values: any[]) {
