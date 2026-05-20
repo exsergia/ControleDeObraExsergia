@@ -192,7 +192,7 @@ export default function Operadores() {
         <div className="fixed inset-0 bg-zinc-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white w-full max-w-lg rounded-[2.5rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
             <div className="p-8 space-y-8">
-              <div className="flex items-center justify-between">
+              <div className="flex items-start sm:items-center justify-between gap-4">
                 <div>
                   <h3 className="text-2xl font-bold text-zinc-900 tracking-tight">
                     {editingOperator ? 'Editar Operador' : 'Novo Operador'}
@@ -205,7 +205,7 @@ export default function Operadores() {
               </div>
 
               <form onSubmit={handleSubmit} className="space-y-5">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-1.5">
                     <label className="text-xs font-bold text-zinc-500 uppercase tracking-widest pl-1">Nome</label>
                     <input 

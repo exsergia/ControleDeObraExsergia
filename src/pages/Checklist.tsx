@@ -169,7 +169,7 @@ export default function ChecklistPage() {
 
   return (
     <div className="max-w-4xl mx-auto space-y-8 pb-20 animate-in fade-in duration-500">
-      <div className="flex items-center justify-between border-b border-zinc-200 pb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-zinc-200 pb-6">
         <div className="flex items-center gap-4">
           <div className="w-12 h-12 bg-zinc-900 rounded-xl flex items-center justify-center text-white shadow-lg">
             <ClipboardCheck className="w-6 h-6" />
@@ -208,7 +208,7 @@ export default function ChecklistPage() {
                   key={obra.id}
                   onClick={() => setSelectedObraId(obra.id)}
                   className={cn(
-                    "p-5 rounded-xl border text-left transition-all group flex items-center justify-between",
+                    "p-5 rounded-xl border text-left transition-all group flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4",
                     selectedObraId === obra.id 
                       ? "bg-zinc-900 border-zinc-900 text-white shadow-xl shadow-zinc-200 scale-102" 
                       : "bg-zinc-50 border-zinc-200 hover:border-zinc-400 text-zinc-900"
@@ -320,7 +320,7 @@ export default function ChecklistPage() {
 
       {activeStep === 3 && (
         <section className="space-y-6 animate-in slide-in-from-right duration-300">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div className="space-y-1">
               <h3 className="text-xl font-bold text-zinc-900 flex items-center gap-2">
                 <Users className="w-6 h-6 text-zinc-400" />
@@ -424,7 +424,7 @@ export default function ChecklistPage() {
             <div className="divide-y divide-zinc-100">
               {atividades.length > 0 ? atividades.map(ativ => (
                 <div key={ativ.id} className="p-6 space-y-4">
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                     <div>
                       <h4 className="font-bold text-zinc-900 tracking-tight">{ativ.descricao}</h4>
                       <div className="flex items-center gap-2 text-xs text-zinc-500 mt-1">

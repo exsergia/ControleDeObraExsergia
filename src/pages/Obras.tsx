@@ -174,7 +174,7 @@ export default function Obras() {
           </div>
 
           {/* List */}
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {loading ? (
               Array(6).fill(0).map((_, i) => (
                 <div key={i} className="h-56 bg-white animate-pulse rounded-xl border border-zinc-200 shadow-sm" />
@@ -206,7 +206,7 @@ export default function Obras() {
       {isModalOpen && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="bg-white w-full max-w-xl rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
-            <div className="p-6 border-b border-zinc-100 flex items-center justify-between bg-zinc-50">
+            <div className="p-5 sm:p-6 border-b border-zinc-100 flex items-start sm:items-center justify-between gap-4 bg-zinc-50">
               <h3 className="text-lg font-bold text-zinc-900 tracking-tight uppercase tracking-wider">Nova Obra</h3>
               <button onClick={() => setIsModalOpen(false)} className="p-2 hover:bg-zinc-200 rounded-full transition-colors">
                 <Plus className="w-6 h-6 rotate-45 text-zinc-500" />
@@ -390,7 +390,7 @@ function ObraCard({
         </div>
       </div>
 
-      <div className="mt-auto border-t border-zinc-100 p-3 bg-zinc-50 flex items-center justify-between">
+      <div className="mt-auto border-t border-zinc-100 p-3 bg-zinc-50 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div className="text-[10px] uppercase font-bold tracking-widest text-zinc-400">
           CC: {obra.centroCusto || 'N/A'}
         </div>
@@ -640,14 +640,14 @@ function ObraDetails({
                          <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block">Executado ({ativ.unidade})</span>
                          <input 
                            type="number"
-                           className="w-24 py-3 bg-white border-2 border-zinc-100 rounded-2xl text-lg font-bold text-zinc-900 focus:outline-none focus:border-zinc-900 transition-colors text-center shadow-inner"
+                           className="w-full sm:w-24 py-3 bg-white border-2 border-zinc-100 rounded-2xl text-lg font-bold text-zinc-900 focus:outline-none focus:border-zinc-900 transition-colors text-center shadow-inner"
                            value={!ativ.quantidadeExecutada ? '' : ativ.quantidadeExecutada}
                            min="0"
                            onKeyDown={(e) => ['-', '+', 'e', 'E'].includes(e.key) && e.preventDefault()}
                            onChange={(e) => handleUpdateAtividade(ativ.id, Math.max(0, parseFloat(e.target.value) || 0))}
                          />
                       </div>
-                      <div className="text-center space-y-2 hidden sm:block">
+                      <div className="text-center space-y-2">
                          <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block">Resumo</span>
                          <div className="px-4 py-3 bg-zinc-50 border border-zinc-100 rounded-2xl text-xs font-bold text-zinc-500">
                            {ativ.quantidadeExecutada} / {ativ.quantidadePrevista} <br/> {ativ.unidade}
@@ -697,7 +697,7 @@ function ObraDetails({
             <p className="text-zinc-500 text-sm">Selecione os operadores que fazem parte da equipe principal desta obra.</p>
           </div>
 
-          <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
             {todosOperadores.map(op => {
               const equipeEntry = obra.equipe?.find(e => e.operatorId === op.id);
               const isAssigned = !!equipeEntry;

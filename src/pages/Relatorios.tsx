@@ -293,7 +293,7 @@ function ReportCard({ report, obra, isSelected, onClick }: {
         <FileText className="w-6 h-6" />
       </div>
       <div className="flex-1 min-w-0">
-        <div className="flex items-center justify-between gap-2 mb-1">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-1">
           <h4 className="font-bold truncate text-sm">
             {obra?.nome || 'Obra Removida'}
           </h4>
@@ -496,7 +496,7 @@ function ReportDetails({ report, obra, materiais, atividades, operadores }: {
           <FileText className="w-10 h-10 text-zinc-700" />
         </div>
 
-        <div className="grid grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
           <div className="space-y-1">
             <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">DATA E HORA</p>
             <p className="text-sm font-medium">{format(date, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}</p>
@@ -537,7 +537,7 @@ function ReportDetails({ report, obra, materiais, atividades, operadores }: {
             {report.materiais.map(item => {
               const mat = materiais.find(m => m.id === item.materialId);
               return (
-                <div key={item.materialId} className="flex items-center justify-between p-3 bg-zinc-50 rounded-xl border border-zinc-100">
+                <div key={item.materialId} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-3 bg-zinc-50 rounded-xl border border-zinc-100">
                   <span className="text-sm font-bold text-zinc-700">{mat?.descricao || 'Material Removido'}</span>
                   <span className="text-xs font-bold text-zinc-900 bg-white px-2 py-1 rounded border border-zinc-200">
                     Qtd: {item.qtdConferida} {mat?.unidade}

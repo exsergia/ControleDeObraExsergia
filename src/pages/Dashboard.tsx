@@ -203,7 +203,7 @@ export default function Dashboard() {
 
       <div className="grid lg:grid-cols-2 gap-6">
         <div className="bg-white p-6 rounded-xl border border-zinc-200 shadow-sm">
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
             <h3 className="font-semibold text-zinc-900">Entregas da Semana</h3>
             <div className="text-[10px] uppercase font-bold tracking-widest text-zinc-400">Materiais</div>
           </div>
@@ -228,7 +228,7 @@ export default function Dashboard() {
         </div>
 
         <div className="bg-white p-6 rounded-xl border border-zinc-200 shadow-sm">
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
             <h3 className="font-semibold text-zinc-900">Progresso Geral</h3>
             <div className="text-[10px] uppercase font-bold tracking-widest text-zinc-400">Mão de obra %</div>
           </div>
@@ -261,7 +261,7 @@ export default function Dashboard() {
 
       <div className="grid lg:grid-cols-2 gap-6 pb-8">
         <div className="bg-white rounded-xl border border-zinc-200 shadow-sm overflow-hidden flex flex-col">
-          <div className="p-5 border-b border-zinc-100 flex items-center justify-between">
+          <div className="p-5 border-b border-zinc-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <h3 className="font-semibold text-zinc-900">Últimas Entregas</h3>
             <button className="text-xs font-semibold text-zinc-400 hover:text-zinc-900 transition-colors uppercase tracking-widest">
               Ver Todas
@@ -271,7 +271,7 @@ export default function Dashboard() {
             {ultimasEntregasSnap?.docs.length ? ultimasEntregasSnap.docs.map((doc: any) => {
               const data = doc.data();
               return (
-                <div key={doc.id} className="p-4 flex items-center justify-between hover:bg-zinc-50 group cursor-default">
+                <div key={doc.id} className="p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 hover:bg-zinc-50 group cursor-default">
                   <div className="flex items-center gap-4">
                     <div className="w-10 h-10 rounded-lg bg-zinc-100 flex items-center justify-center border border-zinc-200">
                       <Package className="w-5 h-5 text-zinc-400" />
@@ -296,7 +296,7 @@ export default function Dashboard() {
         </div>
 
         <div className="bg-white rounded-xl border border-zinc-200 shadow-sm overflow-hidden flex flex-col">
-          <div className="p-5 border-b border-zinc-100 flex items-center justify-between">
+          <div className="p-5 border-b border-zinc-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <h3 className="font-semibold text-zinc-900">Checklists Recentes</h3>
             <button className="text-xs font-semibold text-zinc-400 hover:text-zinc-900 transition-colors uppercase tracking-widest">
               Ver Todos
@@ -306,7 +306,7 @@ export default function Dashboard() {
             {ultimosChecklistsSnap?.docs.length ? ultimosChecklistsSnap.docs.map((doc: any) => {
                const data = doc.data();
                return (
-                <div key={doc.id} className="p-4 flex items-center justify-between hover:bg-zinc-50 group cursor-default">
+                <div key={doc.id} className="p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 hover:bg-zinc-50 group cursor-default">
                   <div className="flex items-center gap-4">
                     <div className="w-10 h-10 rounded-lg bg-zinc-100 flex items-center justify-center border border-zinc-200">
                       <ClipboardCheck className="w-5 h-5 text-zinc-400" />

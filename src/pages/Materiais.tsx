@@ -227,7 +227,7 @@ export default function Materiais() {
       {isModalOpen && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
           <div className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
-            <div className="p-6 border-b border-zinc-100 flex items-center justify-between bg-zinc-50">
+            <div className="p-5 sm:p-6 border-b border-zinc-100 flex items-start sm:items-center justify-between gap-4 bg-zinc-50">
               <h3 className="text-lg font-bold text-zinc-900 uppercase tracking-widest">Lançar Material</h3>
               <button onClick={() => setIsModalOpen(false)} className="p-2 hover:bg-zinc-200 rounded-full transition-colors">
                 <Plus className="w-6 h-6 rotate-45 text-zinc-500" />
@@ -281,7 +281,7 @@ export default function Materiais() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div className="space-y-2">
                   <label className="text-xs font-bold text-zinc-500 uppercase tracking-widest">Unidade</label>
                   <div className="w-full px-4 py-2.5 bg-zinc-100 border border-zinc-200 rounded-lg text-sm text-center font-bold text-zinc-700 cursor-default select-none">

@@ -65,7 +65,7 @@ export default function Atividades() {
           <p className="text-zinc-500 text-sm">Defina o escopo de serviços para cada obra.</p>
         </div>
         <div className="flex items-center gap-3">
-           <div className="relative min-w-[240px]">
+           <div className="relative w-full sm:min-w-[240px]">
             <select 
               className="w-full pl-4 pr-10 py-2.5 bg-white border border-zinc-200 rounded-xl text-sm font-semibold appearance-none focus:outline-none focus:ring-2 focus:ring-zinc-900/10 shadow-sm"
               value={selectedObraId}
@@ -99,7 +99,7 @@ export default function Atividades() {
       ) : (
         <div className="grid gap-4">
           {atividades.length > 0 ? atividades.map(ativ => (
-            <div key={ativ.id} className="bg-white p-6 rounded-2xl border border-zinc-200 shadow-sm hover:shadow-md transition-shadow flex items-center justify-between gap-6 group">
+            <div key={ativ.id} className="bg-white p-5 sm:p-6 rounded-2xl border border-zinc-200 shadow-sm hover:shadow-md transition-shadow flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 sm:gap-6 group">
               <div className="flex items-center gap-5 flex-1">
                 <div className="w-12 h-12 rounded-xl bg-zinc-50 flex items-center justify-center border border-zinc-200 group-hover:bg-zinc-900 group-hover:text-white transition-all">
                   <Activity className="w-6 h-6" />
@@ -147,7 +147,7 @@ export default function Atividades() {
       {isModalOpen && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
           <div className="bg-white w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
-            <div className="p-6 border-b border-zinc-100 flex items-center justify-between bg-zinc-50">
+            <div className="p-5 sm:p-6 border-b border-zinc-100 flex items-start sm:items-center justify-between gap-4 bg-zinc-50">
               <h3 className="text-lg font-bold text-zinc-900 uppercase tracking-widest">Nova Atividade</h3>
               <button onClick={() => setIsModalOpen(false)} className="p-2 hover:bg-zinc-200 rounded-full transition-colors">
                 <Plus className="w-6 h-6 rotate-45 text-zinc-500" />
@@ -166,7 +166,7 @@ export default function Atividades() {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <label className="text-xs font-bold text-zinc-500 uppercase tracking-widest">Unidade</label>
                   <input 

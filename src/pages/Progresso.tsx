@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, memo } from 'react';
-import { db, handleFirestoreError, OperationType } from '../lib/supabase';
+import { supabase, handleFirestoreError, OperationType } from '../lib/supabase';
 import { Obra, Atividade } from '../types';
 import {
   Activity,
@@ -67,14 +67,14 @@ export default function ProgressoFisico() {
     try {
       setLoading(true);
 
-      const { data: obrasData, error: obrasError } = await db
+      const { data: obrasData, error: obrasError } = await supabase
         .from('obras')
         .select('*')
         .order('nome', { ascending: true });
 
       if (obrasError) throw obrasError;
 
-      let atividadesQuery = db
+      let atividadesQuery = supabase
         .from('atividades')
         .select('*')
         .order('createdAt', { ascending: false });
@@ -90,7 +90,7 @@ export default function ProgressoFisico() {
       setObras((obrasData || []) as Obra[]);
       setAtividades((atividadesData || []) as Atividade[]);
     } catch (err) {
-      handleFirestoreError(err, OperationType.READ, 'progresso-fisico-load');
+      handleFirestoreError(err, OperationType.LIST, 'progresso-fisico-load');
     } finally {
       setLoading(false);
     }
@@ -140,7 +140,7 @@ export default function ProgressoFisico() {
       const quantidadeExecutada = Number(formData.quantidadeExecutada || 0);
       const valorUnitario = Number(formData.valorUnitario || 0);
 
-      const { error } = await db.from('atividades').insert({
+      const { error } = await supabase.from('atividades').insert({
         obraId: formData.obraId,
         descricao: formData.descricao,
         unidade: formData.unidade,
@@ -172,7 +172,7 @@ export default function ProgressoFisico() {
       try {
         const valorFinal = Number(currentVal.toFixed(2));
 
-        const { error } = await db
+        const { error } = await supabase
           .from('atividades')
           .update({
             quantidadeExecutada: valorFinal,
@@ -205,7 +205,7 @@ export default function ProgressoFisico() {
       if (!confirm('Deseja excluir esta atividade?')) return;
 
       try {
-        const { error } = await db
+        const { error } = await supabase
           .from('atividades')
           .delete()
           .eq('id', id);
@@ -323,9 +323,9 @@ export default function ProgressoFisico() {
       </div>
 
       {isModalOpen && (
-        <div className="fixed inset-0 bg-zinc-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white w-full max-w-xl rounded-[2.5rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
-            <div className="p-8 space-y-8">
+        <div className="fixed inset-0 bg-zinc-900/40 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+          <div className="bg-white w-full max-w-xl rounded-t-[2.5rem] sm:rounded-[2.5rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300 max-h-[92vh] overflow-y-auto">
+            <div className="p-6 sm:p-8 space-y-8">
               <div className="flex items-center justify-between">
                 <div>
                   <h3 className="text-2xl font-bold text-zinc-900 tracking-tight">
