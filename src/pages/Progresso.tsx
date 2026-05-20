@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, memo } from 'react';
 import { useCollection } from '../lib/supabaseHooks';
 import { collection, query, where, addDoc, updateDoc, doc, serverTimestamp, deleteDoc } from '../lib/supabaseDb';
 import { db, handleFirestoreError, OperationType } from '../lib/supabase';
-import { Obra, Atividade, Operator } from '../types';
+import { Obra, Atividade } from '../types';
 import {
   Activity,
   Plus,
@@ -16,7 +16,6 @@ import {
   DollarSign
 } from 'lucide-react';
 import { cn } from '../lib/utils';
-
 import { utils, writeFile } from 'xlsx';
 import { format } from 'date-fns';
 import { useAuth } from '../App';
@@ -49,7 +48,6 @@ export default function ProgressoFisico() {
   const [search, setSearch] = useState('');
 
   const [obrasSnap] = useCollection(collection(db, 'obras'));
-  const [operadoresSnap] = useCollection(collection(db, 'operadores'));
 
   const actividadesQuery =
     selectedObraId === 'all'
@@ -60,7 +58,6 @@ export default function ProgressoFisico() {
 
   const obras = (obrasSnap?.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Obra[]) || [];
   const atividades = (atividadesSnap?.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Atividade[]) || [];
-  const operadores = (operadoresSnap?.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Operator[]) || [];
 
   const filteredAtividades = atividades.filter(a =>
     a.descricao.toLowerCase().includes(search.toLowerCase())
@@ -79,7 +76,7 @@ export default function ProgressoFisico() {
         Unidade: a.unidade,
         Previsto: a.quantidadePrevista,
         Executado: a.quantidadeExecutada,
-        Percentual: a.percentual.toFixed(2) + '%',
+        Percentual: Number(a.percentual || 0).toFixed(2) + '%',
         'Valor Unitário': a.valorUnitario || 0,
         'Valor Total Orçado': a.quantidadePrevista * (a.valorUnitario || 0),
         'Valor Total Executado': a.quantidadeExecutada * (a.valorUnitario || 0),
@@ -110,9 +107,10 @@ export default function ProgressoFisico() {
     try {
       await addDoc(collection(db, 'atividades'), {
         ...formData,
-        percentual: formData.quantidadePrevista > 0
-          ? (formData.quantidadeExecutada / formData.quantidadePrevista) * 100
-          : 0,
+        percentual:
+          formData.quantidadePrevista > 0
+            ? (formData.quantidadeExecutada / formData.quantidadePrevista) * 100
+            : 0,
         valorUnitario: Number(formData.valorUnitario),
         createdAt: serverTimestamp()
       });
@@ -128,28 +126,31 @@ export default function ProgressoFisico() {
 
   const handleUpdateProgress = useCallback(async (id: string, currentVal: number, total: number) => {
     try {
-      const valorFormatado = Number(currentVal.toFixed(2));
+      const valorFinal = Number(currentVal.toFixed(2));
 
       await updateDoc(doc(db, 'atividades', id), {
-        quantidadeExecutada: valorFormatado,
-        percentual: total > 0 ? Math.min(100, (valorFormatado / total) * 100) : 0
+        quantidadeExecutada: valorFinal,
+        percentual: total > 0 ? Math.min(100, (valorFinal / total) * 100) : 0
       });
     } catch (err) {
       handleFirestoreError(err, OperationType.WRITE, 'atividades-update');
     }
   }, []);
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Deseja excluir esta atividade?')) return;
+  const handleDelete = useCallback(
+    async (id: string) => {
+      if (!confirm('Deseja excluir esta atividade?')) return;
 
-    try {
-      await deleteDoc(doc(db, 'atividades', id));
-      notify('success', 'Atividade Removida', 'O registro de progresso foi excluído com sucesso.');
-    } catch (err) {
-      notify('error', 'Erro ao Excluir', 'Não foi possível remover a atividade.');
-      handleFirestoreError(err, OperationType.WRITE, 'atividades-delete');
-    }
-  };
+      try {
+        await deleteDoc(doc(db, 'atividades', id));
+        notify('success', 'Atividade Removida', 'O registro de progresso foi excluído com sucesso.');
+      } catch (err) {
+        notify('error', 'Erro ao Excluir', 'Não foi possível remover a atividade.');
+        handleFirestoreError(err, OperationType.WRITE, 'atividades-delete');
+      }
+    },
+    [notify]
+  );
 
   return (
     <div className="space-y-6 pb-20 animate-in fade-in duration-500">
@@ -227,7 +228,7 @@ export default function ProgressoFisico() {
               ativ={ativ}
               obra={obras.find(o => o.id === ativ.obraId)}
               onUpdate={handleUpdateProgress}
-              onDelete={() => handleDelete(ativ.id)}
+              onDelete={handleDelete}
               readOnly={!isAdmin}
             />
           ))
@@ -393,7 +394,7 @@ export default function ProgressoFisico() {
   );
 }
 
-function ActivityCard({
+const ActivityCard = memo(function ActivityCard({
   ativ,
   obra,
   onUpdate,
@@ -403,12 +404,13 @@ function ActivityCard({
   ativ: Atividade;
   obra?: Obra;
   onUpdate: (id: string, current: number, total: number) => void | Promise<void>;
-  onDelete: () => void | Promise<void>;
+  onDelete: (id: string) => void | Promise<void>;
   readOnly?: boolean;
 }) {
   const perc = Math.round(ativ.percentual || 0);
   const status = perc < 50 ? 'Abaixo de 50%' : perc < 100 ? 'Entre 50% e 99%' : 'Concluído';
   const colorClass = perc < 50 ? 'bg-red-500' : perc < 100 ? 'bg-amber-500' : 'bg-green-500';
+
   const badgeClass =
     perc < 50
       ? 'bg-red-50 text-red-600 border-red-100'
@@ -420,21 +422,27 @@ function ActivityCard({
     ativ.quantidadeExecutada ? formatNumberBR(ativ.quantidadeExecutada) : ''
   );
 
-  useEffect(() => {
-    setExecutadoInput(ativ.quantidadeExecutada ? formatNumberBR(ativ.quantidadeExecutada) : '');
-  }, [ativ.quantidadeExecutada]);
+  const [isEditing, setIsEditing] = useState(false);
 
-  const salvarExecutado = () => {
+  useEffect(() => {
+    if (!isEditing) {
+      setExecutadoInput(ativ.quantidadeExecutada ? formatNumberBR(ativ.quantidadeExecutada) : '');
+    }
+  }, [ativ.quantidadeExecutada, isEditing]);
+
+  const salvarExecutado = useCallback(() => {
     if (readOnly) return;
 
     const numero = parseNumberBR(executadoInput);
+
+    setIsEditing(false);
     setExecutadoInput(numero ? formatNumberBR(numero) : '');
     onUpdate(ativ.id, numero, ativ.quantidadePrevista);
-  };
+  }, [readOnly, executadoInput, onUpdate, ativ.id, ativ.quantidadePrevista]);
 
   return (
-    <div className="bg-white p-8 rounded-[2.5rem] border border-zinc-100 shadow-sm hover:shadow-xl hover:shadow-zinc-100 transition-all flex flex-col gap-8 relative overflow-hidden group">
-      <div className="flex items-start justify-between gap-6">
+    <div className="bg-white p-6 sm:p-8 rounded-[2.5rem] border border-zinc-100 shadow-sm hover:shadow-xl hover:shadow-zinc-100 transition-all flex flex-col gap-8 relative overflow-hidden group">
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-6">
         <div className="flex-1 space-y-3">
           <div className="flex items-center gap-2">
             <span className="text-[10px] font-black text-zinc-300 uppercase tracking-[0.3em]">
@@ -489,7 +497,7 @@ function ActivityCard({
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="grid grid-cols-2 sm:flex sm:items-center gap-3 w-full sm:w-auto">
           <div className="text-center space-y-2">
             <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block">
               Executado ({ativ.unidade})
@@ -499,12 +507,13 @@ function ActivityCard({
               type="text"
               inputMode="decimal"
               className={cn(
-                'w-28 py-4 border-2 border-zinc-100 rounded-3xl text-xl font-black text-zinc-900 focus:outline-none focus:border-zinc-900 transition-colors text-center shadow-lg',
+                'w-full sm:w-28 py-4 border-2 border-zinc-100 rounded-3xl text-xl font-black text-zinc-900 focus:outline-none focus:border-zinc-900 transition-colors text-center shadow-lg',
                 readOnly ? 'bg-zinc-50 cursor-not-allowed' : 'bg-white'
               )}
               value={executadoInput}
               readOnly={readOnly}
               placeholder="0"
+              onFocus={() => setIsEditing(true)}
               onChange={(e) => {
                 const valor = e.target.value.replace(/[^0-9.,]/g, '');
                 setExecutadoInput(valor);
@@ -527,12 +536,12 @@ function ActivityCard({
               Total ({ativ.unidade})
             </span>
 
-            <div className="w-28 py-4 bg-zinc-50 border border-zinc-100 rounded-3xl text-xl font-black text-zinc-900 shadow-inner">
+            <div className="w-full sm:w-28 py-4 bg-zinc-50 border border-zinc-100 rounded-3xl text-xl font-black text-zinc-900 shadow-inner">
               {formatNumberBR(ativ.quantidadePrevista)}
             </div>
           </div>
 
-          <div className="text-center space-y-2 hidden sm:block">
+          <div className="text-center space-y-2 col-span-2 sm:col-span-1">
             <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block">
               Resumo
             </span>
@@ -548,8 +557,8 @@ function ActivityCard({
 
         {!readOnly && (
           <button
-            onClick={onDelete}
-            className="absolute top-8 right-8 p-2 text-zinc-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all"
+            onClick={() => onDelete(ativ.id)}
+            className="absolute top-8 right-8 p-2 text-zinc-300 hover:text-red-500 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-all"
           >
             <Trash2 className="w-5 h-5" />
           </button>
@@ -576,4 +585,4 @@ function ActivityCard({
       </div>
     </div>
   );
-}
+});
