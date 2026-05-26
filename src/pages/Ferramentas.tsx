@@ -91,6 +91,47 @@ const formatUsageDuration = (start: Date | null, end: Date | null) => {
 
 const getMovementTimestamp = () => new Date().toISOString();
 
+<<<<<<< HEAD
+=======
+const createMovementActivityId = (prefix = 'mov') => {
+  const randomPart = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+    ? crypto.randomUUID()
+    : Math.random().toString(36).slice(2);
+
+  return `${prefix}_${Date.now()}_${randomPart}`;
+};
+
+const normalizeHashValue = (value: any) => {
+  if (value === undefined || value === null) return '';
+  const parsedDate = parseMovementDate(value);
+  if (parsedDate) return parsedDate.toISOString();
+  return String(value).trim();
+};
+
+const createMovementScopeHash = (parts: any[]) => {
+  const source = parts.map(normalizeHashValue).join('|');
+  let hash = 0;
+
+  for (let index = 0; index < source.length; index += 1) {
+    hash = ((hash << 5) - hash) + source.charCodeAt(index);
+    hash |= 0;
+  }
+
+  return `mov_${Math.abs(hash).toString(36)}`;
+};
+
+const getMovementScopeKey = (log: ToolLog) => {
+  return log.movementHash || createMovementScopeHash([
+    log.activityId || log.id,
+    log.toolId,
+    log.obraId,
+    log.dataSaida,
+    log.dataDevolucao,
+    log.statusLog
+  ]);
+};
+
+>>>>>>> b4cf358 (Ajusta logs de movimentação com IDs únicos)
 const sortLogsByMovementDateDesc = (items: ToolLog[]) => {
   return [...items].sort((a, b) => {
     const bDate = parseMovementDate(b.dataSaida)?.getTime() || 0;
@@ -175,6 +216,10 @@ export default function Ferramentas() {
   const tools = (toolsSnap?.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Tool[]) || [];
   const logs = sortLogsByMovementDateDesc((logsSnap?.docs.map(doc => ({ id: doc.id, ...doc.data() })) as ToolLog[]) || []);
   const recentLogs = logs.slice(0, 50);
+<<<<<<< HEAD
+=======
+  const renderedMovementScopes = new Set<string>();
+>>>>>>> b4cf358 (Ajusta logs de movimentação com IDs únicos)
   const obras = (obrasSnap?.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Obra[]) || [];
 
   const handleScanSuccess = React.useCallback((decodedText: string) => {
@@ -274,6 +319,7 @@ export default function Ferramentas() {
             </div>
 
             <div className="divide-y divide-zinc-100 max-h-[600px] overflow-y-auto">
+<<<<<<< HEAD
               {recentLogs.map((log) => (
                 <LogItem
                   key={log.id}
@@ -282,6 +328,23 @@ export default function Ferramentas() {
                   obra={obras.find(o => o.id === log.obraId)}
                 />
               ))}
+=======
+              {recentLogs.map((log) => {
+                const movementScopeKey = getMovementScopeKey(log);
+
+                if (renderedMovementScopes.has(movementScopeKey)) return null;
+                renderedMovementScopes.add(movementScopeKey);
+
+                return (
+                  <LogItem
+                    key={movementScopeKey}
+                    log={log}
+                    tool={tools.find(t => t.id === log.toolId)}
+                    obra={obras.find(o => o.id === log.obraId)}
+                  />
+                );
+              })}
+>>>>>>> b4cf358 (Ajusta logs de movimentação com IDs únicos)
             </div>
           </div>
         </div>
@@ -811,6 +874,7 @@ function ToolHistoryModal({ tool, obras, onClose }: { tool: Tool, obras: Obra[],
             </div>
           ) : (
             <div className="divide-y divide-zinc-100">
+<<<<<<< HEAD
               {history.map((log) => (
                 <LogItem
                   key={log.id}
@@ -819,6 +883,20 @@ function ToolHistoryModal({ tool, obras, onClose }: { tool: Tool, obras: Obra[],
                   showToolInfo={false}
                 />
               ))}
+=======
+              {history.map((log) => {
+                const movementScopeKey = getMovementScopeKey(log);
+
+                return (
+                  <LogItem
+                    key={movementScopeKey}
+                    log={log}
+                    obra={obras.find(o => o.id === log.obraId)}
+                    showToolInfo={false}
+                  />
+                );
+              })}
+>>>>>>> b4cf358 (Ajusta logs de movimentação com IDs únicos)
             </div>
           )}
         </div>
@@ -1125,7 +1203,25 @@ function CheckOutModal({ tool, obras, onClose }: { tool: Tool, obras: Obra[], on
 
       // 1. Create Log
       const logRef = doc(collection(db, 'toolLogs'));
+<<<<<<< HEAD
       batch.set(logRef, {
+=======
+      const activityId = createMovementActivityId('tool_activity');
+      const movementHash = createMovementScopeHash([
+        activityId,
+        logRef.id,
+        tool.id,
+        obraId,
+        retiradaEm,
+        null,
+        'Aberta'
+      ]);
+
+      batch.set(logRef, {
+        id: logRef.id,
+        activityId,
+        movementHash,
+>>>>>>> b4cf358 (Ajusta logs de movimentação com IDs únicos)
         toolId: tool.id,
         obraId,
         responsavelNome: responsavel,
@@ -1446,8 +1542,26 @@ function CheckInModal({ log, tool, onClose }: { log: ToolLog, tool: Tool, onClos
       console.log('Foto salva no Supabase Storage:', photoUpload);
 
       const devolucaoEm = getMovementTimestamp();
+<<<<<<< HEAD
       console.log('Atualizando log de devolução no banco...', { logId: log.id, dataSaidaOriginal: log.dataSaida, dataDevolucao: devolucaoEm });
       const updateLogResponse = await updateDoc(doc(db, 'toolLogs', log.id), {
+=======
+      const activityId = log.activityId || createMovementActivityId('tool_activity');
+      const movementHash = createMovementScopeHash([
+        activityId,
+        log.id,
+        log.toolId,
+        log.obraId,
+        log.dataSaida,
+        devolucaoEm,
+        'Concluída'
+      ]);
+
+      console.log('Atualizando log de devolução no banco...', { logId: log.id, activityId, movementHash, dataSaidaOriginal: log.dataSaida, dataDevolucao: devolucaoEm });
+      const updateLogResponse = await updateDoc(doc(db, 'toolLogs', log.id), {
+        activityId,
+        movementHash,
+>>>>>>> b4cf358 (Ajusta logs de movimentação com IDs únicos)
         dataDevolucao: devolucaoEm,
         fotoDevolucaoUrl: photoUpload.url,
         fotoDevolucaoBucket: photoUpload.bucket,

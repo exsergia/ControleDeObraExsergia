@@ -75,6 +75,11 @@ export interface Tool {
 
 export interface ToolLog {
   id: string;
+<<<<<<< HEAD
+=======
+  activityId?: string;
+  movementHash?: string;
+>>>>>>> b4cf358 (Ajusta logs de movimentação com IDs únicos)
   toolId: string;
   obraId: string;
   responsavelNome: string;
