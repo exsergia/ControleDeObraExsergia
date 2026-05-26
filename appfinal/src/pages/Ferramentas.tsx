@@ -767,11 +767,7 @@ function AddToolModal({ tool, onClose }: { tool?: Tool, onClose: () => void }) {
           modelo: trimmedModelo,
           valor: parsedValor,
           dataCompra,
-
           updatedAt: serverTimestamp()
-
-          updatedAt: retiradaEm
-
         });
       } else {
         await addDoc(collection(db, 'tools'), {
@@ -926,19 +922,7 @@ function CheckOutModal({ tool, obras, onClose }: { tool: Tool, obras: Obra[], on
 
     try {
       const batch = writeBatch(db);
-
-      
-      // 1. Create Log
-      const logRef = doc(collection(db, 'toolLogs'));
-      batch.set(logRef, {
-        toolId: tool.id,
-        obraId,
-        responsavelNome: responsavel,
-        dataSaida: serverTimestamp(),
-
       const retiradaEm = serverTimestamp();
-      
-      // 1. Create Log
       const logRef = doc(collection(db, 'toolLogs'));
       const activityId = createMovementActivityId('tool_activity');
       const movementHash = createMovementScopeHash([
@@ -960,7 +944,6 @@ function CheckOutModal({ tool, obras, onClose }: { tool: Tool, obras: Obra[], on
         responsavelNome: responsavel,
         dataSaida: retiradaEm,
         dataDevolucao: null,
-
         statusLog: 'Aberta'
       });
 
@@ -969,11 +952,7 @@ function CheckOutModal({ tool, obras, onClose }: { tool: Tool, obras: Obra[], on
       batch.update(toolRef, {
         status: 'Em Uso',
         lastLogId: logRef.id,
-
-        updatedAt: serverTimestamp()
-
-        updatedAt: devolucaoEm
-
+        updatedAt: retiradaEm
       });
 
       await batch.commit();
@@ -1180,10 +1159,6 @@ function CheckInModal({ log, tool, onClose }: { log: ToolLog, tool: Tool, onClos
       console.log('URL pública retornada:', photoUrl);
 
 
-      console.log('Atualizando log de devolução no banco...', { logId: log.id });
-      await updateDoc(doc(db, 'toolLogs', log.id), {
-        dataDevolucao: serverTimestamp(),
-
       const devolucaoEm = serverTimestamp();
       const activityId = log.activityId || createMovementActivityId('tool_activity');
       const movementHash = createMovementScopeHash([
@@ -1201,7 +1176,6 @@ function CheckInModal({ log, tool, onClose }: { log: ToolLog, tool: Tool, onClos
         activityId,
         movementHash,
         dataDevolucao: devolucaoEm,
-
         fotoDevolucaoUrl: photoUrl,
         statusLog: 'Concluída'
       });
@@ -1210,7 +1184,8 @@ function CheckInModal({ log, tool, onClose }: { log: ToolLog, tool: Tool, onClos
       console.log('Atualizando status da ferramenta...', { toolId: tool.id });
       await updateDoc(doc(db, 'tools', tool.id), {
         status: 'Disponível',
-        updatedAt: serverTimestamp()
+        lastLogId: null,
+        updatedAt: devolucaoEm
       });
       console.log('Ferramenta atualizada com sucesso.');
 
