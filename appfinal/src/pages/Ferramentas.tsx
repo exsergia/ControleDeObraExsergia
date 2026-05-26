@@ -30,8 +30,8 @@ import { uploadPhoto } from '../lib/services';
 import { Html5QrcodeScanner, Html5Qrcode } from 'html5-qrcode';
 import { useAuth } from '../App';
 
-<<<<<<< HEAD
-=======
+
+
 const parseMovementDateForScope = (value: any): Date | null => {
   if (!value) return null;
   if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value;
@@ -88,7 +88,7 @@ const getMovementScopeKey = (log: ToolLog) => {
   ]);
 };
 
->>>>>>> b4cf358 (Ajusta logs de movimentação com IDs únicos)
+
 export default function Ferramentas() {
   const { isAdmin, notify } = useAuth();
   const [toolsSnap] = useCollection(query(collection(db, 'tools'), orderBy('nome', 'asc')));
@@ -104,10 +104,10 @@ export default function Ferramentas() {
 
   const tools = (toolsSnap?.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Tool[]) || [];
   const logs = (logsSnap?.docs.map(doc => ({ id: doc.id, ...doc.data() })) as ToolLog[]) || [];
-<<<<<<< HEAD
-=======
+
+
   const renderedMovementScopes = new Set<string>();
->>>>>>> b4cf358 (Ajusta logs de movimentação com IDs únicos)
+
   const obras = (obrasSnap?.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Obra[]) || [];
 
   const handleScanSuccess = React.useCallback((decodedText: string) => {
@@ -182,11 +182,11 @@ export default function Ferramentas() {
               <span className="text-xs font-bold text-zinc-600">Logs de Movimentação</span>
             </div>
             <div className="divide-y divide-zinc-100 max-h-[600px] overflow-y-auto">
-<<<<<<< HEAD
+
               {logs.map((log) => (
                 <LogItem key={log.id} log={log} tool={tools.find(t => t.id === log.toolId)} obra={obras.find(o => o.id === log.obraId)} />
               ))}
-=======
+
               {logs.map((log) => {
                 const movementScopeKey = getMovementScopeKey(log);
 
@@ -197,7 +197,7 @@ export default function Ferramentas() {
                   <LogItem key={movementScopeKey} log={log} tool={tools.find(t => t.id === log.toolId)} obra={obras.find(o => o.id === log.obraId)} />
                 );
               })}
->>>>>>> b4cf358 (Ajusta logs de movimentação com IDs únicos)
+
             </div>
           </div>
         </div>
@@ -767,11 +767,11 @@ function AddToolModal({ tool, onClose }: { tool?: Tool, onClose: () => void }) {
           modelo: trimmedModelo,
           valor: parsedValor,
           dataCompra,
-<<<<<<< HEAD
+
           updatedAt: serverTimestamp()
-=======
+
           updatedAt: retiradaEm
->>>>>>> b4cf358 (Ajusta logs de movimentação com IDs únicos)
+
         });
       } else {
         await addDoc(collection(db, 'tools'), {
@@ -926,7 +926,7 @@ function CheckOutModal({ tool, obras, onClose }: { tool: Tool, obras: Obra[], on
 
     try {
       const batch = writeBatch(db);
-<<<<<<< HEAD
+
       
       // 1. Create Log
       const logRef = doc(collection(db, 'toolLogs'));
@@ -935,7 +935,7 @@ function CheckOutModal({ tool, obras, onClose }: { tool: Tool, obras: Obra[], on
         obraId,
         responsavelNome: responsavel,
         dataSaida: serverTimestamp(),
-=======
+
       const retiradaEm = serverTimestamp();
       
       // 1. Create Log
@@ -960,7 +960,7 @@ function CheckOutModal({ tool, obras, onClose }: { tool: Tool, obras: Obra[], on
         responsavelNome: responsavel,
         dataSaida: retiradaEm,
         dataDevolucao: null,
->>>>>>> b4cf358 (Ajusta logs de movimentação com IDs únicos)
+
         statusLog: 'Aberta'
       });
 
@@ -969,11 +969,11 @@ function CheckOutModal({ tool, obras, onClose }: { tool: Tool, obras: Obra[], on
       batch.update(toolRef, {
         status: 'Em Uso',
         lastLogId: logRef.id,
-<<<<<<< HEAD
+
         updatedAt: serverTimestamp()
-=======
+
         updatedAt: devolucaoEm
->>>>>>> b4cf358 (Ajusta logs de movimentação com IDs únicos)
+
       });
 
       await batch.commit();
@@ -1179,11 +1179,11 @@ function CheckInModal({ log, tool, onClose }: { log: ToolLog, tool: Tool, onClos
       );
       console.log('URL pública retornada:', photoUrl);
 
-<<<<<<< HEAD
+
       console.log('Atualizando log de devolução no banco...', { logId: log.id });
       await updateDoc(doc(db, 'toolLogs', log.id), {
         dataDevolucao: serverTimestamp(),
-=======
+
       const devolucaoEm = serverTimestamp();
       const activityId = log.activityId || createMovementActivityId('tool_activity');
       const movementHash = createMovementScopeHash([
@@ -1201,7 +1201,7 @@ function CheckInModal({ log, tool, onClose }: { log: ToolLog, tool: Tool, onClos
         activityId,
         movementHash,
         dataDevolucao: devolucaoEm,
->>>>>>> b4cf358 (Ajusta logs de movimentação com IDs únicos)
+
         fotoDevolucaoUrl: photoUrl,
         statusLog: 'Concluída'
       });
