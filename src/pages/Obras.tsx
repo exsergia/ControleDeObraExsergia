@@ -277,8 +277,10 @@ export default function Obras() {
                     >
                       <option value="">Selecione...</option>
                       <option value="Elétrica">Elétrica</option>
+                      <option value="Hidraulica">Hidraulica</option>
                       <option value="Manutenção">Manutenção</option>
                       <option value="Locação">Locação</option>
+                      <option value="Outros">Outros</option>
                     </select>
                     <ChevronDown className="absolute right-3 top-3 w-4 h-4 text-zinc-400 pointer-events-none" />
                   </div>
