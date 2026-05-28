@@ -2,10 +2,31 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from './supabase';
 import { CollectionRef, getDocs } from './supabaseDb';
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Flag de visibilidade — nível de módulo (singleton).
+//
+// Quando o app vai para background (troca de app, bloqueio de tela, etc.),
+// wasHiddenSinceLastLoad é setado para true.
+// Enquanto true, NENHUMA atualização automática (Realtime) é processada.
+// Só é zerada quando o usuário NAVEGA para outra página — o que remonta os
+// componentes e dispara a carga inicial normalmente.
+//
+// Resultado: trocar de app nunca atualiza nada. Só navegar dentro do app
+// busca dados novos. Funciona em web, Android e iOS.
+// ─────────────────────────────────────────────────────────────────────────────
+let wasHiddenSinceLastLoad = false;
+
+if (typeof document !== 'undefined') {
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) wasHiddenSinceLastLoad = true;
+  });
+}
+
 /**
- * Hook de leitura com Realtime.
- * @param paused Quando true, congela atualizações do Realtime (use quando um modal
- *               crítico está aberto, ex: captura de foto no mobile).
+ * Hook de leitura com Supabase Realtime.
+ *
+ * @param paused Quando true, congela atualizações do Realtime (use quando um
+ *               modal crítico está aberto — ex: captura de foto no mobile).
  */
 export function useCollection(
   ref: CollectionRef | null | undefined,
@@ -20,7 +41,7 @@ export function useCollection(
   const isFetchingRef = useRef(false);
   const pausedRef = useRef(paused);
 
-  // Mantém pausedRef sempre sincronizado sem re-criar loadData
+  // Mantém pausedRef sincronizado sem recriar loadData
   useEffect(() => {
     pausedRef.current = paused;
   }, [paused]);
@@ -34,10 +55,8 @@ export function useCollection(
       return;
     }
 
-    // Se pausado e não é carga inicial, descarta silenciosamente
+    // Realtime ignorado se: modal aberto OU página em/voltando de background
     if (!isInitial && pausedRef.current) return;
-
-    // Evita fetches concorrentes em background
     if (!isInitial && isFetchingRef.current) return;
 
     isFetchingRef.current = true;
@@ -58,10 +77,17 @@ export function useCollection(
     }
   }, [refKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Carga inicial — dispara quando a query muda
+  // ── Carga inicial ─────────────────────────────────────────────────────────
+  // Roda quando a query muda — na prática, quando o usuário navega para outra
+  // página (componente remonta). Aqui é onde wasHiddenSinceLastLoad é zerado:
+  // se o usuário navegou, ele está ativamente usando o app e queremos dados
+  // frescos. Fora daqui, a flag permanece true bloqueando o Realtime.
   useEffect(() => {
     let alive = true;
     hasLoadedRef.current = false;
+
+    // Navegação = nova página = libera atualizações para esta sessão de uso
+    wasHiddenSinceLastLoad = false;
 
     const run = async () => {
       if (!alive) return;
@@ -76,20 +102,11 @@ export function useCollection(
     };
   }, [loadData]);
 
-  // Cancela updates pendentes quando o app vai para background (câmera, troca de app, etc.)
-  // Isso evita que o Realtime dispare re-renders quando o iOS retorna ao browser.
-  useEffect(() => {
-    const handleVisibility = () => {
-      if (document.hidden && refreshTimer.current) {
-        clearTimeout(refreshTimer.current);
-        refreshTimer.current = null;
-      }
-    };
-    document.addEventListener('visibilitychange', handleVisibility);
-    return () => document.removeEventListener('visibilitychange', handleVisibility);
-  }, []);
-
-  // Realtime — atualiza silenciosamente; respeitando a flag paused
+  // ── Realtime ──────────────────────────────────────────────────────────────
+  // Processa mudanças do banco APENAS quando:
+  //   1. A página está visível (não em background)
+  //   2. A página NÃO foi para background desde o último carregamento
+  //   3. Nenhum modal crítico está aberto (paused=false)
   useEffect(() => {
     if (!ref?.table) return;
 
@@ -101,20 +118,13 @@ export function useCollection(
         'postgres_changes',
         { event: '*', schema: 'public', table: ref.table },
         () => {
+          // Bloqueia se: modal aberto, página oculta, ou retornando de background
+          if (pausedRef.current || document.hidden || wasHiddenSinceLastLoad) return;
+
           if (refreshTimer.current) clearTimeout(refreshTimer.current);
           refreshTimer.current = setTimeout(() => {
-            // Se ainda pausado quando o timer disparar, agenda para depois do unpause
-            if (pausedRef.current) {
-              const waitForUnpause = setInterval(() => {
-                if (!pausedRef.current) {
-                  clearInterval(waitForUnpause);
-                  loadData(false);
-                }
-              }, 300);
-              // Timeout de segurança para não ficar aguardando para sempre
-              setTimeout(() => clearInterval(waitForUnpause), 30000);
-              return;
-            }
+            // Verifica novamente quando o timer dispara (pode ter mudado)
+            if (pausedRef.current || document.hidden || wasHiddenSinceLastLoad) return;
             loadData(false);
           }, 1200);
         }
