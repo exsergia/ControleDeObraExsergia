@@ -1,0 +1,104 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+
+  --color-brand: var(--color-blue-600);
+}
+
+@layer base {
+  /* Base do app + bloqueio de scroll global (cada main controla o seu) */
+  body {
+    @apply bg-slate-50 text-slate-900 antialiased overflow-hidden;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    /* Suporte a safe areas em celulares com notch/ilha (iPhone 12+, Android moderno) */
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+
+  /* IMPORTANTE para mobile: inputs com font-size < 16px no Safari iOS disparam
+     zoom automático ao focar. Forçando 16px nos campos digitáveis em telas
+     pequenas isso é evitado. Em telas grandes mantemos o estilo do Tailwind. */
+  @media (max-width: 640px) {
+    input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+    select,
+    textarea {
+      font-size: 16px !important;
+    }
+  }
+
+  /* Toque responsivo no mobile: remove o highlight cinza padrão do tap */
+  button, a, [role="button"] {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Scroll suave no app inteiro, especialmente em listas de logs/cards */
+  html {
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+@layer components {
+  .card-density {
+    @apply bg-white border border-slate-200 rounded p-3 shadow-sm;
+  }
+
+  .label-density {
+    @apply text-[10px] uppercase font-bold text-slate-500 tracking-wider;
+  }
+
+  .table-header-density {
+    @apply bg-slate-50/80 border-b border-slate-200 text-[10px] font-bold text-slate-500 uppercase tracking-widest;
+  }
+
+  .table-cell-density {
+    @apply px-4 py-2 border-b border-slate-100 text-[11px] font-medium text-slate-700;
+  }
+}
+
+.text-shadow-sm {
+  text-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+
+.scale-102 {
+  transform: scale(1.02);
+}
+
+/* UX: elementos de seleção não devem parecer campos digitáveis. */
+button, select, [role="button"], input[type="checkbox"], input[type="radio"], input[type="date"] {
+  cursor: pointer;
+}
+
+input[readonly], input[disabled], button[disabled] {
+  cursor: not-allowed;
+}
+
+/* Scrollbar discreta nas listas internas (desktop). No mobile o scroll é nativo. */
+@media (min-width: 768px) {
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #d4d4d8;
+    border-radius: 4px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #a1a1aa;
+  }
+}
+
+/* Quebra de texto longo em cards (nomes de obras, descrições) — evita estourar
+   container no celular. */
+.break-anywhere {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
