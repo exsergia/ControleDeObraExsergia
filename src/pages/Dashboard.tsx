@@ -84,11 +84,8 @@ export default function Dashboard() {
     const inicioSemana = inicioDaSemanaAtual();
     const hojeIndex = getDiaIndex(new Date(), inicioSemana);
 
-    const entregasPorDia = DIAS_SEMANA.map((name, index) => ({
-      name,
-      entregas: 0,
-      progresso: 0,
-    }));
+    const entregasPorDia: { name: string; entregas: number; progresso: number | null }[] =
+      DIAS_SEMANA.map((name) => ({ name, entregas: 0, progresso: null as number | null }));
 
     materiais.forEach((material) => {
       const dataEntrega = toDate(material.dataEntrega);
@@ -119,6 +116,12 @@ export default function Dashboard() {
         return;
       }
 
+      // Dias futuros não têm dado real — sem ponto no gráfico
+      if (index > hojeIndex) {
+        dia.progresso = null;
+        return;
+      }
+
       if (progressoChecklist.length) {
         const fimDoDia = new Date(inicioSemana);
         fimDoDia.setDate(inicioSemana.getDate() + index);
@@ -131,16 +134,15 @@ export default function Dashboard() {
 
         dia.progresso = Math.min(100, (executadoAteODia / totalPrevisto) * 100);
       } else {
-        // Sem histórico de checklist, o gráfico permanece zerado até existir progresso real.
-        // Quando houver progresso lançado manualmente, mostra o percentual atual a partir do dia atual.
-        dia.progresso = index >= hojeIndex && progressoAtual > 0 ? progressoAtual : 0;
+        // Sem histórico de checklist: hoje mostra progresso atual, dias passados mostram 0
+        dia.progresso = index === hojeIndex ? progressoAtual : 0;
       }
     });
 
     return entregasPorDia.map((item) => ({
       ...item,
       entregas: Number(item.entregas.toFixed(2)),
-      progresso: Number(item.progresso.toFixed(2)),
+      progresso: item.progresso !== null ? Number(item.progresso.toFixed(2)) : null,
     }));
   }, [materiais, atividades, checklists]);
 

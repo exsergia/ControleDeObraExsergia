@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useCollection } from '../lib/supabaseHooks';
 import { collection, addDoc, updateDoc, deleteDoc, doc, serverTimestamp } from '../lib/supabaseDb';
 import { db, handleFirestoreError, OperationType } from '../lib/supabase';
@@ -20,20 +20,31 @@ import {
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 
+const DRAFT_KEY = 'operador-form-draft';
+const emptyForm = { nome: '', sobrenome: '', funcao: '', email: '', role: 'operator' as 'admin' | 'operator' };
+
 export default function Operadores() {
   const { isAdmin } = useAuth();
   const [operadoresSnap, loading] = useCollection(collection(db, 'operadores'));
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingOperator, setEditingOperator] = useState<Operator | null>(null);
   const [search, setSearch] = useState('');
-  
-  const [formData, setFormData] = useState({
-    nome: '',
-    sobrenome: '',
-    funcao: '',
-    email: '',
-    role: 'operator' as 'admin' | 'operator'
-  });
+
+  const [formData, setFormData] = useState(emptyForm);
+
+  // Persiste rascunho enquanto o modal de novo operador está aberto
+  useEffect(() => {
+    if (isModalOpen && !editingOperator) {
+      localStorage.setItem(DRAFT_KEY, JSON.stringify(formData));
+    }
+  }, [formData, isModalOpen, editingOperator]);
+
+  const openNewModal = () => {
+    const saved = localStorage.getItem(DRAFT_KEY);
+    setFormData(saved ? JSON.parse(saved) : emptyForm);
+    setEditingOperator(null);
+    setIsModalOpen(true);
+  };
 
   const operators = (operadoresSnap?.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Operator[]) || [];
 
@@ -87,9 +98,10 @@ export default function Operadores() {
   };
 
   const handleCloseModal = () => {
+    localStorage.removeItem(DRAFT_KEY);
     setIsModalOpen(false);
     setEditingOperator(null);
-    setFormData({ nome: '', sobrenome: '', funcao: '', email: '', role: 'operator' });
+    setFormData(emptyForm);
   };
 
   return (
@@ -100,8 +112,8 @@ export default function Operadores() {
           <p className="text-zinc-500 text-sm">Controle sua equipe de campo e atribua funções.</p>
         </div>
         {isAdmin && (
-          <button 
-            onClick={() => setIsModalOpen(true)}
+          <button
+            onClick={openNewModal}
             className="flex items-center justify-center gap-2 px-5 py-2.5 bg-zinc-900 text-white rounded-xl font-bold hover:bg-zinc-800 transition-all shadow-lg shadow-zinc-200 active:scale-95"
           >
             <UserPlus className="w-5 h-5" />
