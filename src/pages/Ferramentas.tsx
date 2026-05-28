@@ -3,24 +3,25 @@ import { useCollection } from '../lib/supabaseHooks';
 import { collection, addDoc, updateDoc, doc, serverTimestamp, query, orderBy, limit, writeBatch, where, getDocs, deleteDoc } from '../lib/supabaseDb';
 import { db, handleFirestoreError, OperationType, auth } from '../lib/supabase';
 import { Tool, ToolLog, Obra } from '../types';
-import { 
-  Hammer, 
-  Wrench, 
-  ArrowUpRight, 
-  ArrowDownLeft, 
-  User, 
-  Building2, 
-  Calendar, 
-  Camera, 
-  CheckCircle2, 
-  Clock, 
-  Plus, 
+import {
+  Hammer,
+  Wrench,
+  ArrowUpRight,
+  ArrowDownLeft,
+  User,
+  Building2,
+  Calendar,
+  Camera,
+  CheckCircle2,
+  Clock,
+  Plus,
   History,
   X,
   AlertCircle,
   QrCode,
   Edit2,
-  Trash2
+  Trash2,
+  Images
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { format } from 'date-fns';
@@ -1079,7 +1080,8 @@ function CheckOutModal({ tool, obras, onClose }: { tool: Tool, obras: Obra[], on
 
 function CheckInModal({ log, tool, onClose }: { log: ToolLog, tool: Tool, onClose: () => void }) {
   const { notify } = useAuth();
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const cameraInputRef = useRef<HTMLInputElement | null>(null);
+  const galleryInputRef = useRef<HTMLInputElement | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
@@ -1114,7 +1116,8 @@ function CheckInModal({ log, tool, onClose }: { log: ToolLog, tool: Tool, onClos
     setPhotoPreview(null);
     setPhotoFile(null);
     setError(null);
-    if (fileInputRef.current) fileInputRef.current.value = '';
+    if (cameraInputRef.current) cameraInputRef.current.value = '';
+    if (galleryInputRef.current) galleryInputRef.current.value = '';
   };
 
   const handleCheckIn = async (event?: React.MouseEvent<HTMLButtonElement>) => {
@@ -1230,65 +1233,84 @@ function CheckInModal({ log, tool, onClose }: { log: ToolLog, tool: Tool, onClos
           )}
 
           <div className="space-y-3">
-            <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest pl-1">Foto do Estado do Material (Obrigatório)</span>
+            <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest pl-1">
+              Foto do Estado do Material (Obrigatório)
+            </span>
 
-            {/*
-              Usamos <label htmlFor> em vez de button + .click() programático.
-              Isso evita o loop no iOS Safari causado por capture="environment"
-              combinado com click() sintético que o Safari trata como navegação.
-              Sem o atributo capture, o iOS exibe o menu nativo (Câmera / Fotos)
-              que funciona corretamente e não remonta o componente.
-            */}
-            <label
-              htmlFor="photo-devolutiva"
-              className={cn(
-                'relative w-full aspect-video rounded-2xl overflow-hidden border-2 border-dashed transition-all group cursor-pointer block',
-                loading ? 'opacity-60 pointer-events-none' : '',
-                photoPreview ? 'border-zinc-200 bg-zinc-100' : error ? 'border-red-200 bg-red-50/30 hover:bg-red-50' : 'border-zinc-200 bg-zinc-50 hover:bg-zinc-100'
-              )}
-            >
-              <input
-                id="photo-devolutiva"
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                className="sr-only"
-                disabled={loading}
-                onChange={handlePhotoChange}
-              />
-              {photoPreview ? (
-                <>
-                  <img src={photoPreview} className="w-full h-full object-cover" alt="Pré-visualização da devolução" />
-                  <div className="absolute inset-x-0 bottom-0 p-3 bg-gradient-to-t from-black/70 to-transparent text-white text-xs font-bold text-left">
-                    Foto selecionada. Toque para trocar.
+            {photoPreview ? (
+              /* ── Preview ── */
+              <div className="space-y-3">
+                <div className="relative w-full aspect-video rounded-2xl overflow-hidden border-2 border-zinc-200">
+                  <img src={photoPreview} className="w-full h-full object-cover" alt="Pré-visualização" />
+                  <div className="absolute inset-x-0 bottom-0 p-3 bg-gradient-to-t from-black/70 to-transparent">
+                    <span className="text-white text-xs font-bold">Foto selecionada ✓</span>
                   </div>
-                </>
-              ) : (
-                <div className="absolute inset-0 flex flex-col items-center justify-center gap-1">
-                  <div className="w-12 h-12 rounded-full bg-white flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform">
-                    <Camera className={cn('w-6 h-6', error ? 'text-red-400' : 'text-zinc-400')} />
-                  </div>
-                  <span className={cn('text-xs font-bold mt-1', error ? 'text-red-500' : 'text-zinc-500')}>TIRAR FOTO DO MATERIAL</span>
-                  <span className="text-[9px] text-zinc-400">Câmera ou galeria</span>
                 </div>
-              )}
-            </label>
+                <div className="flex gap-2">
+                  <label
+                    htmlFor="photo-trocar"
+                    className={cn(
+                      'flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl border border-zinc-200 bg-zinc-50 text-xs font-bold text-zinc-600 cursor-pointer hover:bg-zinc-100 transition-all',
+                      loading && 'opacity-50 pointer-events-none'
+                    )}
+                  >
+                    <input id="photo-trocar" ref={cameraInputRef} type="file" accept="image/*" className="sr-only" disabled={loading} onChange={handlePhotoChange} />
+                    <Camera className="w-4 h-4" />
+                    Trocar foto
+                  </label>
+                  <button type="button" onClick={clearPhoto} disabled={loading}
+                    className="px-3 py-2.5 rounded-xl border border-red-100 bg-red-50 text-red-600 hover:bg-red-100 transition-all disabled:opacity-50">
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            ) : (
+              /* ── Seleção: câmera ou galeria via picker nativo (sem capture — evita reload no Android) ── */
+              <div className={cn('grid grid-cols-2 gap-3', loading && 'opacity-50 pointer-events-none')}>
+                {/* inputs ocultos — sem capture="environment" para não navegar fora do app no Android */}
+                {/* Sem capture em nenhum dos inputs — no Android, capture="environment/user"
+                    abre a câmera como app separado e causa reload ao retornar.
+                    Sem capture, o seletor do sistema abre como overlay na página. */}
+                <input id="photo-camera"  ref={cameraInputRef}  type="file" accept="image/*" className="sr-only" disabled={loading} onChange={handlePhotoChange} />
+                <input id="photo-galeria" ref={galleryInputRef} type="file" accept="image/*" className="sr-only" disabled={loading} onChange={handlePhotoChange} />
 
-            {photoPreview && (
-              <button
-                type="button"
-                onClick={clearPhoto}
-                disabled={loading}
-                className="inline-flex items-center gap-2 text-xs font-bold text-red-600 hover:text-red-700 disabled:opacity-50"
-              >
-                <X className="w-3 h-3" />
-                Remover foto
-              </button>
+                <label htmlFor="photo-camera"
+                  className={cn(
+                    'flex flex-col items-center justify-center gap-3 py-8 rounded-2xl border-2 border-dashed cursor-pointer transition-all group',
+                    error ? 'border-red-200 bg-red-50/40' : 'border-zinc-200 bg-zinc-50 hover:bg-zinc-100 hover:border-zinc-400'
+                  )}
+                >
+                  <div className={cn('w-12 h-12 rounded-2xl flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform', error ? 'bg-red-100' : 'bg-white')}>
+                    <Camera className={cn('w-6 h-6', error ? 'text-red-400' : 'text-zinc-500')} />
+                  </div>
+                  <div className="text-center">
+                    <p className={cn('text-xs font-bold', error ? 'text-red-500' : 'text-zinc-700')}>Tirar Foto</p>
+                    <p className="text-[10px] text-zinc-400 mt-0.5">Abre a câmera</p>
+                  </div>
+                </label>
+
+                <label htmlFor="photo-galeria"
+                  className={cn(
+                    'flex flex-col items-center justify-center gap-3 py-8 rounded-2xl border-2 border-dashed cursor-pointer transition-all group',
+                    error ? 'border-red-200 bg-red-50/40' : 'border-zinc-200 bg-zinc-50 hover:bg-zinc-100 hover:border-zinc-400'
+                  )}
+                >
+                  <div className={cn('w-12 h-12 rounded-2xl flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform', error ? 'bg-red-100' : 'bg-white')}>
+                    <Images className={cn('w-6 h-6', error ? 'text-red-400' : 'text-zinc-500')} />
+                  </div>
+                  <div className="text-center">
+                    <p className={cn('text-xs font-bold', error ? 'text-red-500' : 'text-zinc-700')}>Da Galeria</p>
+                    <p className="text-[10px] text-zinc-400 mt-0.5">Foto já tirada</p>
+                  </div>
+                </label>
+
+                {error && <p className="col-span-2 text-[10px] font-bold text-red-500 text-center -mt-1">{error}</p>}
+              </div>
             )}
 
-            <div className="flex items-start gap-2 text-zinc-400 italic">
-              <AlertCircle className="w-3 h-3 mt-0.5" />
-              <p className="text-[10px] leading-tight">Certifique-se que o equipamento está visível e em bom estado antes de confirmar.</p>
+            <div className="flex items-start gap-2 text-zinc-400">
+              <AlertCircle className="w-3 h-3 mt-0.5 shrink-0" />
+              <p className="text-[10px] leading-tight">Certifique-se que o equipamento está visível e em bom estado.</p>
             </div>
           </div>
 
