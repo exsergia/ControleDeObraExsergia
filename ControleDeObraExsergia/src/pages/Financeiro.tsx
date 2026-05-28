@@ -187,6 +187,7 @@ export default function Financeiro() {
         </div>
         <div className="bg-zinc-900 p-6 rounded-2xl text-white flex flex-col justify-between shadow-2xl relative overflow-hidden">
            <TrendingUp className="absolute -right-4 -bottom-4 w-24 h-24 text-zinc-800 opacity-50" />
+<<<<<<< HEAD
            <p className="text-xs font-bold text-zinc-400 uppercase tracking-widest relative z-10">
               {selectedObraId === 'Todas' ? 'Custo por categoria (geral)' : 'Custo por categoria (obra)'}
            </p>
@@ -207,6 +208,12 @@ export default function Financeiro() {
                     {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(stats.ativTotalExecutado)}
                  </span>
               </div>
+=======
+           <p className="text-xs font-bold text-zinc-400 uppercase tracking-widest relative z-10">Total de Entregas</p>
+           <p className="text-4xl font-black tracking-tighter relative z-10">{stats.count}</p>
+           <div className="text-[10px] font-bold text-zinc-500 bg-zinc-800 px-2 py-1 rounded inline-block self-start mt-2 border border-zinc-700 relative z-10">
+              SISTEMA INTEGRADO
+>>>>>>> 630441aa2b73e6e2882d07b0068219b71c1481e8
            </div>
         </div>
       </div>

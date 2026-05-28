@@ -714,10 +714,17 @@ function LogItem({
             </div>
           </div>
 
+<<<<<<< HEAD
           <div className="text-right shrink-0 min-w-[120px] space-y-2">
             <div>
               <div className="text-[10px] font-bold text-blue-500 uppercase tracking-tighter">
                 Horário de Retirada
+=======
+          <div className="text-right shrink-0 min-w-[110px] space-y-2">
+            <div>
+              <div className="text-[10px] font-bold text-blue-500 uppercase tracking-tighter">
+                Retirada em
+>>>>>>> 630441aa2b73e6e2882d07b0068219b71c1481e8
               </div>
               <div className="text-xs font-bold text-zinc-900">
                 {formatMovementDate(outDate)}
@@ -729,6 +736,7 @@ function LogItem({
 
             <div>
               <div className="text-[10px] font-bold text-green-600 uppercase tracking-tighter">
+<<<<<<< HEAD
                 Horário de Devolução
               </div>
               <div className="text-xs font-bold text-zinc-900">
@@ -736,6 +744,15 @@ function LogItem({
               </div>
               <div className="text-[10px] text-green-600 font-bold">
                 {inDate ? formatMovementTime(inDate) : '--:--'}
+=======
+                Devolução em
+              </div>
+              <div className="text-xs font-bold text-zinc-900">
+                {formatMovementDate(inDate)}
+              </div>
+              <div className="text-[10px] text-green-600 font-bold">
+                {formatMovementTime(inDate)}
+>>>>>>> 630441aa2b73e6e2882d07b0068219b71c1481e8
               </div>
             </div>
           </div>

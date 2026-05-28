@@ -40,8 +40,11 @@ export default function Relatorios() {
   const [materiaisSnap] = useCollection(collection(db, 'materiais'));
   const [atividadesSnap] = useCollection(collection(db, 'atividades'));
   const [operadoresSnap] = useCollection(collection(db, 'operadores'));
+<<<<<<< HEAD
   const [toolsSnap] = useCollection(collection(db, 'tools'));
   const [toolLogsSnap] = useCollection(collection(db, 'toolLogs'));
+=======
+>>>>>>> 630441aa2b73e6e2882d07b0068219b71c1481e8
   
   const [search, setSearch] = useState('');
   const [selectedChecklist, setSelectedChecklist] = useState<Checklist | null>(null);
@@ -51,8 +54,11 @@ export default function Relatorios() {
   const materiais = (materiaisSnap?.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Material[]) || [];
   const atividades = (atividadesSnap?.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Atividade[]) || [];
   const operadores = (operadoresSnap?.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Operator[]) || [];
+<<<<<<< HEAD
   const tools = (toolsSnap?.docs.map(doc => ({ id: doc.id, ...doc.data() })) as any[]) || [];
   const toolLogs = (toolLogsSnap?.docs.map(doc => ({ id: doc.id, ...doc.data() })) as any[]) || [];
+=======
+>>>>>>> 630441aa2b73e6e2882d07b0068219b71c1481e8
 
   const filteredChecklists = checklists.filter(c => {
     const obra = obras.find(o => o.id === c.obraId);
@@ -122,6 +128,7 @@ export default function Relatorios() {
     utils.book_append_sheet(workbook, utils.json_to_sheet(materialsData), "DADOS_MATERIAIS");
     utils.book_append_sheet(workbook, utils.json_to_sheet(progressData), "DADOS_PROGRESSO");
 
+<<<<<<< HEAD
     // 4. FINANCEIRO — tudo que entra no painel financeiro (materiais + progresso)
     const fmt2 = (v: number) => Number((v || 0).toFixed(2));
     const financeiroData: any[] = [
@@ -210,6 +217,10 @@ export default function Relatorios() {
 
     writeFile(workbook, `BI_Consolidado_Obras_${format(new Date(), 'yyyy-MM-dd')}.xlsx`);
     notify('success', 'Excel Gerado', 'Base de dados consolidada (todos os módulos) exportada com sucesso!');
+=======
+    writeFile(workbook, `BI_Consolidado_Obras_${format(new Date(), 'yyyy-MM-dd')}.xlsx`);
+    notify('success', 'Excel Gerado', 'Base de dados para Power BI exportada com sucesso!');
+>>>>>>> 630441aa2b73e6e2882d07b0068219b71c1481e8
   };
 
   const handleDuplicate = async (report: Checklist) => {

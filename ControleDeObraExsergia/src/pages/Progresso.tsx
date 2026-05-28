@@ -503,6 +503,7 @@ const ActivityCard = memo(function ActivityCard({
         ? 'bg-amber-50 text-amber-600 border-amber-100'
         : 'bg-green-50 text-green-600 border-green-100';
 
+<<<<<<< HEAD
   const inputRef = React.useRef<HTMLInputElement>(null);
   const [isEditing, setIsEditing] = useState(false);
 
@@ -514,10 +515,24 @@ const ActivityCard = memo(function ActivityCard({
       inputRef.current.value = ativ.quantidadeExecutada
         ? formatNumberBR(ativ.quantidadeExecutada)
         : '';
+=======
+  const [executadoInput, setExecutadoInput] = useState(
+    ativ.quantidadeExecutada ? formatNumberBR(ativ.quantidadeExecutada) : ''
+  );
+
+  const [isEditing, setIsEditing] = useState(false);
+
+  useEffect(() => {
+    if (!isEditing) {
+      setExecutadoInput(
+        ativ.quantidadeExecutada ? formatNumberBR(ativ.quantidadeExecutada) : ''
+      );
+>>>>>>> 630441aa2b73e6e2882d07b0068219b71c1481e8
     }
   }, [ativ.quantidadeExecutada, isEditing]);
 
   const salvarExecutado = useCallback(() => {
+<<<<<<< HEAD
     if (readOnly || !inputRef.current) return;
 
     const numero = parseNumberBR(inputRef.current.value);
@@ -527,6 +542,17 @@ const ActivityCard = memo(function ActivityCard({
 
     onUpdate(ativ.id, numero, ativ.quantidadePrevista);
   }, [readOnly, onUpdate, ativ.id, ativ.quantidadePrevista]);
+=======
+    if (readOnly) return;
+
+    const numero = parseNumberBR(executadoInput);
+
+    setIsEditing(false);
+    setExecutadoInput(numero ? formatNumberBR(numero) : '');
+
+    onUpdate(ativ.id, numero, ativ.quantidadePrevista);
+  }, [readOnly, executadoInput, onUpdate, ativ.id, ativ.quantidadePrevista]);
+>>>>>>> 630441aa2b73e6e2882d07b0068219b71c1481e8
 
   return (
     <div className="bg-white p-6 sm:p-8 rounded-[2.5rem] border border-zinc-100 shadow-sm hover:shadow-xl hover:shadow-zinc-100 transition-all flex flex-col gap-8 relative overflow-hidden group">
@@ -592,13 +618,17 @@ const ActivityCard = memo(function ActivityCard({
             </span>
 
             <input
+<<<<<<< HEAD
               ref={inputRef}
+=======
+>>>>>>> 630441aa2b73e6e2882d07b0068219b71c1481e8
               type="text"
               inputMode="decimal"
               className={cn(
                 'w-full py-4 border-2 border-zinc-100 rounded-3xl text-xl font-black text-zinc-900 focus:outline-none focus:border-zinc-900 transition-colors text-center shadow-lg',
                 readOnly ? 'bg-zinc-50 cursor-not-allowed' : 'bg-white'
               )}
+<<<<<<< HEAD
               defaultValue={ativ.quantidadeExecutada ? formatNumberBR(ativ.quantidadeExecutada) : ''}
               readOnly={readOnly}
               placeholder="0"
@@ -608,6 +638,15 @@ const ActivityCard = memo(function ActivityCard({
                 const el = e.currentTarget;
                 const limpo = el.value.replace(/[^0-9.,]/g, '');
                 if (el.value !== limpo) el.value = limpo;
+=======
+              value={executadoInput}
+              readOnly={readOnly}
+              placeholder="0"
+              onFocus={() => setIsEditing(true)}
+              onChange={(e) => {
+                const valor = e.target.value.replace(/[^0-9.,]/g, '');
+                setExecutadoInput(valor);
+>>>>>>> 630441aa2b73e6e2882d07b0068219b71c1481e8
               }}
               onBlur={salvarExecutado}
               onKeyDown={(e) => {

@@ -18,7 +18,10 @@ export default function Materiais() {
   
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [search, setSearch] = useState('');
+<<<<<<< HEAD
   const [filtroObraId, setFiltroObraId] = useState<string>('all');
+=======
+>>>>>>> 630441aa2b73e6e2882d07b0068219b71c1481e8
   const [uploading, setUploading] = useState(false);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [photoFile, setPhotoFile] = useState<File | null>(null);
@@ -103,6 +106,7 @@ export default function Materiais() {
     }
   };
 
+<<<<<<< HEAD
   const filtered = materiais.filter(m => {
     const matchBusca =
       m.descricao.toLowerCase().includes(search.toLowerCase()) ||
@@ -128,6 +132,13 @@ export default function Materiais() {
   const obraNome = (id: string) => obras.find(o => o.id === id)?.nome || 'Obra removida';
   const fmtBRL = (v: number) =>
     new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v || 0);
+=======
+  const filtered = materiais.filter(m => 
+    m.descricao.toLowerCase().includes(search.toLowerCase()) || 
+    m.codigoEntrega.toLowerCase().includes(search.toLowerCase()) ||
+    m.fornecedor.toLowerCase().includes(search.toLowerCase())
+  );
+>>>>>>> 630441aa2b73e6e2882d07b0068219b71c1481e8
 
   return (
     <div className="space-y-6 pb-20 animate-in fade-in duration-500">
@@ -145,6 +156,7 @@ export default function Materiais() {
         </button>
       </div>
 
+<<<<<<< HEAD
       {/* Search + Filtro de Obra */}
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1 max-w-md">
@@ -202,6 +214,20 @@ export default function Materiais() {
         </div>
       )}
 
+=======
+      {/* Search */}
+      <div className="relative max-w-md">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
+        <input 
+          type="text" 
+          placeholder="Buscar material, código ou fornecedor..." 
+          className="w-full pl-10 pr-4 py-2 bg-white border border-zinc-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900/10 shadow-sm transition-all"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+      </div>
+
+>>>>>>> 630441aa2b73e6e2882d07b0068219b71c1481e8
       {/* Table */}
       <div className="bg-white rounded-xl border border-zinc-200 shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
@@ -211,7 +237,10 @@ export default function Materiais() {
                 <th className="px-6 py-4 text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Foto</th>
                 <th className="px-6 py-4 text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Entrega</th>
                 <th className="px-6 py-4 text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Material</th>
+<<<<<<< HEAD
                 <th className="px-6 py-4 text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Obra (Destino)</th>
+=======
+>>>>>>> 630441aa2b73e6e2882d07b0068219b71c1481e8
                 <th className="px-6 py-4 text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Fornecedor</th>
                 <th className="px-6 py-4 text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Qtd</th>
                 {isAdmin && <th className="px-6 py-4 text-[10px] font-bold text-zinc-400 uppercase tracking-widest text-right">Valor Total</th>}
@@ -253,12 +282,15 @@ export default function Materiais() {
                       </div>
                     </td>
                     <td className="px-6 py-4">
+<<<<<<< HEAD
                       <span className="inline-flex items-center gap-1.5 text-xs font-bold text-zinc-700 bg-zinc-100 px-2.5 py-1 rounded-lg border border-zinc-200">
                         <Truck className="w-3 h-3 text-zinc-400" />
                         {obraNome(mat.obraId)}
                       </span>
                     </td>
                     <td className="px-6 py-4">
+=======
+>>>>>>> 630441aa2b73e6e2882d07b0068219b71c1481e8
                       <span className="text-sm text-zinc-600 font-medium">{mat.fornecedor}</span>
                     </td>
                     <td className="px-6 py-4">
