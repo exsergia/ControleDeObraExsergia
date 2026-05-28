@@ -2,29 +2,33 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from './supabase';
 import { CollectionRef, getDocs } from './supabaseDb';
 
-/**
- * Hook padrão de leitura com atualização em tempo real pelo Supabase Realtime.
- * Sempre que houver INSERT, UPDATE ou DELETE na tabela usada pela tela,
- * os dados são buscados novamente automaticamente, sem precisar apertar F5.
- */
 export function useCollection(ref: CollectionRef | null | undefined): [any | undefined, boolean, Error | undefined] {
   const [snap, setSnap] = useState<any>();
   const [loading, setLoading] = useState(!!ref);
   const [error, setError] = useState<Error>();
+
   const refreshTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hasLoadedRef = useRef(false);
+  const isFetchingRef = useRef(false);
 
   const refKey = useMemo(() => JSON.stringify(ref || null), [ref]);
 
-  const loadData = useCallback(async (showLoading = false) => {
+  const loadData = useCallback(async (isInitial: boolean) => {
     if (!ref) {
       setSnap(undefined);
       setLoading(false);
       return;
     }
 
+    // Ignora refreshes em background enquanto já há uma busca em andamento
+    if (!isInitial && isFetchingRef.current) return;
+
+    isFetchingRef.current = true;
+
+    // Só mostra o spinner na carga inicial da query — nunca nos updates do Realtime
+    if (isInitial && !hasLoadedRef.current) setLoading(true);
+
     try {
-      if (showLoading || !hasLoadedRef.current) setLoading(true);
       setError(undefined);
       const result = await getDocs(ref);
       setSnap(result);
@@ -32,19 +36,23 @@ export function useCollection(ref: CollectionRef | null | undefined): [any | und
     } catch (err) {
       setError(err instanceof Error ? err : new Error(String(err)));
     } finally {
-      setLoading(false);
+      isFetchingRef.current = false;
+      // Remove o spinner apenas se foi a carga inicial que o ativou
+      if (isInitial) setLoading(false);
     }
-  }, [refKey]);
+  }, [refKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Carga inicial — dispara quando a query muda
   useEffect(() => {
     let alive = true;
+    hasLoadedRef.current = false; // nova query = novo ciclo de loading
 
-    const safeLoad = async () => {
+    const run = async () => {
       if (!alive) return;
       await loadData(true);
     };
 
-    safeLoad();
+    run();
 
     return () => {
       alive = false;
@@ -52,6 +60,7 @@ export function useCollection(ref: CollectionRef | null | undefined): [any | und
     };
   }, [loadData]);
 
+  // Realtime — atualiza dados silenciosamente sem spinner
   useEffect(() => {
     if (!ref?.table) return;
 
@@ -61,17 +70,14 @@ export function useCollection(ref: CollectionRef | null | undefined): [any | und
       .channel(channelName)
       .on(
         'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: ref.table,
-        },
+        { event: '*', schema: 'public', table: ref.table },
         () => {
-          // Debounce simples para evitar várias consultas seguidas quando muitos dados chegam juntos.
           if (refreshTimer.current) clearTimeout(refreshTimer.current);
+          // Debounce generoso: evita refetches em cascata quando múltiplas
+          // tabelas são atualizadas na mesma operação (ex: checkout de ferramenta)
           refreshTimer.current = setTimeout(() => {
             loadData(false);
-          }, 500);
+          }, 1200);
         }
       )
       .subscribe();

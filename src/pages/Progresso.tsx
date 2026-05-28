@@ -109,8 +109,9 @@ export default function ProgressoFisico() {
         quantidadeExecutada: currentVal,
         percentual: Math.min(100, (currentVal / total) * 100)
       });
-    } catch (err) {
-      handleFirestoreError(err, OperationType.WRITE, 'atividades-update');
+    } catch (err: any) {
+      notify('error', 'Erro ao Salvar', 'Não foi possível salvar o progresso. Verifique sua conexão.');
+      console.error('Erro ao atualizar progresso:', err);
     }
   };
 
@@ -326,6 +327,7 @@ function ActivityCard({ ativ, obra, onUpdate, onDelete, readOnly = false }: {
   const [localValue, setLocalValue] = useState<string>(String(ativ.quantidadeExecutada ?? 0));
   const hasFocus = useRef(false);
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState(false);
 
   // Sincroniza com prop apenas quando o campo NÃO está em foco (evita reset durante digitação)
   useEffect(() => {
@@ -336,6 +338,7 @@ function ActivityCard({ ativ, obra, onUpdate, onDelete, readOnly = false }: {
 
   const handleFocus = (e: React.FocusEvent<HTMLInputElement>) => {
     hasFocus.current = true;
+    setSaveError(false);
     e.target.select(); // seleciona tudo → digitar substitui o valor atual
   };
 
@@ -350,7 +353,10 @@ function ActivityCard({ ativ, obra, onUpdate, onDelete, readOnly = false }: {
     const parsed = Math.max(0, parseFloat(localValue) || 0);
     setLocalValue(String(parsed));
     setSaving(true);
-    Promise.resolve(onUpdate(ativ.id, parsed, ativ.quantidadePrevista)).finally(() => setSaving(false));
+    setSaveError(false);
+    Promise.resolve(onUpdate(ativ.id, parsed, ativ.quantidadePrevista))
+      .catch(() => setSaveError(true))
+      .finally(() => setSaving(false));
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -415,9 +421,11 @@ function ActivityCard({ ativ, obra, onUpdate, onDelete, readOnly = false }: {
                 "w-24 py-4 border-2 rounded-3xl text-xl font-black text-zinc-900 focus:outline-none transition-colors text-center shadow-lg",
                 readOnly
                   ? "bg-zinc-50 cursor-not-allowed border-zinc-100"
-                  : saving
-                    ? "bg-white border-amber-300"
-                    : "bg-white border-zinc-100 focus:border-zinc-900"
+                  : saveError
+                    ? "bg-red-50 border-red-400"
+                    : saving
+                      ? "bg-white border-amber-300"
+                      : "bg-white border-zinc-100 focus:border-zinc-900"
               )}
               value={localValue}
               min="0"
