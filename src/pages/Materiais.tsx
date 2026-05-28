@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useCollection } from '../lib/supabaseHooks';
 import { collection, addDoc, serverTimestamp, query, orderBy } from '../lib/supabaseDb';
 import { db, handleFirestoreError, OperationType } from '../lib/supabase';
 import { Material, Obra, MaterialStatus } from '../types';
-import { Plus, Package, Truck, Calendar, Hash, Tag, DollarSign, FileText, Search, ChevronDown, Camera, X, Building2 } from 'lucide-react';
+import { Plus, Package, Truck, Calendar, Hash, Tag, DollarSign, FileText, Search, ChevronDown, Camera, X, Building2, Paperclip, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '../lib/utils';
@@ -29,6 +29,8 @@ export default function Materiais() {
   const [uploading, setUploading] = useState(false);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [showCamera, setShowCamera] = useState(false);
+  const galleryInputRef = useRef<HTMLInputElement>(null);
 
   const [formData, setFormData, limparRascunhoMaterial] = useAutoSaveForm<Partial<Material>>('rascunho-novo-material', {
     obraId: '',
@@ -91,18 +93,26 @@ export default function Materiais() {
     }
   };
 
+  const applyPhotoFile = (file: File) => {
+    if (file.size > 5 * 1024 * 1024) {
+      notify('warning', 'Arquivo Muito Grande', 'A foto deve ter no máximo 5MB.');
+      return;
+    }
+    setPhotoFile(file);
+    const reader = new FileReader();
+    reader.onloadend = () => setPhotoPreview(reader.result as string);
+    reader.readAsDataURL(file);
+  };
+
   const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      if (file.size > 5 * 1024 * 1024) {
-        notify('warning', 'Arquivo Muito Grande', 'A foto deve ter no máximo 5MB.');
-        return;
-      }
-      setPhotoFile(file);
-      const reader = new FileReader();
-      reader.onloadend = () => setPhotoPreview(reader.result as string);
-      reader.readAsDataURL(file);
-    }
+    if (file) applyPhotoFile(file);
+    e.target.value = '';
+  };
+
+  const handleCameraCapture = (file: File) => {
+    setShowCamera(false);
+    applyPhotoFile(file);
   };
 
   const filtered = materiais.filter(m => {
@@ -366,27 +376,41 @@ export default function Materiais() {
 
               <div className="grid sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <label className="text-xs font-bold text-zinc-500 uppercase tracking-widest">Foto da NF / Material</label>
-                  <div className="relative group/photo">
-                    {photoPreview ? (
-                      <div className="relative w-full aspect-video rounded-xl overflow-hidden border-2 border-dashed border-zinc-300">
-                        <img src={photoPreview} alt="Preview" className="w-full h-full object-cover" />
-                        <button
-                          type="button"
-                          onClick={() => { setPhotoFile(null); setPhotoPreview(null); }}
-                          className="absolute top-2 right-2 p-1 bg-red-500 text-white rounded-full shadow-lg hover:scale-110 transition-transform"
-                        >
-                          <X className="w-4 h-4" />
-                        </button>
-                      </div>
-                    ) : (
-                      <label className="flex flex-col items-center justify-center w-full aspect-video bg-zinc-50 border-2 border-dashed border-zinc-200 rounded-xl cursor-pointer hover:border-zinc-400 hover:bg-zinc-100 transition-all group-hover/photo:scale-[1.01]">
-                        <Camera className="w-8 h-8 text-zinc-400 mb-2 group-hover:text-zinc-600 transition-colors" />
-                        <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Capturar Foto</span>
-                        <input type="file" accept="image/*" capture="environment" className="hidden" onChange={handlePhotoChange} />
-                      </label>
-                    )}
+                  <div className="flex items-center gap-2">
+                    <label className="text-xs font-bold text-zinc-500 uppercase tracking-widest">Foto da NF / Material</label>
+                    <span className="text-[10px] font-bold text-zinc-400 bg-zinc-100 px-2 py-0.5 rounded-full uppercase tracking-widest">Opcional</span>
                   </div>
+                  {photoPreview ? (
+                    <div className="relative w-full aspect-video rounded-xl overflow-hidden border-2 border-dashed border-zinc-300">
+                      <img src={photoPreview} alt="Preview" className="w-full h-full object-cover" />
+                      <button
+                        type="button"
+                        onClick={() => { setPhotoFile(null); setPhotoPreview(null); }}
+                        className="absolute top-2 right-2 p-1 bg-red-500 text-white rounded-full shadow-lg hover:scale-110 transition-transform"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex gap-3">
+                      <button
+                        type="button"
+                        onClick={() => setShowCamera(true)}
+                        className="flex-1 flex flex-col items-center justify-center gap-2 py-6 bg-zinc-50 border-2 border-dashed border-zinc-200 rounded-xl hover:border-zinc-400 hover:bg-zinc-100 transition-all"
+                      >
+                        <Camera className="w-8 h-8 text-zinc-400" />
+                        <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Tirar Foto</span>
+                      </button>
+                      <label className="flex-1 flex flex-col items-center justify-center gap-2 py-6 bg-zinc-50 border-2 border-dashed border-zinc-200 rounded-xl hover:border-zinc-400 hover:bg-zinc-100 transition-all cursor-pointer">
+                        <Paperclip className="w-8 h-8 text-zinc-400" />
+                        <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Da Galeria</span>
+                        <input ref={galleryInputRef} type="file" accept="image/*" className="hidden" onChange={handlePhotoChange} />
+                      </label>
+                    </div>
+                  )}
+                  {showCamera && (
+                    <MateriaisCamera onCapture={handleCameraCapture} onClose={() => setShowCamera(false)} />
+                  )}
                 </div>
                 <div className="space-y-2">
                   <label className="text-xs font-bold text-zinc-500 uppercase tracking-widest">Observações</label>
@@ -423,6 +447,101 @@ export default function Materiais() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function MateriaisCamera({ onCapture, onClose }: { onCapture: (file: File) => void; onClose: () => void }) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const [ready, setReady] = useState(false);
+  const [camError, setCamError] = useState<string | null>(null);
+  const [captured, setCaptured] = useState<string | null>(null);
+  const [capturedFile, setCapturedFile] = useState<File | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+    navigator.mediaDevices.getUserMedia({
+      video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } },
+      audio: false,
+    }).then(stream => {
+      if (!mounted) { stream.getTracks().forEach(t => t.stop()); return; }
+      streamRef.current = stream;
+      if (videoRef.current) { videoRef.current.srcObject = stream; videoRef.current.play().then(() => setReady(true)); }
+    }).catch((err: any) => {
+      if (!mounted) return;
+      setCamError(err?.name === 'NotAllowedError' ? 'Permissão de câmera negada. Libere nas configurações.' : 'Câmera não disponível neste dispositivo.');
+    });
+    return () => { mounted = false; streamRef.current?.getTracks().forEach(t => t.stop()); };
+  }, []);
+
+  const stopStream = () => streamRef.current?.getTracks().forEach(t => t.stop());
+
+  const handleCapture = () => {
+    if (!videoRef.current || !ready) return;
+    const canvas = document.createElement('canvas');
+    canvas.width = videoRef.current.videoWidth;
+    canvas.height = videoRef.current.videoHeight;
+    canvas.getContext('2d')?.drawImage(videoRef.current, 0, 0);
+    canvas.toBlob(blob => {
+      if (!blob) return;
+      stopStream();
+      const file = new File([blob], `foto-${Date.now()}.jpg`, { type: 'image/jpeg' });
+      setCapturedFile(file);
+      setCaptured(URL.createObjectURL(blob));
+    }, 'image/jpeg', 0.88);
+  };
+
+  const handleConfirm = () => {
+    if (capturedFile) { onCapture(capturedFile); if (captured) URL.revokeObjectURL(captured); }
+  };
+
+  const handleRetake = () => {
+    if (captured) URL.revokeObjectURL(captured);
+    setCaptured(null); setCapturedFile(null); setReady(false);
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } }, audio: false })
+      .then(stream => {
+        streamRef.current = stream;
+        if (videoRef.current) { videoRef.current.srcObject = stream; videoRef.current.play().then(() => setReady(true)); }
+      }).catch(() => setCamError('Não foi possível reiniciar a câmera.'));
+  };
+
+  const handleClose = () => { stopStream(); if (captured) URL.revokeObjectURL(captured); onClose(); };
+
+  return (
+    <div className="fixed inset-0 z-[70] bg-black flex flex-col" style={{ touchAction: 'none' }}>
+      <div className="flex items-center justify-between p-4 shrink-0">
+        <button type="button" onClick={handleClose} className="p-2 text-white hover:bg-white/10 rounded-xl transition-colors">
+          <X className="w-6 h-6" />
+        </button>
+        <span className="text-white text-sm font-bold uppercase tracking-widest">{captured ? 'Confirmar Foto' : 'Tirar Foto'}</span>
+        <div className="w-10" />
+      </div>
+      <div className="flex-1 relative overflow-hidden bg-black">
+        {camError ? (
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 p-8 text-center">
+            <AlertCircle className="w-16 h-16 text-red-400" />
+            <p className="text-white text-sm">{camError}</p>
+            <button type="button" onClick={handleClose} className="px-6 py-3 bg-white text-black rounded-xl font-bold text-sm">Fechar</button>
+          </div>
+        ) : captured ? (
+          <img src={captured} className="w-full h-full object-contain" alt="Captura" />
+        ) : (
+          <video ref={videoRef} className="w-full h-full object-cover" playsInline muted />
+        )}
+      </div>
+      <div className="shrink-0 flex items-center justify-center gap-6 p-8 bg-black">
+        {captured ? (
+          <>
+            <button type="button" onClick={handleRetake} className="flex-1 py-4 rounded-2xl border-2 border-white/20 text-white font-bold text-sm hover:bg-white/10 transition-all">Tirar Novamente</button>
+            <button type="button" onClick={handleConfirm} className="flex-1 py-4 rounded-2xl bg-white text-black font-bold text-sm hover:bg-zinc-100 transition-all flex items-center justify-center gap-2">
+              <CheckCircle2 className="w-5 h-5" /> Usar Esta Foto
+            </button>
+          </>
+        ) : (
+          <button type="button" onClick={handleCapture} disabled={!ready} className="w-20 h-20 rounded-full bg-white border-4 border-zinc-400 shadow-2xl hover:scale-95 active:scale-90 transition-transform disabled:opacity-40" aria-label="Capturar foto" />
+        )}
+      </div>
     </div>
   );
 }
