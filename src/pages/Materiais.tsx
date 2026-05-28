@@ -408,9 +408,6 @@ export default function Materiais() {
                       </label>
                     </div>
                   )}
-                  {showCamera && (
-                    <MateriaisCamera onCapture={handleCameraCapture} onClose={() => setShowCamera(false)} />
-                  )}
                 </div>
                 <div className="space-y-2">
                   <label className="text-xs font-bold text-zinc-500 uppercase tracking-widest">Observações</label>
@@ -446,6 +443,11 @@ export default function Materiais() {
             </form>
           </div>
         </div>
+      )}
+
+      {/* Câmera renderizada FORA do modal para escapar do stacking context do backdrop-blur */}
+      {showCamera && (
+        <MateriaisCamera onCapture={handleCameraCapture} onClose={() => setShowCamera(false)} />
       )}
     </div>
   );
