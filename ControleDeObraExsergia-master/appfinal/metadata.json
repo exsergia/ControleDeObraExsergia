@@ -1,6 +1,0 @@
-{
-  "name": "Exsergia - Controle de Obra",
-  "description": "Sistema completo para controle de materiais, conferência de campo, avanço de mão de obra e integração financeira.",
-  "requestFramePermissions": ["camera"],
-  "majorCapabilities": []
-}
