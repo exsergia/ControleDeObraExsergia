@@ -509,15 +509,27 @@ function LoginView() {
       let emailLogin = login.trim().toLowerCase();
 
       if (!emailLogin.includes('@')) {
-        const cpfLimpo = somenteNumeros(emailLogin);
-        const cpfSnap = await getDoc(doc(db, 'cpfs', cpfLimpo));
+        const digits = somenteNumeros(emailLogin);
 
-        if (!cpfSnap.exists()) {
-          alert('CPF não encontrado. Verifique o número ou faça o cadastro.');
-          return;
+        // 1. Tabela cpfs (cadastro via app)
+        const cpfSnap = await getDoc(doc(db, 'cpfs', digits));
+        if (cpfSnap.exists()) {
+          emailLogin = cpfSnap.data().email;
+        } else {
+          // 2. Busca direta em operadores por CPF ou telefone (admin-created users)
+          const opSnap = await getDocs(collection(db, 'operadores'));
+          const match = opSnap.docs.find(d => {
+            const data = d.data() as any;
+            return (data.cpf || '').replace(/\D/g, '') === digits ||
+                   (data.telefone || '').replace(/\D/g, '') === digits;
+          });
+          if (match) {
+            emailLogin = (match.data() as any).email;
+          } else {
+            alert('CPF, celular ou e-mail não encontrado. Verifique os dados ou faça o cadastro.');
+            return;
+          }
         }
-
-        emailLogin = cpfSnap.data().email;
       }
 
       await signInWithEmailAndPassword(auth, emailLogin, senha);
@@ -633,7 +645,7 @@ function LoginView() {
               <input
                 value={login}
                 onChange={(e) => setLogin(e.target.value)}
-                placeholder="E-mail ou CPF"
+                placeholder="E-mail, CPF ou celular"
                 className="w-full h-12 px-4 bg-white border border-slate-200 rounded-lg text-sm font-medium outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               />
               <input
