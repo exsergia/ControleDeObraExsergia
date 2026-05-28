@@ -316,6 +316,7 @@ export default function Relatorios() {
                   <th className="px-5 py-4 text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Obra</th>
                   <th className="px-5 py-4 text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Saída</th>
                   <th className="px-5 py-4 text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Devolução</th>
+                  <th className="px-5 py-4 text-[10px] font-bold text-zinc-400 uppercase tracking-widest text-center">Foto</th>
                   <th className="px-5 py-4 text-[10px] font-bold text-zinc-400 uppercase tracking-widest text-center">Status</th>
                 </tr>
               </thead>
@@ -323,12 +324,12 @@ export default function Relatorios() {
                 {loadingLogs ? (
                   Array(5).fill(0).map((_, i) => (
                     <tr key={i} className="animate-pulse">
-                      <td colSpan={6} className="px-5 py-6"><div className="h-4 bg-zinc-100 rounded w-full" /></td>
+                      <td colSpan={7} className="px-5 py-6"><div className="h-4 bg-zinc-100 rounded w-full" /></td>
                     </tr>
                   ))
                 ) : filteredToolLogs.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="px-5 py-16 text-center">
+                    <td colSpan={7} className="px-5 py-16 text-center">
                       <Hammer className="w-10 h-10 text-zinc-200 mx-auto mb-3" />
                       <p className="text-zinc-400 text-sm font-medium">Nenhuma movimentação encontrada.</p>
                     </td>
@@ -372,6 +373,25 @@ export default function Relatorios() {
                           </div>
                         ) : (
                           <span className="text-[10px] text-zinc-400 font-bold uppercase">Pendente</span>
+                        )}
+                      </td>
+                      <td className="px-5 py-4 text-center">
+                        {log.fotoDevolucaoUrl ? (
+                          <a
+                            href={log.fotoDevolucaoUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-block"
+                            title="Ver foto da devolução"
+                          >
+                            <img
+                              src={log.fotoDevolucaoUrl}
+                              alt="Foto devolução"
+                              className="w-12 h-12 object-cover rounded-lg border border-zinc-200 hover:opacity-80 transition-opacity mx-auto"
+                            />
+                          </a>
+                        ) : (
+                          <span className="text-[10px] text-zinc-300 font-bold uppercase">—</span>
                         )}
                       </td>
                       <td className="px-5 py-4 text-center">

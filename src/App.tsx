@@ -240,10 +240,17 @@ function App() {
         notify('error', 'Supabase não respondeu', 'Confira se o .env está correto e reinicie o npm run dev.');
       });
 
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
       const u = session?.user || null;
       if (!mounted) return;
       if (u) {
+        // TOKEN_REFRESHED acontece em background (ex: iOS ao abrir câmera).
+        // Não mostrar loading nem recarregar perfil — só atualizar o objeto de usuário.
+        if (event === 'TOKEN_REFRESHED') {
+          setCurrentUser(u);
+          setUser(u);
+          return;
+        }
         setLoading(true);
         resolveUserProfile(u);
       } else {
