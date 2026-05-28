@@ -3,7 +3,7 @@ import { useCollection } from '../lib/supabaseHooks';
 import { collection, addDoc, serverTimestamp, query, orderBy } from '../lib/supabaseDb';
 import { db, handleFirestoreError, OperationType } from '../lib/supabase';
 import { Material, Obra, MaterialStatus } from '../types';
-import { Plus, Package, Truck, Calendar, Hash, Tag, DollarSign, FileText, Search, ChevronDown, Camera, X } from 'lucide-react';
+import { Plus, Package, Truck, Calendar, Hash, Tag, DollarSign, FileText, Search, ChevronDown, Camera, X, Building2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '../lib/utils';
@@ -11,11 +11,19 @@ import { uploadPhoto, sendBrowserNotification } from '../lib/services';
 import { useAuth } from '../App';
 import { useAutoSaveForm } from '../hooks/useAutoSaveForm';
 
+const parseDate = (d: any): Date | null => {
+  if (!d) return null;
+  if (typeof d?.toDate === 'function') return d.toDate();
+  if (typeof d === 'string' && d) return new Date(d);
+  if (d instanceof Date) return d;
+  return null;
+};
+
 export default function Materiais() {
   const { isAdmin, notify } = useAuth();
   const [obrasSnap] = useCollection(collection(db, 'obras'));
   const [materiaisSnap, loading] = useCollection(query(collection(db, 'materiais'), orderBy('dataEntrega', 'desc')));
-  
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [uploading, setUploading] = useState(false);
@@ -32,7 +40,8 @@ export default function Materiais() {
     quantidade: 0,
     precoUnitario: 0,
     valorTotal: 0,
-    statusConferencia: 'Pendente'
+    statusConferencia: 'Pendente',
+    observacoes: ''
   });
 
   const obras = (obrasSnap?.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Obra[]) || [];
@@ -41,15 +50,12 @@ export default function Materiais() {
   const handleAddMaterial = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.obraId) return notify('warning', 'Atenção', 'Por favor, selecione uma obra de destino.');
-    
-    console.log('Iniciando registro de material...', { formData, hasPhoto: !!photoFile });
+
     setUploading(true);
     try {
       let photoUrl = '';
       if (photoFile) {
-        console.log('Enviando foto ao Storage...');
         photoUrl = await uploadPhoto(photoFile, 'materiais');
-        console.log('Foto enviada com sucesso:', photoUrl);
       }
 
       const qty = Number(formData.quantidade) || 0;
@@ -67,9 +73,7 @@ export default function Materiais() {
         photoUrl: photoUrl || ''
       };
 
-      console.log('Enviando payload para Firestore:', payload);
       await addDoc(collection(db, 'materiais'), payload);
-      console.log('Material registrado com sucesso no Firestore.');
 
       sendBrowserNotification('Novo Material!', `Lançamento de ${formData.descricao} concluído.`);
 
@@ -79,7 +83,6 @@ export default function Materiais() {
       setPhotoFile(null);
       setPhotoPreview(null);
     } catch (err: any) {
-      console.error('Erro detalhado no registro:', err);
       const errorMessage = err instanceof Error ? err.message : 'Erro desconhecido';
       notify('error', 'Erro no Registro', `Não foi possível registrar o material: ${errorMessage}`);
       handleFirestoreError(err, OperationType.WRITE, 'materiais');
@@ -102,11 +105,14 @@ export default function Materiais() {
     }
   };
 
-  const filtered = materiais.filter(m => 
-    m.descricao.toLowerCase().includes(search.toLowerCase()) || 
-    m.codigoEntrega.toLowerCase().includes(search.toLowerCase()) ||
-    m.fornecedor.toLowerCase().includes(search.toLowerCase())
-  );
+  const filtered = materiais.filter(m => {
+    const q = search.toLowerCase();
+    return (
+      (m.descricao || '').toLowerCase().includes(q) ||
+      (m.codigoEntrega || '').toLowerCase().includes(q) ||
+      (m.fornecedor || '').toLowerCase().includes(q)
+    );
+  });
 
   return (
     <div className="space-y-6 pb-20 animate-in fade-in duration-500">
@@ -115,7 +121,7 @@ export default function Materiais() {
           <h2 className="text-2xl font-bold tracking-tight text-zinc-900">Materiais Entregues</h2>
           <p className="text-zinc-500">Controle de tudo que chega nas obras.</p>
         </div>
-        <button 
+        <button
           onClick={() => setIsModalOpen(true)}
           className="flex items-center justify-center gap-2 px-5 py-2.5 bg-zinc-900 text-white rounded-lg font-semibold hover:bg-zinc-800 transition-all shadow-lg active:scale-95"
         >
@@ -127,9 +133,9 @@ export default function Materiais() {
       {/* Search */}
       <div className="relative max-w-md">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
-        <input 
-          type="text" 
-          placeholder="Buscar material, código ou fornecedor..." 
+        <input
+          type="text"
+          placeholder="Buscar material, código ou fornecedor..."
           className="w-full pl-10 pr-4 py-2 bg-white border border-zinc-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900/10 shadow-sm transition-all"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
@@ -159,60 +165,63 @@ export default function Materiais() {
                   </tr>
                 ))
               ) : filtered.length > 0 ? (
-                filtered.map(mat => (
-                  <tr key={mat.id} className="hover:bg-zinc-50/50 transition-colors group">
-                    <td className="px-6 py-4">
-                      {mat.photoUrl ? (
-                        <img src={mat.photoUrl} alt="Material" className="w-10 h-10 rounded object-cover shadow-sm" />
-                      ) : (
-                        <div className="w-10 h-10 rounded bg-zinc-100 flex items-center justify-center">
-                          <Package className="w-4 h-4 text-zinc-300" />
+                filtered.map(mat => {
+                  const dt = parseDate(mat.dataEntrega);
+                  return (
+                    <tr key={mat.id} className="hover:bg-zinc-50/50 transition-colors group">
+                      <td className="px-6 py-4">
+                        {mat.photoUrl ? (
+                          <img src={mat.photoUrl} alt="Material" className="w-10 h-10 rounded object-cover shadow-sm" />
+                        ) : (
+                          <div className="w-10 h-10 rounded bg-zinc-100 flex items-center justify-center">
+                            <Package className="w-4 h-4 text-zinc-300" />
+                          </div>
+                        )}
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex flex-col">
+                          <span className="text-sm font-bold text-zinc-900 group-hover:text-zinc-600 transition-colors uppercase">#{mat.codigoEntrega}</span>
+                          <span className="text-[10px] text-zinc-400 flex items-center gap-1">
+                            <Calendar className="w-3 h-3" />
+                            {dt ? format(dt, 'dd/MM/yy HH:mm') : '---'}
+                          </span>
                         </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex flex-col">
+                          <span className="text-sm font-semibold text-zinc-800">{mat.descricao}</span>
+                          <span className="text-xs text-zinc-500">{mat.categoria}</span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="text-sm text-zinc-600 font-medium">{mat.fornecedor || '---'}</span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-1">
+                          <span className="text-sm font-bold text-zinc-900">{mat.quantidade}</span>
+                          <span className="text-xs text-zinc-400">{mat.unidade}</span>
+                        </div>
+                      </td>
+                      {isAdmin && (
+                        <td className="px-6 py-4 text-right">
+                          <span className="text-sm font-mono font-bold text-zinc-900">
+                            {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(mat.valorTotal || 0)}
+                          </span>
+                        </td>
                       )}
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex flex-col">
-                        <span className="text-sm font-bold text-zinc-900 group-hover:text-zinc-600 transition-colors uppercase">#{mat.codigoEntrega}</span>
-                        <span className="text-[10px] text-zinc-400 flex items-center gap-1">
-                          <Calendar className="w-3 h-3" />
-                          {mat.dataEntrega?.seconds ? format(mat.dataEntrega.toDate(), 'dd/MM/yy HH:mm') : 'Pendente'}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex flex-col">
-                        <span className="text-sm font-semibold text-zinc-800">{mat.descricao}</span>
-                        <span className="text-xs text-zinc-500">{mat.categoria}</span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className="text-sm text-zinc-600 font-medium">{mat.fornecedor}</span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-1">
-                        <span className="text-sm font-bold text-zinc-900">{mat.quantidade}</span>
-                        <span className="text-xs text-zinc-400">{mat.unidade}</span>
-                      </div>
-                    </td>
-                    {isAdmin && (
-                      <td className="px-6 py-4 text-right">
-                        <span className="text-sm font-mono font-bold text-zinc-900">
-                          {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(mat.valorTotal)}
+                      <td className="px-6 py-4">
+                        <span className={cn(
+                          "px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border",
+                          mat.statusConferencia === 'Conferido' ? "bg-green-50 text-green-600 border-green-200" :
+                          mat.statusConferencia === 'Divergente' ? "bg-red-50 text-red-600 border-red-200" :
+                          "bg-zinc-50 text-zinc-400 border-zinc-200"
+                        )}>
+                          {mat.statusConferencia}
                         </span>
                       </td>
-                    )}
-                    <td className="px-6 py-4">
-                      <span className={cn(
-                        "px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border",
-                        mat.statusConferencia === 'Conferido' ? "bg-green-50 text-green-600 border-green-200" :
-                        mat.statusConferencia === 'Divergente' ? "bg-red-50 text-red-600 border-red-200" :
-                        "bg-zinc-50 text-zinc-400 border-zinc-200"
-                      )}>
-                        {mat.statusConferencia}
-                      </span>
-                    </td>
-                  </tr>
-                ))
+                    </tr>
+                  );
+                })
               ) : (
                 <tr>
                   <td colSpan={6} className="px-6 py-12 text-center text-zinc-400 italic">Nenhum registro encontrado.</td>
@@ -230,15 +239,15 @@ export default function Materiais() {
             <div className="p-6 border-b border-zinc-100 flex items-center justify-between bg-zinc-50">
               <h3 className="text-lg font-bold text-zinc-900 uppercase tracking-widest">Lançar Material</h3>
               <button onClick={() => setIsModalOpen(false)} className="p-2 hover:bg-zinc-200 rounded-full transition-colors">
-                <Plus className="w-6 h-6 rotate-45 text-zinc-500" />
+                <X className="w-6 h-6 text-zinc-500" />
               </button>
             </div>
-            <form onSubmit={handleAddMaterial} className="p-6 space-y-6">
+            <form onSubmit={handleAddMaterial} className="p-6 space-y-6 max-h-[80vh] overflow-y-auto">
               <div className="grid sm:grid-cols-2 gap-6">
                 <div className="space-y-2">
                   <label className="text-xs font-bold text-zinc-500 uppercase tracking-widest">Obra de Destino</label>
                   <div className="relative">
-                    <select 
+                    <select
                       required
                       className="w-full px-4 py-2.5 bg-zinc-50 border border-zinc-200 rounded-lg text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-zinc-900/10"
                       value={formData.obraId}
@@ -254,9 +263,9 @@ export default function Materiais() {
                   <label className="text-xs font-bold text-zinc-500 uppercase tracking-widest">Cód. Entrega / NF</label>
                   <div className="relative">
                     <Hash className="absolute left-3 top-3 w-4 h-4 text-zinc-400" />
-                    <input 
+                    <input
                       required
-                      type="text" 
+                      type="text"
                       className="w-full pl-10 pr-4 py-2.5 bg-zinc-50 border border-zinc-200 rounded-lg text-sm"
                       placeholder="Ex: NF-00123"
                       value={formData.codigoEntrega}
@@ -270,13 +279,27 @@ export default function Materiais() {
                 <label className="text-xs font-bold text-zinc-500 uppercase tracking-widest">Descrição do Material</label>
                 <div className="relative">
                   <Package className="absolute left-3 top-3 w-4 h-4 text-zinc-400" />
-                  <input 
+                  <input
                     required
-                    type="text" 
+                    type="text"
                     className="w-full pl-10 pr-4 py-2.5 bg-zinc-50 border border-zinc-200 rounded-lg text-sm"
                     placeholder="Nome detalhado do produto"
                     value={formData.descricao}
                     onChange={(e) => setFormData({...formData, descricao: e.target.value})}
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-zinc-500 uppercase tracking-widest">Fornecedor</label>
+                <div className="relative">
+                  <Building2 className="absolute left-3 top-3 w-4 h-4 text-zinc-400" />
+                  <input
+                    type="text"
+                    className="w-full pl-10 pr-4 py-2.5 bg-zinc-50 border border-zinc-200 rounded-lg text-sm"
+                    placeholder="Nome do fornecedor (opcional)"
+                    value={formData.fornecedor}
+                    onChange={(e) => setFormData({...formData, fornecedor: e.target.value})}
                   />
                 </div>
               </div>
@@ -290,9 +313,9 @@ export default function Materiais() {
                 </div>
                 <div className="space-y-2">
                   <label className="text-xs font-bold text-zinc-500 uppercase tracking-widest">Quantidade</label>
-                  <input 
+                  <input
                     required
-                    type="number" 
+                    type="number"
                     min="0"
                     step="0.01"
                     className="w-full px-4 py-2.5 bg-zinc-50 border border-zinc-200 rounded-lg text-sm text-center font-bold"
@@ -309,8 +332,8 @@ export default function Materiais() {
                     <label className="text-xs font-bold text-zinc-500 uppercase tracking-widest">Preço Un.</label>
                     <div className="relative">
                       <DollarSign className="absolute left-3 top-3 w-4 h-4 text-zinc-400" />
-                      <input 
-                        type="number" 
+                      <input
+                        type="number"
                         min="0"
                         step="0.01"
                         className="w-full pl-8 pr-2 py-2.5 bg-zinc-50 border border-zinc-200 rounded-lg text-sm text-center font-bold"
@@ -327,7 +350,7 @@ export default function Materiais() {
                 <div className="space-y-2 text-left">
                   <label className="text-xs font-bold text-zinc-500 uppercase tracking-widest pl-1">Categoria</label>
                   <div className="relative">
-                    <select 
+                    <select
                       className="w-full px-4 py-2.5 bg-zinc-50 border border-zinc-200 rounded-lg text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-zinc-900/10"
                       value={formData.categoria}
                       onChange={(e) => setFormData({...formData, categoria: e.target.value})}
@@ -348,7 +371,8 @@ export default function Materiais() {
                     {photoPreview ? (
                       <div className="relative w-full aspect-video rounded-xl overflow-hidden border-2 border-dashed border-zinc-300">
                         <img src={photoPreview} alt="Preview" className="w-full h-full object-cover" />
-                        <button 
+                        <button
+                          type="button"
                           onClick={() => { setPhotoFile(null); setPhotoPreview(null); }}
                           className="absolute top-2 right-2 p-1 bg-red-500 text-white rounded-full shadow-lg hover:scale-110 transition-transform"
                         >
@@ -368,11 +392,11 @@ export default function Materiais() {
                   <label className="text-xs font-bold text-zinc-500 uppercase tracking-widest">Observações</label>
                   <div className="relative">
                     <FileText className="absolute left-3 top-3 w-4 h-4 text-zinc-400" />
-                    <input 
-                      type="text" 
-                      className="w-full pl-10 pr-4 py-2.5 bg-zinc-50 border border-zinc-200 rounded-lg text-sm"
+                    <textarea
+                      rows={4}
+                      className="w-full pl-10 pr-4 py-2.5 bg-zinc-50 border border-zinc-200 rounded-lg text-sm resize-none"
                       placeholder="Opcional..."
-                      value={formData.observacoes}
+                      value={formData.observacoes || ''}
                       onChange={(e) => setFormData({...formData, observacoes: e.target.value})}
                     />
                   </div>
@@ -380,15 +404,15 @@ export default function Materiais() {
               </div>
 
               <div className="pt-4 flex gap-3">
-                <button 
-                  type="button" 
+                <button
+                  type="button"
                   onClick={() => setIsModalOpen(false)}
                   className="flex-1 py-4 text-sm font-semibold text-zinc-600 hover:bg-zinc-100 rounded-xl transition-colors uppercase tracking-widest"
                 >
                   Cancelar
                 </button>
-                <button 
-                  type="submit" 
+                <button
+                  type="submit"
                   disabled={uploading}
                   className="flex-[2] py-4 text-sm font-semibold text-white bg-zinc-900 rounded-xl hover:bg-zinc-800 transition-all shadow-xl shadow-zinc-200 uppercase tracking-widest disabled:opacity-50"
                 >

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useCollection } from '../lib/supabaseHooks';
 import { collection, query, where, addDoc, updateDoc, doc, serverTimestamp, deleteDoc } from '../lib/supabaseDb';
 import { db, handleFirestoreError, OperationType } from '../lib/supabase';
@@ -314,15 +314,52 @@ export default function ProgressoFisico() {
   );
 }
 
-function ActivityCard({ ativ, obra, onUpdate, onDelete, readOnly = false }: { 
+function ActivityCard({ ativ, obra, onUpdate, onDelete, readOnly = false }: {
   key?: string | number,
-  ativ: Atividade, 
+  ativ: Atividade,
   obra?: Obra,
   onUpdate: (id: string, current: number, total: number) => void | Promise<void>,
   onDelete: () => void | Promise<void>,
   readOnly?: boolean
 }) {
-  const perc = Math.round(ativ.percentual);
+  // Estado local para o input — sem lag, nunca chama o banco durante a digitação
+  const [localValue, setLocalValue] = useState<string>(String(ativ.quantidadeExecutada ?? 0));
+  const hasFocus = useRef(false);
+  const [saving, setSaving] = useState(false);
+
+  // Sincroniza com prop apenas quando o campo NÃO está em foco (evita reset durante digitação)
+  useEffect(() => {
+    if (!hasFocus.current) {
+      setLocalValue(String(ativ.quantidadeExecutada ?? 0));
+    }
+  }, [ativ.quantidadeExecutada]);
+
+  const handleFocus = (e: React.FocusEvent<HTMLInputElement>) => {
+    hasFocus.current = true;
+    e.target.select(); // seleciona tudo → digitar substitui o valor atual
+  };
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (readOnly) return;
+    setLocalValue(e.target.value); // só atualiza estado local — zero lag
+  };
+
+  const commit = () => {
+    hasFocus.current = false;
+    if (readOnly) return;
+    const parsed = Math.max(0, parseFloat(localValue) || 0);
+    setLocalValue(String(parsed));
+    setSaving(true);
+    Promise.resolve(onUpdate(ativ.id, parsed, ativ.quantidadePrevista)).finally(() => setSaving(false));
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (['-', '+', 'e', 'E'].includes(e.key)) { e.preventDefault(); return; }
+    if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
+  };
+
+  const displayedExec = parseFloat(localValue) || 0;
+  const perc = Math.min(100, Math.round(ativ.quantidadePrevista > 0 ? (displayedExec / ativ.quantidadePrevista) * 100 : 0));
   const status = perc < 50 ? 'Abaixo de 50%' : perc < 100 ? 'Entre 50% e 99%' : 'Concluído';
   const colorClass = perc < 50 ? 'bg-red-500' : perc < 100 ? 'bg-amber-500' : 'bg-green-500';
   const badgeClass = perc < 50 ? 'bg-red-50 text-red-600 border-red-100' : perc < 100 ? 'bg-amber-50 text-amber-600 border-amber-100' : 'bg-green-50 text-green-600 border-green-100';
@@ -341,53 +378,67 @@ function ActivityCard({ ativ, obra, onUpdate, onDelete, readOnly = false }: {
           </div>
           <h4 className="text-2xl font-black text-zinc-900 leading-tight pr-10">{ativ.descricao}</h4>
           <div className="flex flex-col gap-1">
-             <p className="text-sm text-zinc-500 font-medium leading-relaxed flex items-center gap-2">
+            <p className="text-sm text-zinc-500 font-medium leading-relaxed flex items-center gap-2">
               <Users className="w-3.5 h-3.5" />
               Equipe: <span className="font-bold text-zinc-800">{ativ.equipeResponsavel || 'Não atribuída'}</span>
             </p>
-             <p className="text-sm text-zinc-400 font-medium flex items-center gap-2">
+            <p className="text-sm text-zinc-400 font-medium flex items-center gap-2">
               <Target className="w-3.5 h-3.5" />
               Meta Total: <span className="font-bold">{ativ.quantidadePrevista} {ativ.unidade}</span>
-             </p>
-             <p className="text-sm text-zinc-400 font-medium flex items-center gap-2">
+            </p>
+            <p className="text-sm text-zinc-400 font-medium flex items-center gap-2">
               <DollarSign className="w-3.5 h-3.5" />
               Executado: <span className="font-bold text-zinc-900">
-                {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format((ativ.quantidadeExecutada || 0) * (ativ.valorUnitario || 0))}
+                {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(displayedExec * (ativ.valorUnitario || 0))}
               </span>
               <span className="text-[10px] text-zinc-400 font-normal"> / Orçado: {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(ativ.quantidadePrevista * (ativ.valorUnitario || 0))}</span>
-             </p>
+            </p>
           </div>
         </div>
 
         <div className="flex items-center gap-3">
           <div className="text-center space-y-2">
-             <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block">Total ({ativ.unidade})</span>
-             <div className="w-20 py-4 bg-zinc-50 border border-zinc-100 rounded-3xl text-xl font-black text-zinc-900 shadow-inner">
-               {ativ.quantidadePrevista}
-             </div>
+            <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block">Total ({ativ.unidade})</span>
+            <div className="w-20 py-4 bg-zinc-50 border border-zinc-100 rounded-3xl text-xl font-black text-zinc-900 shadow-inner text-center">
+              {ativ.quantidadePrevista}
+            </div>
           </div>
+
           <div className="text-center space-y-2">
-             <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block">Executado ({ativ.unidade})</span>
-             <input 
-               type="number"
-               className={cn("w-24 py-4 border-2 border-zinc-100 rounded-3xl text-xl font-black text-zinc-900 focus:outline-none focus:border-zinc-900 transition-colors text-center shadow-lg", readOnly ? "bg-zinc-50 cursor-not-allowed" : "bg-white")}
-               value={!ativ.quantidadeExecutada ? '' : ativ.quantidadeExecutada}
-               min="0"
-               onKeyDown={(e) => ['-', '+', 'e', 'E'].includes(e.key) && e.preventDefault()}
-               readOnly={readOnly}
-               onChange={(e) => !readOnly && onUpdate(ativ.id, Math.max(0, parseFloat(e.target.value) || 0), ativ.quantidadePrevista)}
-             />
+            <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block">
+              Executado ({ativ.unidade}){saving && <span className="ml-1 text-zinc-300">↑</span>}
+            </span>
+            <input
+              type="number"
+              inputMode="numeric"
+              className={cn(
+                "w-24 py-4 border-2 rounded-3xl text-xl font-black text-zinc-900 focus:outline-none transition-colors text-center shadow-lg",
+                readOnly
+                  ? "bg-zinc-50 cursor-not-allowed border-zinc-100"
+                  : saving
+                    ? "bg-white border-amber-300"
+                    : "bg-white border-zinc-100 focus:border-zinc-900"
+              )}
+              value={localValue}
+              min="0"
+              readOnly={readOnly}
+              onFocus={handleFocus}
+              onChange={handleChange}
+              onBlur={commit}
+              onKeyDown={handleKeyDown}
+            />
           </div>
+
           <div className="text-center space-y-2 hidden sm:block">
-             <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block">Resumo</span>
-             <div className="px-5 py-4 bg-zinc-50 border border-zinc-100 rounded-3xl text-xs font-black text-zinc-400 leading-tight">
-               {ativ.quantidadeExecutada} / <br/> {ativ.quantidadePrevista} {ativ.unidade}
-             </div>
+            <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block">Resumo</span>
+            <div className="px-5 py-4 bg-zinc-50 border border-zinc-100 rounded-3xl text-xs font-black text-zinc-400 leading-tight">
+              {displayedExec} / <br /> {ativ.quantidadePrevista} {ativ.unidade}
+            </div>
           </div>
         </div>
 
         {!readOnly && (
-          <button 
+          <button
             onClick={onDelete}
             className="absolute top-8 right-8 p-2 text-zinc-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all"
           >
@@ -404,8 +455,8 @@ function ActivityCard({ ativ, obra, onUpdate, onDelete, readOnly = false }: {
           <span className="text-xs font-black text-zinc-400">{perc}%</span>
         </div>
         <div className="h-4 w-full bg-zinc-100 rounded-full overflow-hidden shadow-inner">
-          <div 
-            className={cn("h-full transition-all duration-1000 ease-out", colorClass)}
+          <div
+            className={cn("h-full transition-all duration-500 ease-out", colorClass)}
             style={{ width: `${perc}%` }}
           />
         </div>

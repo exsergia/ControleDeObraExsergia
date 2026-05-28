@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Bell, Shield, Smartphone, Globe, Save } from 'lucide-react';
+import { Bell, Save } from 'lucide-react';
 import { requestNotificationPermission, sendBrowserNotification } from '../lib/services';
 import { useAuth } from '../App';
 
@@ -62,18 +62,6 @@ export default function Settings() {
             active={notifications.updates}
             onClick={() => handleToggle('updates')}
           />
-        </div>
-      </div>
-
-      <div className="bg-white rounded-2xl border border-zinc-200 shadow-sm overflow-hidden opacity-50 grayscale pointer-events-none">
-        <div className="p-6 border-b border-zinc-100 bg-zinc-50/50">
-          <div className="flex items-center gap-3">
-            <Globe className="w-5 h-5 text-zinc-400" />
-            <h3 className="font-bold text-zinc-900 uppercase tracking-widest text-xs">Integração com Fornecedores (Em Breve)</h3>
-          </div>
-        </div>
-        <div className="p-8 text-center space-y-2">
-           <p className="text-zinc-500 text-sm">Estamos trabalhando em integrações diretas com Gerdau, Leroy Merlin e outros parceiros para automatizar seu estoque.</p>
         </div>
       </div>
 

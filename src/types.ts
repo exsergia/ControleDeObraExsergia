@@ -84,6 +84,8 @@ export interface ToolLog {
   dataDevolucao?: any;
   fotoDevolucaoUrl?: string;
   statusLog: 'Aberta' | 'Concluída';
+  movementHash?: string;
+  activityId?: string;
 }
 
 export interface Checklist {

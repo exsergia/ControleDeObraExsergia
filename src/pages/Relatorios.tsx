@@ -30,6 +30,14 @@ import { uploadFile } from '../lib/services';
 import { utils, read, writeFile } from 'xlsx';
 import { useAuth } from '../App';
 
+const parseDate = (d: any): Date => {
+  if (!d) return new Date();
+  if (typeof d?.toDate === 'function') return d.toDate();
+  if (typeof d === 'string' && d) return new Date(d);
+  if (d instanceof Date) return d;
+  return new Date();
+};
+
 export default function Relatorios() {
   const { isAdmin, notify } = useAuth();
   const navigate = useNavigate();
@@ -51,10 +59,12 @@ export default function Relatorios() {
   const operadores = (operadoresSnap?.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Operator[]) || [];
 
   const filteredChecklists = checklists.filter(c => {
+    if (!search) return true;
+    const q = search.toLowerCase();
     const obra = obras.find(o => o.id === c.obraId);
     return (
-      obra?.nome.toLowerCase().includes(search.toLowerCase()) ||
-      c.nomeResponsavel.toLowerCase().includes(search.toLowerCase())
+      (obra?.nome || '').toLowerCase().includes(q) ||
+      (c.nomeResponsavel || '').toLowerCase().includes(q)
     );
   });
 
@@ -64,7 +74,7 @@ export default function Relatorios() {
     // 1. Raw Data Table (Checklists)
     const rawData = checklists.map(c => {
       const obra = obras.find(o => o.id === c.obraId);
-      const date = c.data?.toDate ? c.data.toDate() : new Date();
+      const date = parseDate(c.data);
       return {
         ID: c.id,
         Obra: obra?.nome || 'N/A',
@@ -82,7 +92,7 @@ export default function Relatorios() {
     const materialsData: any[] = [];
     checklists.forEach(c => {
       const obra = obras.find(o => o.id === c.obraId);
-      const date = c.data?.toDate ? c.data.toDate() : new Date();
+      const date = parseDate(c.data);
       c.materiais.forEach(mItem => {
         const mat = materiais.find(m => m.id === mItem.materialId);
         materialsData.push({
@@ -100,7 +110,7 @@ export default function Relatorios() {
     const progressData: any[] = [];
     checklists.forEach(c => {
       const obra = obras.find(o => o.id === c.obraId);
-      const date = c.data?.toDate ? c.data.toDate() : new Date();
+      const date = parseDate(c.data);
       c.progresso.forEach(pItem => {
         const ativ = atividades.find(a => a.id === pItem.atividadeId);
         progressData.push({
@@ -267,14 +277,14 @@ export default function Relatorios() {
   );
 }
 
-function ReportCard({ report, obra, isSelected, onClick }: { 
+function ReportCard({ report, obra, isSelected, onClick }: {
   key?: string | number,
-  report: Checklist, 
-  obra?: Obra, 
+  report: Checklist,
+  obra?: Obra,
   isSelected: boolean,
-  onClick: () => void 
+  onClick: () => void
 }) {
-  const date = report.data?.toDate ? report.data.toDate() : new Date();
+  const date = parseDate(report.data);
 
   return (
     <button 
@@ -328,7 +338,7 @@ function ReportDetails({ report, obra, materiais, atividades, operadores }: {
   operadores: Operator[]
 }) {
   const { isAdmin, notify } = useAuth();
-  const date = report.data?.toDate ? report.data.toDate() : new Date();
+  const date = parseDate(report.data);
   const [uploading, setUploading] = useState(false);
 
   const handleAddAttachment = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -378,6 +388,7 @@ function ReportDetails({ report, obra, materiais, atividades, operadores }: {
   const handleFillTemplate = async (file: Attachment) => {
     try {
       const response = await fetch(file.url);
+      if (!response.ok) throw new Error('Erro ao baixar o arquivo.');
       const arrayBuffer = await response.arrayBuffer();
       const workbook = read(arrayBuffer, { type: 'array' });
 

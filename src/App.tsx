@@ -11,16 +11,16 @@ import {
 } from './lib/supabase';
 import { doc, getDoc, setDoc, updateDoc, db } from './lib/supabaseDb';
 import { Operator } from './types';
-import { 
-  LayoutDashboard, 
-  HardHat, 
-  Package, 
-  ClipboardCheck, 
+import {
+  LayoutDashboard,
+  HardHat,
+  Package,
+  ClipboardCheck,
   Hammer,
-  Users, 
-  FileText, 
-  LogOut, 
-  Menu, 
+  Users,
+  FileText,
+  LogOut,
+  Menu,
   X,
   Settings,
   Activity,
@@ -28,7 +28,9 @@ import {
   AlertTriangle,
   Info,
   CheckCircle,
-  AlertOctagon
+  AlertOctagon,
+  Layers,
+  DollarSign
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from './lib/utils';
@@ -74,6 +76,7 @@ const Relatorios = React.lazy(() => import('./pages/Relatorios'));
 const Progresso = React.lazy(() => import('./pages/Progresso'));
 const Ferramentas = React.lazy(() => import('./pages/Ferramentas'));
 const SettingsPage = React.lazy(() => import('./pages/Settings'));
+const Atividades = React.lazy(() => import('./pages/Atividades'));
 
 interface Notification {
   id: string;
@@ -292,14 +295,15 @@ function App() {
                 <Routes>
                   <Route path="/" element={<Dashboard />} />
                   <Route path="/obras" element={isAdmin ? <Obras /> : <Navigate to="/" replace />} />
-                  <Route path="/materiais" element={<ComingSoonPage />} />
+                  <Route path="/materiais" element={<Materiais />} />
                   <Route path="/checklist" element={isAdmin ? <Checklist /> : <Navigate to="/" replace />} />
                   <Route path="/operadores" element={isAdmin ? <Operadores /> : <Navigate to="/" replace />} />
-                  <Route path="/financeiro" element={<ComingSoonPage />} />
-                  <Route path="/relatorios" element={<ComingSoonPage />} />
+                  <Route path="/financeiro" element={isAdmin ? <Financeiro /> : <Navigate to="/" replace />} />
+                  <Route path="/relatorios" element={<Relatorios />} />
                   <Route path="/progresso" element={<Progresso />} />
                   <Route path="/ferramentas" element={<Ferramentas />} />
-                  <Route path="/settings" element={<ComingSoonPage />} />
+                  <Route path="/atividades" element={isAdmin ? <Atividades /> : <Navigate to="/" replace />} />
+                  <Route path="/settings" element={<SettingsPage />} />
                   <Route path="*" element={<Navigate to="/" replace />} />
                 </Routes>
               </React.Suspense>
@@ -639,21 +643,21 @@ function Layout({ children }: { children: React.ReactNode }) {
  
   const menuItems = [
     { label: 'Dashboard', icon: LayoutDashboard, path: '/' },
-    { label: 'Obras', icon: HardHat, path: '/obras' },
+    { label: 'Obras', icon: HardHat, path: '/obras', adminOnly: true },
     { label: 'Materiais', icon: Package, path: '/materiais' },
-    { label: 'Checklist Diário', icon: ClipboardCheck, path: '/checklist' },
-    { label: 'Operadores', icon: Users, path: '/operadores' },
+    { label: 'Checklist Diário', icon: ClipboardCheck, path: '/checklist', adminOnly: true },
+    { label: 'Operadores', icon: Users, path: '/operadores', adminOnly: true },
+    { label: 'Atividades', icon: Layers, path: '/atividades', adminOnly: true },
     { label: 'Progresso Físico', icon: Activity, path: '/progresso' },
-    { label: 'Financeiro', icon: FileText, path: '/financeiro', adminOnly: true },
+    { label: 'Financeiro', icon: DollarSign, path: '/financeiro', adminOnly: true },
     { label: 'Relatórios', icon: FileText, path: '/relatorios' },
     { label: 'Ferramentas', icon: Hammer, path: '/ferramentas' },
     { label: 'Configurações', icon: Settings, path: '/settings' },
   ];
 
-  const allowedOperatorPaths = ['/', '/progresso', '/ferramentas'];
   const filteredMenuItems = menuItems.filter(item => {
     if (isAdmin) return true;
-    return allowedOperatorPaths.includes(item.path);
+    return !item.adminOnly;
   });
 
   return (

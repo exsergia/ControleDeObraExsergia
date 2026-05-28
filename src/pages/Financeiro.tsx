@@ -23,6 +23,14 @@ import { utils, writeFile } from 'xlsx';
 import { format } from 'date-fns';
 import { useAuth } from '../App';
 
+const parseDate = (d: any): Date | null => {
+  if (!d) return null;
+  if (typeof d?.toDate === 'function') return d.toDate();
+  if (typeof d === 'string' && d) return new Date(d);
+  if (d instanceof Date) return d;
+  return null;
+};
+
 export default function Financeiro() {
   const { notify } = useAuth();
   const [obrasSnap] = useCollection(collection(db, 'obras'));
@@ -46,13 +54,13 @@ export default function Financeiro() {
           Obra: obras.find(o => o.id === m.obraId)?.nome || '---',
           Material: m.descricao,
           Entrega: m.codigoEntrega,
-          Fornecedor: m.fornecedor,
+          Fornecedor: m.fornecedor || '---',
           Quantidade: m.quantidade,
           Unidade: m.unidade,
           'Preço Unitário': m.precoUnitario,
           'Valor Total': m.valorTotal,
           Status: m.statusConferencia,
-          Data: m.dataEntrega?.toDate ? format(m.dataEntrega.toDate(), 'dd/MM/yyyy') : '---'
+          Data: (() => { const dt = parseDate(m.dataEntrega); return dt ? format(dt, 'dd/MM/yyyy') : '---'; })()
         }))
       : filteredAtividades.map(a => ({
           Obra: obras.find(o => o.id === a.obraId)?.nome || '---',
@@ -75,7 +83,7 @@ export default function Financeiro() {
         CATEGORIA: 'MATERIAL',
         OBRA: obras.find(o => o.id === m.obraId)?.nome || 'N/A',
         ITEM: m.descricao,
-        DATA: m.dataEntrega?.toDate ? format(m.dataEntrega.toDate(), 'yyyy-MM-dd') : 'N/A',
+        DATA: (() => { const dt = parseDate(m.dataEntrega); return dt ? format(dt, 'yyyy-MM-dd') : 'N/A'; })(),
         VALOR_UN: m.precoUnitario,
         QUANTIDADE: m.quantidade,
         TOTAL: m.valorTotal,
@@ -125,13 +133,14 @@ export default function Financeiro() {
   }, [materiais, atividades, selectedObraId]);
 
   const filteredMateriais = materiais.filter(m => {
-    const matchesSearch = m.descricao.toLowerCase().includes(search.toLowerCase()) || m.fornecedor.toLowerCase().includes(search.toLowerCase());
+    const q = search.toLowerCase();
+    const matchesSearch = (m.descricao || '').toLowerCase().includes(q) || (m.fornecedor || '').toLowerCase().includes(q);
     const matchesObra = selectedObraId === 'Todas' || m.obraId === selectedObraId;
     return matchesSearch && matchesObra;
   });
 
   const filteredAtividades = atividades.filter(a => {
-    const matchesSearch = a.descricao.toLowerCase().includes(search.toLowerCase());
+    const matchesSearch = (a.descricao || '').toLowerCase().includes(search.toLowerCase());
     const matchesObra = selectedObraId === 'Todas' || a.obraId === selectedObraId;
     return matchesSearch && matchesObra;
   });
