@@ -128,6 +128,15 @@ export async function setDoc(ref: DocRef, value: any) {
     if (role !== undefined) row.role = role;
   }
 
+  if (ref.table === 'obras') {
+    const { nome, status, cliente, responsavel, centroCusto } = payload;
+    if (nome !== undefined) row.nome = nome;
+    if (status !== undefined) row.status = status;
+    if (cliente !== undefined) row.cliente = cliente;
+    if (responsavel !== undefined) row.responsavel = responsavel;
+    if (centroCusto !== undefined) row.centro_custo = centroCusto;
+  }
+
   const { error } = await supabase.from(ref.table).upsert(row);
   if (error) throw error;
 }
