@@ -1086,9 +1086,6 @@ function CheckInModal({ log, tool, onClose }: { log: ToolLog, tool: Tool, onClos
   }, [photoPreview]);
 
   const handlePhotoChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    event.preventDefault();
-    event.stopPropagation();
-
     const file = event.target.files?.[0];
     if (!file) return;
 
@@ -1226,43 +1223,49 @@ function CheckInModal({ log, tool, onClose }: { log: ToolLog, tool: Tool, onClos
           )}
 
           <div className="space-y-3">
-            <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest pl-1">Foto do Estado do Material (Obrigatório)</label>
+            <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest pl-1">Foto do Estado do Material (Obrigatório)</span>
 
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              capture="environment"
-              className="hidden"
-              onClick={(event) => event.stopPropagation()}
-              onChange={handlePhotoChange}
-            />
-
-            <button
-              type="button"
-              disabled={loading}
-              onClick={() => fileInputRef.current?.click()}
+            {/*
+              Usamos <label htmlFor> em vez de button + .click() programático.
+              Isso evita o loop no iOS Safari causado por capture="environment"
+              combinado com click() sintético que o Safari trata como navegação.
+              Sem o atributo capture, o iOS exibe o menu nativo (Câmera / Fotos)
+              que funciona corretamente e não remonta o componente.
+            */}
+            <label
+              htmlFor="photo-devolutiva"
               className={cn(
-                'relative w-full aspect-video rounded-2xl overflow-hidden border-2 border-dashed transition-all group disabled:opacity-60 disabled:cursor-not-allowed',
+                'relative w-full aspect-video rounded-2xl overflow-hidden border-2 border-dashed transition-all group cursor-pointer block',
+                loading ? 'opacity-60 pointer-events-none' : '',
                 photoPreview ? 'border-zinc-200 bg-zinc-100' : error ? 'border-red-200 bg-red-50/30 hover:bg-red-50' : 'border-zinc-200 bg-zinc-50 hover:bg-zinc-100'
               )}
             >
+              <input
+                id="photo-devolutiva"
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                className="sr-only"
+                disabled={loading}
+                onChange={handlePhotoChange}
+              />
               {photoPreview ? (
                 <>
                   <img src={photoPreview} className="w-full h-full object-cover" alt="Pré-visualização da devolução" />
                   <div className="absolute inset-x-0 bottom-0 p-3 bg-gradient-to-t from-black/70 to-transparent text-white text-xs font-bold text-left">
-                    Foto selecionada. Clique para trocar.
+                    Foto selecionada. Toque para trocar.
                   </div>
                 </>
               ) : (
-                <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <div className="w-12 h-12 rounded-full bg-white flex items-center justify-center shadow-sm mb-2 group-hover:scale-110 transition-transform">
+                <div className="absolute inset-0 flex flex-col items-center justify-center gap-1">
+                  <div className="w-12 h-12 rounded-full bg-white flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform">
                     <Camera className={cn('w-6 h-6', error ? 'text-red-400' : 'text-zinc-400')} />
                   </div>
-                  <span className={cn('text-xs font-bold', error ? 'text-red-500' : 'text-zinc-500')}>TIRAR FOTO DO MATERIAL</span>
+                  <span className={cn('text-xs font-bold mt-1', error ? 'text-red-500' : 'text-zinc-500')}>TIRAR FOTO DO MATERIAL</span>
+                  <span className="text-[9px] text-zinc-400">Câmera ou galeria</span>
                 </div>
               )}
-            </button>
+            </label>
 
             {photoPreview && (
               <button
