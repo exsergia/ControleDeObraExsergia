@@ -1078,15 +1078,144 @@ function CheckOutModal({ tool, obras, onClose }: { tool: Tool, obras: Obra[], on
   );
 }
 
+// ── Câmera in-browser (getUserMedia) ──────────────────────────────────────────
+// Abre a câmera diretamente no browser sem sair do app.
+// Evita o reload causado pelo capture="environment" no Android Chrome.
+function CameraCapture({ onCapture, onClose }: { onCapture: (file: File) => void; onClose: () => void }) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const [ready, setReady] = useState(false);
+  const [camError, setCamError] = useState<string | null>(null);
+  const [captured, setCaptured] = useState<string | null>(null);
+  const [capturedFile, setCapturedFile] = useState<File | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+
+    const startCamera = async () => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } },
+          audio: false,
+        });
+        if (!mounted) { stream.getTracks().forEach(t => t.stop()); return; }
+        streamRef.current = stream;
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          await videoRef.current.play();
+          setReady(true);
+        }
+      } catch (err: any) {
+        if (!mounted) return;
+        const msg = err?.name === 'NotAllowedError'
+          ? 'Permissão de câmera negada. Libere nas configurações do navegador.'
+          : 'Não foi possível acessar a câmera neste dispositivo.';
+        setCamError(msg);
+      }
+    };
+
+    startCamera();
+    return () => {
+      mounted = false;
+      streamRef.current?.getTracks().forEach(t => t.stop());
+    };
+  }, []);
+
+  const stopStream = () => streamRef.current?.getTracks().forEach(t => t.stop());
+
+  const handleCapture = () => {
+    if (!videoRef.current || !ready) return;
+    const canvas = document.createElement('canvas');
+    canvas.width = videoRef.current.videoWidth;
+    canvas.height = videoRef.current.videoHeight;
+    canvas.getContext('2d')?.drawImage(videoRef.current, 0, 0);
+    canvas.toBlob(blob => {
+      if (!blob) return;
+      const file = new File([blob], `foto-${Date.now()}.jpg`, { type: 'image/jpeg' });
+      stopStream();
+      setCapturedFile(file);
+      setCaptured(URL.createObjectURL(blob));
+    }, 'image/jpeg', 0.88);
+  };
+
+  const handleConfirm = () => {
+    if (capturedFile) { onCapture(capturedFile); if (captured) URL.revokeObjectURL(captured); }
+  };
+
+  const handleRetake = () => {
+    if (captured) URL.revokeObjectURL(captured);
+    setCaptured(null);
+    setCapturedFile(null);
+    // Restart stream
+    setReady(false);
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } }, audio: false })
+      .then(stream => {
+        streamRef.current = stream;
+        if (videoRef.current) { videoRef.current.srcObject = stream; videoRef.current.play().then(() => setReady(true)); }
+      })
+      .catch(() => setCamError('Não foi possível reiniciar a câmera.'));
+  };
+
+  const handleClose = () => { stopStream(); if (captured) URL.revokeObjectURL(captured); onClose(); };
+
+  return (
+    <div className="fixed inset-0 z-[70] bg-black flex flex-col" style={{ touchAction: 'none' }}>
+      <div className="flex items-center justify-between p-4 shrink-0">
+        <button type="button" onClick={handleClose} className="p-2 text-white hover:bg-white/10 rounded-xl transition-colors">
+          <X className="w-6 h-6" />
+        </button>
+        <span className="text-white text-sm font-bold uppercase tracking-widest">
+          {captured ? 'Confirmar Foto' : 'Tirar Foto'}
+        </span>
+        <div className="w-10" />
+      </div>
+
+      <div className="flex-1 relative overflow-hidden bg-black">
+        {camError ? (
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 p-8 text-center">
+            <AlertCircle className="w-16 h-16 text-red-400" />
+            <p className="text-white text-sm">{camError}</p>
+            <button type="button" onClick={handleClose} className="px-6 py-3 bg-white text-black rounded-xl font-bold text-sm">Fechar</button>
+          </div>
+        ) : captured ? (
+          <img src={captured} className="w-full h-full object-contain" alt="Captura" />
+        ) : (
+          <video ref={videoRef} className="w-full h-full object-cover" playsInline muted />
+        )}
+      </div>
+
+      <div className="shrink-0 flex items-center justify-center gap-6 p-8 bg-black">
+        {captured ? (
+          <>
+            <button type="button" onClick={handleRetake}
+              className="flex-1 py-4 rounded-2xl border-2 border-white/20 text-white font-bold text-sm hover:bg-white/10 transition-all">
+              Tirar Novamente
+            </button>
+            <button type="button" onClick={handleConfirm}
+              className="flex-1 py-4 rounded-2xl bg-white text-black font-bold text-sm hover:bg-zinc-100 transition-all flex items-center justify-center gap-2">
+              <CheckCircle2 className="w-5 h-5" /> Usar Esta Foto
+            </button>
+          </>
+        ) : (
+          <button type="button" onClick={handleCapture} disabled={!ready}
+            className="w-20 h-20 rounded-full bg-white border-4 border-zinc-400 shadow-2xl hover:scale-95 active:scale-90 transition-transform disabled:opacity-40"
+            aria-label="Capturar foto"
+          />
+        )}
+      </div>
+    </div>
+  );
+}
+
 function CheckInModal({ log, tool, onClose }: { log: ToolLog, tool: Tool, onClose: () => void }) {
   const { notify } = useAuth();
-  const cameraInputRef = useRef<HTMLInputElement | null>(null);
   const galleryInputRef = useRef<HTMLInputElement | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [showCamera, setShowCamera] = useState(false);
 
   useEffect(() => {
     return () => {
@@ -1097,18 +1226,23 @@ function CheckInModal({ log, tool, onClose }: { log: ToolLog, tool: Tool, onClos
   const handlePhotoChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
-
     if (!file.type.startsWith('image/')) {
       setError('Selecione uma imagem válida para a devolução.');
       event.target.value = '';
       return;
     }
-
     if (photoPreview) URL.revokeObjectURL(photoPreview);
-
     setPhotoFile(file);
     setPhotoPreview(URL.createObjectURL(file));
     setError(null);
+  };
+
+  const handleCameraCapture = (file: File) => {
+    if (photoPreview) URL.revokeObjectURL(photoPreview);
+    setPhotoFile(file);
+    setPhotoPreview(URL.createObjectURL(file));
+    setError(null);
+    setShowCamera(false);
   };
 
   const clearPhoto = () => {
@@ -1116,7 +1250,6 @@ function CheckInModal({ log, tool, onClose }: { log: ToolLog, tool: Tool, onClos
     setPhotoPreview(null);
     setPhotoFile(null);
     setError(null);
-    if (cameraInputRef.current) cameraInputRef.current.value = '';
     if (galleryInputRef.current) galleryInputRef.current.value = '';
   };
 
@@ -1237,8 +1370,11 @@ function CheckInModal({ log, tool, onClose }: { log: ToolLog, tool: Tool, onClos
               Foto do Estado do Material (Obrigatório)
             </span>
 
+            {/* Input galeria (sem capture para não navegar fora do app) */}
+            <input id="photo-galeria" ref={galleryInputRef} type="file" accept="image/*" className="sr-only" disabled={loading} onChange={handlePhotoChange} />
+
             {photoPreview ? (
-              /* ── Preview ── */
+              /* ── Preview da foto selecionada ── */
               <div className="space-y-3">
                 <div className="relative w-full aspect-video rounded-2xl overflow-hidden border-2 border-zinc-200">
                   <img src={photoPreview} className="w-full h-full object-cover" alt="Pré-visualização" />
@@ -1247,16 +1383,13 @@ function CheckInModal({ log, tool, onClose }: { log: ToolLog, tool: Tool, onClos
                   </div>
                 </div>
                 <div className="flex gap-2">
-                  <label
-                    htmlFor="photo-trocar"
-                    className={cn(
-                      'flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl border border-zinc-200 bg-zinc-50 text-xs font-bold text-zinc-600 cursor-pointer hover:bg-zinc-100 transition-all',
-                      loading && 'opacity-50 pointer-events-none'
-                    )}
-                  >
-                    <input id="photo-trocar" ref={cameraInputRef} type="file" accept="image/*" className="sr-only" disabled={loading} onChange={handlePhotoChange} />
-                    <Camera className="w-4 h-4" />
-                    Trocar foto
+                  <button type="button" onClick={() => setShowCamera(true)} disabled={loading}
+                    className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl border border-zinc-200 bg-zinc-50 text-xs font-bold text-zinc-600 hover:bg-zinc-100 transition-all disabled:opacity-50">
+                    <Camera className="w-4 h-4" /> Nova foto
+                  </button>
+                  <label htmlFor="photo-galeria"
+                    className={cn('flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl border border-zinc-200 bg-zinc-50 text-xs font-bold text-zinc-600 cursor-pointer hover:bg-zinc-100 transition-all', loading && 'opacity-50 pointer-events-none')}>
+                    <Images className="w-4 h-4" /> Da galeria
                   </label>
                   <button type="button" onClick={clearPhoto} disabled={loading}
                     className="px-3 py-2.5 rounded-xl border border-red-100 bg-red-50 text-red-600 hover:bg-red-100 transition-all disabled:opacity-50">
@@ -1265,46 +1398,42 @@ function CheckInModal({ log, tool, onClose }: { log: ToolLog, tool: Tool, onClos
                 </div>
               </div>
             ) : (
-              /* ── Seleção: câmera ou galeria via picker nativo (sem capture — evita reload no Android) ── */
-              <div className={cn('grid grid-cols-2 gap-3', loading && 'opacity-50 pointer-events-none')}>
-                {/* inputs ocultos — sem capture="environment" para não navegar fora do app no Android */}
-                {/* Sem capture em nenhum dos inputs — no Android, capture="environment/user"
-                    abre a câmera como app separado e causa reload ao retornar.
-                    Sem capture, o seletor do sistema abre como overlay na página. */}
-                <input id="photo-camera"  ref={cameraInputRef}  type="file" accept="image/*" className="sr-only" disabled={loading} onChange={handlePhotoChange} />
-                <input id="photo-galeria" ref={galleryInputRef} type="file" accept="image/*" className="sr-only" disabled={loading} onChange={handlePhotoChange} />
+              /* ── Seleção inicial ── */
+              <div className="space-y-2">
+                <div className={cn('grid grid-cols-2 gap-3', loading && 'opacity-50 pointer-events-none')}>
+                  {/* Câmera in-browser via getUserMedia — não sai do app, zero reload */}
+                  <button type="button" onClick={() => setShowCamera(true)} disabled={loading}
+                    className={cn(
+                      'flex flex-col items-center justify-center gap-3 py-8 rounded-2xl border-2 border-dashed transition-all group',
+                      error ? 'border-red-200 bg-red-50/40' : 'border-zinc-200 bg-zinc-50 hover:bg-zinc-100 hover:border-zinc-400'
+                    )}
+                  >
+                    <div className={cn('w-12 h-12 rounded-2xl flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform', error ? 'bg-red-100' : 'bg-white')}>
+                      <Camera className={cn('w-6 h-6', error ? 'text-red-400' : 'text-zinc-500')} />
+                    </div>
+                    <div className="text-center">
+                      <p className={cn('text-xs font-bold', error ? 'text-red-500' : 'text-zinc-700')}>Tirar Foto</p>
+                      <p className="text-[10px] text-zinc-400 mt-0.5">Câmera no app</p>
+                    </div>
+                  </button>
 
-                <label htmlFor="photo-camera"
-                  className={cn(
-                    'flex flex-col items-center justify-center gap-3 py-8 rounded-2xl border-2 border-dashed cursor-pointer transition-all group',
-                    error ? 'border-red-200 bg-red-50/40' : 'border-zinc-200 bg-zinc-50 hover:bg-zinc-100 hover:border-zinc-400'
-                  )}
-                >
-                  <div className={cn('w-12 h-12 rounded-2xl flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform', error ? 'bg-red-100' : 'bg-white')}>
-                    <Camera className={cn('w-6 h-6', error ? 'text-red-400' : 'text-zinc-500')} />
-                  </div>
-                  <div className="text-center">
-                    <p className={cn('text-xs font-bold', error ? 'text-red-500' : 'text-zinc-700')}>Tirar Foto</p>
-                    <p className="text-[10px] text-zinc-400 mt-0.5">Abre a câmera</p>
-                  </div>
-                </label>
-
-                <label htmlFor="photo-galeria"
-                  className={cn(
-                    'flex flex-col items-center justify-center gap-3 py-8 rounded-2xl border-2 border-dashed cursor-pointer transition-all group',
-                    error ? 'border-red-200 bg-red-50/40' : 'border-zinc-200 bg-zinc-50 hover:bg-zinc-100 hover:border-zinc-400'
-                  )}
-                >
-                  <div className={cn('w-12 h-12 rounded-2xl flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform', error ? 'bg-red-100' : 'bg-white')}>
-                    <Images className={cn('w-6 h-6', error ? 'text-red-400' : 'text-zinc-500')} />
-                  </div>
-                  <div className="text-center">
-                    <p className={cn('text-xs font-bold', error ? 'text-red-500' : 'text-zinc-700')}>Da Galeria</p>
-                    <p className="text-[10px] text-zinc-400 mt-0.5">Foto já tirada</p>
-                  </div>
-                </label>
-
-                {error && <p className="col-span-2 text-[10px] font-bold text-red-500 text-center -mt-1">{error}</p>}
+                  {/* Galeria — picker nativo sem capture */}
+                  <label htmlFor="photo-galeria"
+                    className={cn(
+                      'flex flex-col items-center justify-center gap-3 py-8 rounded-2xl border-2 border-dashed cursor-pointer transition-all group',
+                      error ? 'border-red-200 bg-red-50/40' : 'border-zinc-200 bg-zinc-50 hover:bg-zinc-100 hover:border-zinc-400'
+                    )}
+                  >
+                    <div className={cn('w-12 h-12 rounded-2xl flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform', error ? 'bg-red-100' : 'bg-white')}>
+                      <Images className={cn('w-6 h-6', error ? 'text-red-400' : 'text-zinc-500')} />
+                    </div>
+                    <div className="text-center">
+                      <p className={cn('text-xs font-bold', error ? 'text-red-500' : 'text-zinc-700')}>Da Galeria</p>
+                      <p className="text-[10px] text-zinc-400 mt-0.5">Foto já tirada</p>
+                    </div>
+                  </label>
+                </div>
+                {error && <p className="text-[10px] font-bold text-red-500 text-center">{error}</p>}
               </div>
             )}
 
@@ -1339,6 +1468,14 @@ function CheckInModal({ log, tool, onClose }: { log: ToolLog, tool: Tool, onClos
           </button>
         </div>
       </motion.div>
+
+      {/* Câmera in-browser — sobrepõe tudo sem sair do app */}
+      {showCamera && (
+        <CameraCapture
+          onCapture={handleCameraCapture}
+          onClose={() => setShowCamera(false)}
+        />
+      )}
     </div>
   );
 }

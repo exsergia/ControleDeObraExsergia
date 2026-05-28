@@ -29,7 +29,6 @@ import {
   Info,
   CheckCircle,
   AlertOctagon,
-  Layers,
   DollarSign
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -76,7 +75,6 @@ const Relatorios = React.lazy(() => import('./pages/Relatorios'));
 const Progresso = React.lazy(() => import('./pages/Progresso'));
 const Ferramentas = React.lazy(() => import('./pages/Ferramentas'));
 const SettingsPage = React.lazy(() => import('./pages/Settings'));
-const Atividades = React.lazy(() => import('./pages/Atividades'));
 
 interface Notification {
   id: string;
@@ -312,8 +310,7 @@ function App() {
                   <Route path="/relatorios" element={<Relatorios />} />
                   <Route path="/progresso" element={<Progresso />} />
                   <Route path="/ferramentas" element={<Ferramentas />} />
-                  <Route path="/atividades" element={isAdmin ? <Atividades /> : <Navigate to="/" replace />} />
-                  <Route path="/settings" element={<SettingsPage />} />
+<Route path="/settings" element={<SettingsPage />} />
                   <Route path="*" element={<Navigate to="/" replace />} />
                 </Routes>
               </React.Suspense>
@@ -657,7 +654,6 @@ function Layout({ children }: { children: React.ReactNode }) {
     { label: 'Materiais', icon: Package, path: '/materiais' },
     { label: 'Checklist Diário', icon: ClipboardCheck, path: '/checklist', adminOnly: true },
     { label: 'Operadores', icon: Users, path: '/operadores', adminOnly: true },
-    { label: 'Atividades', icon: Layers, path: '/atividades', adminOnly: true },
     { label: 'Progresso Físico', icon: Activity, path: '/progresso' },
     { label: 'Financeiro', icon: DollarSign, path: '/financeiro', adminOnly: true },
     { label: 'Relatórios', icon: FileText, path: '/relatorios' },
