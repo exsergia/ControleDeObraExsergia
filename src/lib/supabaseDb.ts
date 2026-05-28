@@ -115,7 +115,20 @@ export async function getDocs(ref: CollectionRef) {
 
 export async function setDoc(ref: DocRef, value: any) {
   const payload = { ...value, id: ref.id };
-  const { error } = await supabase.from(ref.table).upsert({ id: ref.id, data: payload });
+  const row: any = { id: ref.id, data: payload };
+
+  if (ref.table === 'operadores') {
+    const { nome, sobrenome, email, cpf, telefone, funcao, role } = payload;
+    if (nome !== undefined) row.nome = nome;
+    if (sobrenome !== undefined) row.sobrenome = sobrenome;
+    if (email !== undefined) row.email = email;
+    if (cpf !== undefined) row.cpf = cpf;
+    if (telefone !== undefined) row.telefone = telefone;
+    if (funcao !== undefined) row.funcao = funcao;
+    if (role !== undefined) row.role = role;
+  }
+
+  const { error } = await supabase.from(ref.table).upsert(row);
   if (error) throw error;
 }
 
