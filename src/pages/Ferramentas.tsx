@@ -178,19 +178,18 @@ export default function Ferramentas() {
               <span className="text-xs font-bold text-zinc-600">Logs de Movimentação</span>
             </div>
             <div className="divide-y divide-zinc-100 max-h-[600px] overflow-y-auto">
-              {logs.map((log) => (
-                <LogItem key={log.id} log={log} tool={tools.find(t => t.id === log.toolId)} obra={obras.find(o => o.id === log.obraId)} />
+              {logs.length === 0 ? (
+                <div className="p-8 text-center text-zinc-400 text-xs font-bold uppercase tracking-widest">
+                  Nenhuma movimentação recente
+                </div>
+              ) : logs.map((log) => (
+                <LogItem
+                  key={log.id}
+                  log={log}
+                  tool={tools.find(t => t.id === log.toolId)}
+                  obra={obras.find(o => o.id === log.obraId)}
+                />
               ))}
-              {logs.map((log) => {
-                const movementScopeKey = getMovementScopeKey(log);
-
-                if (renderedMovementScopes.has(movementScopeKey)) return null;
-                renderedMovementScopes.add(movementScopeKey);
-
-                return (
-                  <LogItem key={movementScopeKey} log={log} tool={tools.find(t => t.id === log.toolId)} obra={obras.find(o => o.id === log.obraId)} />
-                );
-              })}
             </div>
           </div>
         </div>
@@ -487,8 +486,8 @@ function ToolCard({ tool, onCheckOut, activeLog, onCheckIn, onEdit, onViewHistor
 
 function LogItem({ log, tool, obra, showToolInfo = true }: { key?: string | number, log: ToolLog, tool?: Tool, obra?: Obra, showToolInfo?: boolean }) {
   const isPending = log.statusLog === 'Aberta';
-  const outDate = log.dataSaida?.toDate ? log.dataSaida.toDate() : new Date();
-  const inDate = log.dataDevolucao?.toDate ? log.dataDevolucao.toDate() : null;
+  const outDate = parseMovementDateForScope(log.dataSaida) || new Date();
+  const inDate = parseMovementDateForScope(log.dataDevolucao);
   
   return (
     <div className="p-5 hover:bg-zinc-50 transition-colors border-b border-zinc-100 last:border-0">

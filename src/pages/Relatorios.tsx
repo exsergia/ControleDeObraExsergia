@@ -2,13 +2,13 @@ import React, { useState } from 'react';
 import { useCollection } from '../lib/supabaseHooks';
 import { collection, query, orderBy, addDoc, serverTimestamp, updateDoc, doc, arrayUnion, arrayRemove } from '../lib/supabaseDb';
 import { db, handleFirestoreError, OperationType } from '../lib/supabase';
-import { Attachment, Checklist, Obra, Material, Atividade, Operator } from '../types';
-import { 
-  FileText, 
-  Calendar, 
-  User, 
-  MapPin, 
-  Search, 
+import { Attachment, Checklist, Obra, Material, Atividade, Operator, Tool, ToolLog } from '../types';
+import {
+  FileText,
+  Calendar,
+  User,
+  MapPin,
+  Search,
   ChevronRight,
   ExternalLink,
   Users,
@@ -20,7 +20,12 @@ import {
   FileDown,
   Paperclip,
   X as XIcon,
-  Trash2
+  Trash2,
+  Hammer,
+  ArrowUpRight,
+  ArrowDownLeft,
+  Clock,
+  CheckCircle2
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { format } from 'date-fns';
@@ -41,6 +46,8 @@ const parseDate = (d: any): Date => {
 export default function Relatorios() {
   const { isAdmin, notify } = useAuth();
   const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState<'diarios' | 'ferramentas'>('diarios');
+
   const [checklistsSnap, loading] = useCollection(
     query(collection(db, 'checklists'), orderBy('data', 'desc'))
   );
@@ -48,7 +55,11 @@ export default function Relatorios() {
   const [materiaisSnap] = useCollection(collection(db, 'materiais'));
   const [atividadesSnap] = useCollection(collection(db, 'atividades'));
   const [operadoresSnap] = useCollection(collection(db, 'operadores'));
-  
+  const [toolsSnap] = useCollection(collection(db, 'tools'));
+  const [toolLogsSnap, loadingLogs] = useCollection(
+    query(collection(db, 'toolLogs'), orderBy('dataSaida', 'desc'))
+  );
+
   const [search, setSearch] = useState('');
   const [selectedChecklist, setSelectedChecklist] = useState<Checklist | null>(null);
 
@@ -57,6 +68,49 @@ export default function Relatorios() {
   const materiais = (materiaisSnap?.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Material[]) || [];
   const atividades = (atividadesSnap?.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Atividade[]) || [];
   const operadores = (operadoresSnap?.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Operator[]) || [];
+  const tools = (toolsSnap?.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Tool[]) || [];
+  const toolLogs = (toolLogsSnap?.docs.map(doc => ({ id: doc.id, ...doc.data() })) as ToolLog[]) || [];
+
+  const filteredToolLogs = toolLogs.filter(l => {
+    if (!search) return true;
+    const q = search.toLowerCase();
+    const tool = tools.find(t => t.id === l.toolId);
+    const obra = obras.find(o => o.id === l.obraId);
+    return (
+      (tool?.nome || '').toLowerCase().includes(q) ||
+      (tool?.codigo || '').toLowerCase().includes(q) ||
+      (obra?.nome || '').toLowerCase().includes(q) ||
+      (l.responsavelNome || '').toLowerCase().includes(q)
+    );
+  });
+
+  const handleExportFerramentas = () => {
+    const wb = utils.book_new();
+    const data = toolLogs.map(l => {
+      const tool = tools.find(t => t.id === l.toolId);
+      const obra = obras.find(o => o.id === l.obraId);
+      const saida = parseDate(l.dataSaida);
+      const devolucao = l.dataDevolucao ? parseDate(l.dataDevolucao) : null;
+      return {
+        'ID Retirada': l.id,
+        'ID Ferramenta': l.toolId,
+        'Ferramenta': tool?.nome || '---',
+        'Código': tool?.codigo || '---',
+        'Responsável': l.responsavelNome,
+        'Obra': obra?.nome || '---',
+        'Data Saída': format(saida, 'dd/MM/yyyy'),
+        'Hora Saída': format(saida, 'HH:mm:ss'),
+        'Data Devolução': devolucao ? format(devolucao, 'dd/MM/yyyy') : '---',
+        'Hora Devolução': devolucao ? format(devolucao, 'HH:mm:ss') : '---',
+        'Status': l.statusLog,
+        'Foto Devolução': l.fotoDevolucaoUrl || '---'
+      };
+    });
+    const ws = utils.json_to_sheet(data);
+    utils.book_append_sheet(wb, ws, 'MOVIMENTACAO_FERRAMENTAS');
+    writeFile(wb, `Ferramentas_${format(new Date(), 'yyyy-MM-dd')}.xlsx`);
+    notify('success', 'Excel Exportado', 'Histórico completo de movimentação gerado com sucesso!');
+  };
 
   const filteredChecklists = checklists.filter(c => {
     if (!search) return true;
@@ -172,52 +226,176 @@ export default function Relatorios() {
 
   return (
     <div className="space-y-6 pb-20 animate-in fade-in duration-500">
+      {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight text-zinc-900">Relatórios Diários</h2>
-          <p className="text-zinc-500">Histórico de checklists e conferências de campo.</p>
+          <h2 className="text-2xl font-bold tracking-tight text-zinc-900">Relatórios</h2>
+          <p className="text-zinc-500">Checklists diários e movimentação de ferramentas.</p>
         </div>
         <div className="flex items-center gap-3">
-          {isAdmin && (
-            <button 
-              onClick={handleExportBI}
+          {activeTab === 'diarios' && isAdmin && (
+            <>
+              <button
+                onClick={handleExportBI}
+                className="flex items-center gap-2 px-4 py-2.5 bg-green-50 border border-green-200 text-green-700 rounded-xl text-sm font-bold hover:bg-green-100 transition-all shadow-sm"
+              >
+                <FileDown className="w-4 h-4" />
+                Consolidado BI
+              </button>
+              <button
+                onClick={handleImportTemplate}
+                className="flex items-center gap-2 px-4 py-2.5 bg-white border border-zinc-200 text-zinc-600 rounded-xl text-sm font-bold hover:bg-zinc-50 transition-all shadow-sm"
+              >
+                <FileDown className="w-4 h-4" />
+                Base Exemplo
+              </button>
+              <button
+                onClick={() => navigate('/checklist')}
+                className="flex items-center gap-2 px-5 py-2.5 bg-zinc-900 text-white rounded-xl text-sm font-bold hover:bg-zinc-800 transition-all shadow-lg active:scale-95"
+              >
+                <Plus className="w-4 h-4" />
+                Novo Registro
+              </button>
+            </>
+          )}
+          {activeTab === 'ferramentas' && isAdmin && (
+            <button
+              onClick={handleExportFerramentas}
               className="flex items-center gap-2 px-4 py-2.5 bg-green-50 border border-green-200 text-green-700 rounded-xl text-sm font-bold hover:bg-green-100 transition-all shadow-sm"
             >
               <FileDown className="w-4 h-4" />
-              Consolidado BI
+              Exportar Excel
             </button>
           )}
-          {isAdmin && (
-            <button 
-              onClick={handleImportTemplate}
-              className="flex items-center gap-2 px-4 py-2.5 bg-white border border-zinc-200 text-zinc-600 rounded-xl text-sm font-bold hover:bg-zinc-50 transition-all shadow-sm"
-            >
-              <FileDown className="w-4 h-4" />
-              Base Exemplo
-            </button>
-          )}
-          <button 
-            onClick={() => navigate('/checklist')}
-            className="flex items-center gap-2 px-5 py-2.5 bg-zinc-900 text-white rounded-xl text-sm font-bold hover:bg-zinc-800 transition-all shadow-lg active:scale-95"
-          >
-            <Plus className="w-4 h-4" />
-            Novo Registro
-          </button>
         </div>
       </div>
 
+      {/* Tabs */}
+      <div className="flex bg-white p-1 rounded-xl border border-zinc-200 w-fit shadow-sm">
+        {([
+          { id: 'diarios', label: 'Relatórios Diários', icon: FileText },
+          { id: 'ferramentas', label: 'Movimentação de Ferramentas', icon: Hammer },
+        ] as const).map(tab => (
+          <button
+            key={tab.id}
+            onClick={() => { setActiveTab(tab.id); setSearch(''); setSelectedChecklist(null); }}
+            className={cn(
+              'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all',
+              activeTab === tab.id
+                ? 'bg-zinc-900 text-white shadow-md'
+                : 'text-zinc-500 hover:bg-zinc-50'
+            )}
+          >
+            <tab.icon className="w-4 h-4" />
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Search */}
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
-        <input 
-          type="text" 
-          placeholder="Buscar por obra ou responsável..." 
+        <input
+          type="text"
+          placeholder={activeTab === 'diarios' ? 'Buscar por obra ou responsável...' : 'Buscar por ferramenta, obra ou responsável...'}
           className="w-full pl-10 pr-4 py-3 bg-white border border-zinc-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900/10 shadow-sm transition-all"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
       </div>
 
-      <div className="grid lg:grid-cols-2 gap-6">
+      {/* ── FERRAMENTAS TAB ── */}
+      {activeTab === 'ferramentas' && (
+        <div className="bg-white rounded-2xl border border-zinc-200 shadow-sm overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left">
+              <thead>
+                <tr className="bg-zinc-50 border-b border-zinc-100">
+                  <th className="px-5 py-4 text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Ferramenta / ID</th>
+                  <th className="px-5 py-4 text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Responsável</th>
+                  <th className="px-5 py-4 text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Obra</th>
+                  <th className="px-5 py-4 text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Saída</th>
+                  <th className="px-5 py-4 text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Devolução</th>
+                  <th className="px-5 py-4 text-[10px] font-bold text-zinc-400 uppercase tracking-widest text-center">Status</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-zinc-100">
+                {loadingLogs ? (
+                  Array(5).fill(0).map((_, i) => (
+                    <tr key={i} className="animate-pulse">
+                      <td colSpan={6} className="px-5 py-6"><div className="h-4 bg-zinc-100 rounded w-full" /></td>
+                    </tr>
+                  ))
+                ) : filteredToolLogs.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="px-5 py-16 text-center">
+                      <Hammer className="w-10 h-10 text-zinc-200 mx-auto mb-3" />
+                      <p className="text-zinc-400 text-sm font-medium">Nenhuma movimentação encontrada.</p>
+                    </td>
+                  </tr>
+                ) : filteredToolLogs.map(log => {
+                  const tool = tools.find(t => t.id === log.toolId);
+                  const obra = obras.find(o => o.id === log.obraId);
+                  const saida = parseDate(log.dataSaida);
+                  const devolucao = log.dataDevolucao ? parseDate(log.dataDevolucao) : null;
+                  const isPending = log.statusLog === 'Aberta';
+                  return (
+                    <tr key={log.id} className="hover:bg-zinc-50/50 transition-colors">
+                      <td className="px-5 py-4">
+                        <p className="text-sm font-bold text-zinc-900">{tool?.nome || 'Ferramenta removida'}</p>
+                        <p className="text-[10px] font-mono text-zinc-400 mt-0.5">ID: {log.id.slice(0, 12)}…</p>
+                        {tool?.codigo && <p className="text-[10px] font-bold text-zinc-500">#{tool.codigo}</p>}
+                      </td>
+                      <td className="px-5 py-4">
+                        <p className="text-sm font-semibold text-zinc-800">{log.responsavelNome}</p>
+                      </td>
+                      <td className="px-5 py-4">
+                        <p className="text-sm text-zinc-600">{obra?.nome || '---'}</p>
+                      </td>
+                      <td className="px-5 py-4">
+                        <div className="flex items-center gap-1.5">
+                          <ArrowUpRight className="w-3.5 h-3.5 text-orange-500 shrink-0" />
+                          <div>
+                            <p className="text-xs font-bold text-zinc-900">{format(saida, 'dd/MM/yyyy')}</p>
+                            <p className="text-[10px] text-zinc-500">{format(saida, 'HH:mm:ss')}</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-5 py-4">
+                        {devolucao ? (
+                          <div className="flex items-center gap-1.5">
+                            <ArrowDownLeft className="w-3.5 h-3.5 text-green-600 shrink-0" />
+                            <div>
+                              <p className="text-xs font-bold text-zinc-900">{format(devolucao, 'dd/MM/yyyy')}</p>
+                              <p className="text-[10px] text-zinc-500">{format(devolucao, 'HH:mm:ss')}</p>
+                            </div>
+                          </div>
+                        ) : (
+                          <span className="text-[10px] text-zinc-400 font-bold uppercase">Pendente</span>
+                        )}
+                      </td>
+                      <td className="px-5 py-4 text-center">
+                        <span className={cn(
+                          'inline-flex items-center gap-1 px-2 py-1 rounded-full text-[9px] font-bold uppercase tracking-wide',
+                          isPending
+                            ? 'bg-orange-100 text-orange-700'
+                            : 'bg-green-100 text-green-700'
+                        )}>
+                          {isPending ? <Clock className="w-2.5 h-2.5" /> : <CheckCircle2 className="w-2.5 h-2.5" />}
+                          {isPending ? 'Em Uso' : 'Devolvida'}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* ── DIÁRIOS TAB ── */}
+      {activeTab === 'diarios' && <div className="grid lg:grid-cols-2 gap-6">
         <div className="space-y-4">
           <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-widest pl-1">Relatórios Recentes</h3>
           {loading ? (
@@ -272,7 +450,8 @@ export default function Relatorios() {
             </div>
           )}
         </div>
-      </div>
+      </div>}
+
     </div>
   );
 }
