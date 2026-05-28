@@ -244,12 +244,12 @@ function App() {
       const u = session?.user || null;
       if (!mounted) return;
       if (u) {
-        // Apenas SIGNED_IN e INITIAL_SESSION precisam recarregar o perfil e mostrar loading.
-        // Todos os outros eventos (TOKEN_REFRESHED, USER_UPDATED, MFA, etc.) acontecem
-        // em background — especialmente no iOS ao abrir câmera ou galeria — e não
-        // devem interromper o fluxo do usuário com uma tela de carregamento.
-        const needsFullReload = event === 'SIGNED_IN' || event === 'INITIAL_SESSION';
-        if (needsFullReload) {
+        // Apenas SIGNED_IN recarrega o perfil.
+        // INITIAL_SESSION: já tratado pelo getSession() acima — evita loading duplo
+        //   e sobretudo evita mostrar tela de carregamento quando o iOS recarrega
+        //   o app após liberar memória (hard reload por evicção).
+        // TOKEN_REFRESHED, USER_UPDATED e outros: eventos de background — silenciosos.
+        if (event === 'SIGNED_IN') {
           setLoading(true);
           resolveUserProfile(u);
         } else {

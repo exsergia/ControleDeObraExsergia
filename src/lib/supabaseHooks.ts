@@ -76,6 +76,19 @@ export function useCollection(
     };
   }, [loadData]);
 
+  // Cancela updates pendentes quando o app vai para background (câmera, troca de app, etc.)
+  // Isso evita que o Realtime dispare re-renders quando o iOS retorna ao browser.
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (document.hidden && refreshTimer.current) {
+        clearTimeout(refreshTimer.current);
+        refreshTimer.current = null;
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => document.removeEventListener('visibilitychange', handleVisibility);
+  }, []);
+
   // Realtime — atualiza silenciosamente; respeitando a flag paused
   useEffect(() => {
     if (!ref?.table) return;
