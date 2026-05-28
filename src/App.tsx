@@ -9,7 +9,7 @@ import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
 } from './lib/supabase';
-import { doc, getDoc, setDoc, updateDoc, db } from './lib/supabaseDb';
+import { doc, getDoc, getDocs, setDoc, updateDoc, collection, db } from './lib/supabaseDb';
 import { Operator } from './types';
 import {
   LayoutDashboard,
@@ -29,7 +29,11 @@ import {
   Info,
   CheckCircle,
   AlertOctagon,
-  DollarSign
+  DollarSign,
+  Mail,
+  Phone,
+  KeyRound,
+  ArrowLeft,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from './lib/utils';
@@ -141,6 +145,7 @@ function App() {
   const [user, setUser] = useState<SupabaseUser | null>(null);
   const [userProfile, setUserProfile] = useState<Operator | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isRecovery, setIsRecovery] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
 
   const notify = (type: 'error' | 'success' | 'info' | 'warning', title: string, message?: string) => {
@@ -241,12 +246,15 @@ function App() {
     const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
       const u = session?.user || null;
       if (!mounted) return;
+
+      if (event === 'PASSWORD_RECOVERY') {
+        setIsRecovery(true);
+        if (u) { setCurrentUser(u); setUser(u); }
+        setLoading(false);
+        return;
+      }
+
       if (u) {
-        // Apenas SIGNED_IN recarrega o perfil.
-        // INITIAL_SESSION: já tratado pelo getSession() acima — evita loading duplo
-        //   e sobretudo evita mostrar tela de carregamento quando o iOS recarrega
-        //   o app após liberar memória (hard reload por evicção).
-        // TOKEN_REFRESHED, USER_UPDATED e outros: eventos de background — silenciosos.
         if (event === 'SIGNED_IN') {
           setLoading(true);
           resolveUserProfile(u);
@@ -294,7 +302,18 @@ function App() {
           </AnimatePresence>
         </div>
 
-        {!user ? (
+        {isRecovery ? (
+          <NovaSenhaView
+            notify={notify}
+            onComplete={async () => {
+              setIsRecovery(false);
+              setUser(null);
+              setUserProfile(null);
+              setCurrentUser(null);
+              await logOut();
+            }}
+          />
+        ) : !user ? (
           <LoginView />
         ) : (
           <BrowserRouter>
@@ -323,16 +342,62 @@ function App() {
 }
 
 function LoginView() {
-  const [mode, setMode] = useState<'login' | 'cadastro'>('login');
+  const [mode, setMode] = useState<'login' | 'cadastro' | 'recuperar'>('login');
   const [loadingAuth, setLoadingAuth] = useState(false);
   const [login, setLogin] = useState('');
   const [senha, setSenha] = useState('');
+  const [recuperarInput, setRecuperarInput] = useState('');
+  const [recuperarEnviado, setRecuperarEnviado] = useState(false);
+  const [loadingRecuperar, setLoadingRecuperar] = useState(false);
   const [nome, setNome] = useState('');
   const [sobrenome, setSobrenome] = useState('');
   const [telefone, setTelefone] = useState('');
   const [email, setEmail] = useState('');
   const [cpf, setCpf] = useState('');
   const [confirmarSenha, setConfirmarSenha] = useState('');
+
+  const handleRecuperar = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const input = recuperarInput.trim();
+    if (!input) { alert('Informe seu e-mail, CPF ou celular.'); return; }
+
+    setLoadingRecuperar(true);
+    try {
+      let emailTarget = '';
+
+      if (input.includes('@')) {
+        emailTarget = input.toLowerCase();
+      } else {
+        const digits = input.replace(/\D/g, '');
+        const cpfSnap = await getDoc(doc(db, 'cpfs', digits));
+        if (cpfSnap.exists()) {
+          emailTarget = cpfSnap.data().email;
+        } else {
+          const opSnap = await getDocs(collection(db, 'operadores'));
+          const match = opSnap.docs.find(d => {
+            const data = d.data() as any;
+            return (data.telefone || '').replace(/\D/g, '') === digits;
+          });
+          if (match) emailTarget = (match.data() as any).email;
+        }
+      }
+
+      if (!emailTarget) {
+        alert('Nenhuma conta encontrada com esse dado. Verifique e tente novamente.');
+        return;
+      }
+
+      const { error } = await supabase.auth.resetPasswordForEmail(emailTarget, {
+        redirectTo: window.location.origin + window.location.pathname,
+      });
+      if (error) throw error;
+      setRecuperarEnviado(true);
+    } catch (err: any) {
+      alert(err.message || 'Erro ao enviar link de recuperação.');
+    } finally {
+      setLoadingRecuperar(false);
+    }
+  };
 
   const somenteNumeros = (value: string) => value.replace(/\D/g, '');
 
@@ -507,16 +572,63 @@ function LoginView() {
 
           <div className="text-center lg:text-left space-y-2">
             <h2 className="text-2xl font-bold tracking-tight text-slate-900">
-              {mode === 'login' ? 'Bem-vindo ao Sistema' : 'Criar novo usuário'}
+              {mode === 'login' ? 'Bem-vindo ao Sistema' : mode === 'recuperar' ? 'Recuperar senha' : 'Criar novo usuário'}
             </h2>
             <p className="text-slate-500 text-sm font-medium">
               {mode === 'login'
                 ? 'Entre com e-mail ou CPF para acessar o painel'
+                : mode === 'recuperar'
+                ? 'Enviaremos um link de redefinição para o seu e-mail'
                 : 'Preencha os dados abaixo para cadastrar seu acesso'}
             </p>
           </div>
 
-          {mode === 'login' ? (
+          {mode === 'recuperar' ? (
+            recuperarEnviado ? (
+              <div className="text-center space-y-5">
+                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto">
+                  <CheckCircle className="w-8 h-8 text-green-600" />
+                </div>
+                <div>
+                  <p className="font-bold text-slate-900">Link enviado!</p>
+                  <p className="text-sm text-slate-500 mt-1">Verifique sua caixa de entrada e clique no link para criar uma nova senha.</p>
+                </div>
+                <button
+                  onClick={() => { setMode('login'); setRecuperarEnviado(false); setRecuperarInput(''); }}
+                  className="w-full h-12 flex items-center justify-center gap-2 bg-slate-900 text-white rounded-lg font-bold hover:bg-slate-800 transition-all"
+                >
+                  <ArrowLeft className="w-4 h-4" /> Voltar ao login
+                </button>
+              </div>
+            ) : (
+              <form onSubmit={handleRecuperar} className="space-y-3">
+                <p className="text-xs text-slate-500 font-medium">Informe seu e-mail, CPF ou número de celular cadastrado.</p>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <input
+                    value={recuperarInput}
+                    onChange={(e) => setRecuperarInput(e.target.value)}
+                    placeholder="E-mail, CPF ou celular"
+                    className="w-full h-12 pl-10 pr-4 bg-white border border-slate-200 rounded-lg text-sm font-medium outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  disabled={loadingRecuperar}
+                  className="w-full h-12 flex items-center justify-center gap-2 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 transition-all shadow-sm disabled:opacity-60 disabled:cursor-not-allowed"
+                >
+                  {loadingRecuperar ? 'Enviando...' : <><Mail className="w-4 h-4" /> Enviar link de recuperação</>}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMode('login')}
+                  className="w-full flex items-center justify-center gap-1 text-sm font-bold text-slate-500 hover:text-slate-700 transition-colors"
+                >
+                  <ArrowLeft className="w-4 h-4" /> Voltar ao login
+                </button>
+              </form>
+            )
+          ) : mode === 'login' ? (
             <form onSubmit={handleLogin} className="space-y-3">
               <input
                 value={login}
@@ -537,6 +649,13 @@ function LoginView() {
                 className="w-full h-12 flex items-center justify-center bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 transition-all shadow-sm disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 {loadingAuth ? 'Entrando...' : 'Entrar'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setMode('recuperar')}
+                className="w-full text-xs font-bold text-blue-600 hover:text-blue-700 transition-colors text-right"
+              >
+                Esqueci minha senha
               </button>
             </form>
           ) : (
@@ -598,19 +717,112 @@ function LoginView() {
             </form>
           )}
 
-          <button
-            type="button"
-            onClick={() => setMode(mode === 'login' ? 'cadastro' : 'login')}
-            className="w-full text-sm font-bold text-blue-600 hover:text-blue-700 transition-colors"
-          >
-            {mode === 'login' ? 'Criar cadastro padrão' : 'Já tenho cadastro. Fazer login'}
-          </button>
+          {mode !== 'recuperar' && (
+            <button
+              type="button"
+              onClick={() => setMode(mode === 'login' ? 'cadastro' : 'login')}
+              className="w-full text-sm font-bold text-blue-600 hover:text-blue-700 transition-colors"
+            >
+              {mode === 'login' ? 'Criar cadastro padrão' : 'Já tenho cadastro. Fazer login'}
+            </button>
+          )}
         </div>
       </div>
     </div>
   );
 }
 
+
+function NovaSenhaView({ onComplete, notify }: { onComplete: () => void; notify: (type: 'error' | 'success' | 'info' | 'warning', title: string, message?: string) => void }) {
+  const [senha, setSenha] = useState('');
+  const [confirmar, setConfirmar] = useState('');
+  const [loadingSave, setLoadingSave] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (senha.length < 6) { alert('A senha precisa ter pelo menos 6 caracteres.'); return; }
+    if (senha !== confirmar) { alert('As senhas não conferem.'); return; }
+
+    setLoadingSave(true);
+    try {
+      const { error } = await supabase.auth.updateUser({ password: senha });
+      if (error) throw error;
+      notify('success', 'Senha alterada!', 'Sua nova senha foi salva. Faça login para continuar.');
+      onComplete();
+    } catch (err: any) {
+      alert(err.message || 'Erro ao salvar nova senha.');
+    } finally {
+      setLoadingSave(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen grid lg:grid-cols-2 bg-slate-50 font-sans">
+      <div className="hidden lg:flex flex-col justify-between p-12 bg-slate-900 text-white border-r border-slate-800">
+        <div className="flex items-center gap-2 font-bold text-2xl tracking-tighter">
+          <div className="w-8 h-8 bg-blue-600 rounded flex items-center justify-center">
+            <HardHat className="text-white w-5 h-5" />
+          </div>
+          EXSERGIA
+        </div>
+        <div>
+          <h1 className="text-5xl font-black tracking-tighter mb-6">CRIE SUA<br />NOVA SENHA.</h1>
+          <p className="text-slate-400 max-w-md text-lg leading-relaxed font-medium">
+            Escolha uma senha segura para proteger o acesso ao sistema.
+          </p>
+        </div>
+        <div className="text-slate-500 text-[10px] font-bold uppercase tracking-widest">
+          &copy; 2024 Exsergia Tecnologia em Engenharia
+        </div>
+      </div>
+
+      <div className="flex items-center justify-center p-8 bg-white lg:bg-slate-50">
+        <div className="w-full max-w-sm space-y-6">
+          <div className="lg:hidden flex justify-center mb-8">
+            <div className="flex items-center gap-2 font-bold text-2xl tracking-tighter">
+              <div className="w-8 h-8 bg-slate-900 rounded flex items-center justify-center">
+                <HardHat className="text-white w-5 h-5" />
+              </div>
+              EXSERGIA
+            </div>
+          </div>
+
+          <div className="text-center lg:text-left space-y-2">
+            <div className="w-12 h-12 bg-blue-100 rounded-2xl flex items-center justify-center mb-4">
+              <KeyRound className="w-6 h-6 text-blue-600" />
+            </div>
+            <h2 className="text-2xl font-bold tracking-tight text-slate-900">Criar nova senha</h2>
+            <p className="text-slate-500 text-sm font-medium">Digite e confirme sua nova senha de acesso</p>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-3">
+            <input
+              type="password"
+              value={senha}
+              onChange={(e) => setSenha(e.target.value)}
+              placeholder="Nova senha (mín. 6 caracteres)"
+              className="w-full h-12 px-4 bg-white border border-slate-200 rounded-lg text-sm font-medium outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            />
+            <input
+              type="password"
+              value={confirmar}
+              onChange={(e) => setConfirmar(e.target.value)}
+              placeholder="Confirmar nova senha"
+              className="w-full h-12 px-4 bg-white border border-slate-200 rounded-lg text-sm font-medium outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            />
+            <button
+              type="submit"
+              disabled={loadingSave}
+              className="w-full h-12 flex items-center justify-center gap-2 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 transition-all shadow-sm disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              {loadingSave ? 'Salvando...' : <><KeyRound className="w-4 h-4" /> Salvar nova senha</>}
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function ComingSoonPage() {
   return (
