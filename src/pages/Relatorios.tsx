@@ -61,6 +61,7 @@ export default function Relatorios() {
   );
 
   const [search, setSearch] = useState('');
+  const [selectedDate, setSelectedDate] = useState('');
   const [selectedChecklist, setSelectedChecklist] = useState<Checklist | null>(null);
 
   const checklists = (checklistsSnap?.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Checklist[]) || [];
@@ -72,16 +73,22 @@ export default function Relatorios() {
   const toolLogs = (toolLogsSnap?.docs.map(doc => ({ id: doc.id, ...doc.data() })) as ToolLog[]) || [];
 
   const filteredToolLogs = toolLogs.filter(l => {
-    if (!search) return true;
-    const q = search.toLowerCase();
-    const tool = tools.find(t => t.id === l.toolId);
-    const obra = obras.find(o => o.id === l.obraId);
-    return (
-      (tool?.nome || '').toLowerCase().includes(q) ||
-      (tool?.codigo || '').toLowerCase().includes(q) ||
-      (obra?.nome || '').toLowerCase().includes(q) ||
-      (l.responsavelNome || '').toLowerCase().includes(q)
-    );
+    if (search) {
+      const q = search.toLowerCase();
+      const tool = tools.find(t => t.id === l.toolId);
+      const obra = obras.find(o => o.id === l.obraId);
+      if (!(
+        (tool?.nome || '').toLowerCase().includes(q) ||
+        (tool?.codigo || '').toLowerCase().includes(q) ||
+        (obra?.nome || '').toLowerCase().includes(q) ||
+        (l.responsavelNome || '').toLowerCase().includes(q)
+      )) return false;
+    }
+    if (selectedDate) {
+      const d = parseDate(l.dataSaida);
+      if (format(d, 'yyyy-MM-dd') !== selectedDate) return false;
+    }
+    return true;
   });
 
   const handleExportFerramentas = () => {
@@ -113,13 +120,19 @@ export default function Relatorios() {
   };
 
   const filteredChecklists = checklists.filter(c => {
-    if (!search) return true;
-    const q = search.toLowerCase();
-    const obra = obras.find(o => o.id === c.obraId);
-    return (
-      (obra?.nome || '').toLowerCase().includes(q) ||
-      (c.nomeResponsavel || '').toLowerCase().includes(q)
-    );
+    if (search) {
+      const q = search.toLowerCase();
+      const obra = obras.find(o => o.id === c.obraId);
+      if (!(
+        (obra?.nome || '').toLowerCase().includes(q) ||
+        (c.nomeResponsavel || '').toLowerCase().includes(q)
+      )) return false;
+    }
+    if (selectedDate) {
+      const d = parseDate(c.data);
+      if (format(d, 'yyyy-MM-dd') !== selectedDate) return false;
+    }
+    return true;
   });
 
   const handleExportBI = () => {
@@ -278,7 +291,7 @@ export default function Relatorios() {
         ] as const).map(tab => (
           <button
             key={tab.id}
-            onClick={() => { setActiveTab(tab.id); setSearch(''); setSelectedChecklist(null); }}
+            onClick={() => { setActiveTab(tab.id); setSearch(''); setSelectedDate(''); setSelectedChecklist(null); }}
             className={cn(
               'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all',
               activeTab === tab.id
@@ -292,16 +305,39 @@ export default function Relatorios() {
         ))}
       </div>
 
-      {/* Search */}
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
-        <input
-          type="text"
-          placeholder={activeTab === 'diarios' ? 'Buscar por obra ou responsável...' : 'Buscar por ferramenta, obra ou responsável...'}
-          className="w-full pl-10 pr-4 py-3 bg-white border border-zinc-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900/10 shadow-sm transition-all"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
+      {/* Search + Date filter */}
+      <div className="flex flex-col sm:flex-row gap-3">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
+          <input
+            type="text"
+            placeholder={activeTab === 'diarios' ? 'Buscar por obra ou responsável...' : 'Buscar por ferramenta, obra ou responsável...'}
+            className="w-full pl-10 pr-4 py-3 bg-white border border-zinc-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900/10 shadow-sm transition-all"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="relative">
+            <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400 pointer-events-none" />
+            <input
+              type="date"
+              className="pl-9 pr-3 py-3 bg-white border border-zinc-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900/10 shadow-sm transition-all cursor-pointer"
+              value={selectedDate}
+              max={format(new Date(), 'yyyy-MM-dd')}
+              onChange={(e) => setSelectedDate(e.target.value)}
+            />
+          </div>
+          {selectedDate && (
+            <button
+              onClick={() => setSelectedDate('')}
+              className="p-3 bg-white border border-zinc-200 rounded-xl text-zinc-500 hover:text-zinc-900 hover:bg-zinc-50 shadow-sm transition-all"
+              title="Limpar filtro de data"
+            >
+              <XIcon className="w-4 h-4" />
+            </button>
+          )}
+        </div>
       </div>
 
       {/* ── FERRAMENTAS TAB ── */}

@@ -449,11 +449,18 @@ function ToolCard({ tool, onCheckOut, activeLog, onCheckIn, onEdit, onViewHistor
         </div>
       </div>
       
-      <div className="space-y-1 mb-6">
+      <div className="space-y-1 mb-6 overflow-hidden">
         <h4 className="font-bold text-zinc-900 truncate">{tool.nome}</h4>
-        <p className="text-xs text-zinc-500 font-mono">{tool.codigo || 'S/C'}</p>
+        {tool.codigo && (
+          <p
+            className="text-[10px] text-zinc-400 font-mono bg-zinc-50 border border-zinc-100 rounded-md px-2 py-0.5 truncate"
+            title={tool.codigo}
+          >
+            {tool.codigo}
+          </p>
+        )}
         <div className="mt-3 grid grid-cols-1 gap-1 text-xs text-zinc-600">
-          <p><span className="font-bold text-zinc-700">Modelo:</span> {tool.modelo || 'Não informado'}</p>
+          {tool.modelo && <p className="truncate"><span className="font-bold text-zinc-700">Modelo:</span> {tool.modelo}</p>}
           <p><span className="font-bold text-zinc-700">Valor:</span> {typeof tool.valor === 'number' ? tool.valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : 'Não informado'}</p>
           <p><span className="font-bold text-zinc-700">Compra:</span> {tool.dataCompra ? new Date(`${tool.dataCompra}T00:00:00`).toLocaleDateString('pt-BR') : 'Não informado'}</p>
         </div>
@@ -503,10 +510,17 @@ function LogItem({ log, tool, obra, showToolInfo = true }: { key?: string | numb
         <div className="flex items-start justify-between gap-4">
           <div className="flex-1 min-w-0">
             {showToolInfo && (
-              <div className="flex items-center gap-2 mb-2">
-                <div className={cn("w-2 h-2 rounded-full", isPending ? "bg-orange-500 animate-pulse" : "bg-green-500")} />
+              <div className="flex items-center gap-2 mb-2 min-w-0">
+                <div className={cn("w-2 h-2 rounded-full shrink-0", isPending ? "bg-orange-500 animate-pulse" : "bg-green-500")} />
                 <span className="text-sm font-bold text-zinc-900 truncate">{tool?.nome || 'Ferramenta Removida'}</span>
-                <span className="text-[10px] text-zinc-400 font-mono">#{tool?.codigo || '---'}</span>
+                {tool?.codigo && (
+                  <span
+                    className="text-[10px] text-zinc-400 font-mono bg-zinc-100 rounded px-1.5 py-0.5 truncate max-w-[80px] shrink-0"
+                    title={tool.codigo}
+                  >
+                    #{tool.codigo.length > 10 ? tool.codigo.slice(0, 10) + '…' : tool.codigo}
+                  </span>
+                )}
               </div>
             )}
             

@@ -1,15 +1,16 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useCollection } from '../lib/supabaseHooks';
 import { collection, addDoc, serverTimestamp, updateDoc, doc, deleteDoc, query, where } from '../lib/supabaseDb';
 import { db, handleFirestoreError, OperationType } from '../lib/supabase';
+import { useNavigate } from 'react-router-dom';
 import { Obra, ObraStatus, Operator, Atividade, Material } from '../types';
-import { 
-  Plus, 
-  MapPin, 
-  Building2, 
-  User, 
-  Settings2, 
-  MoreVertical, 
+import {
+  Plus,
+  MapPin,
+  Building2,
+  User,
+  Settings2,
+  MoreVertical,
   Search,
   CheckCircle2,
   Clock,
@@ -20,7 +21,9 @@ import {
   Briefcase,
   X,
   Trash2,
-  ExternalLink
+  ExternalLink,
+  ShieldCheck,
+  ClipboardCheck
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useAuth } from '../App';
@@ -455,59 +458,100 @@ function ObraCard({
   );
 }
 
-function ObraDetails({ 
-  obra, 
+function ObraDetails({
+  obra,
   onBack,
   onUpdateStatus
-}: { 
-  obra: Obra, 
+}: {
+  obra: Obra,
   onBack: () => void,
-  onUpdateStatus: (obraId: string, status: ObraStatus) => void 
+  onUpdateStatus: (obraId: string, status: ObraStatus) => void
 }) {
-  const { isAdmin } = useAuth();
+  const { isAdmin, notify } = useAuth();
+  const navigate = useNavigate();
   const [atividadesSnap] = useCollection(query(collection(db, 'atividades'), where('obraId', '==', obra.id)));
   const [operadoresSnap] = useCollection(collection(db, 'operadores'));
   const [activeTab, setActiveTab] = useState<'progresso' | 'equipe' | 'informacoes'>('progresso');
 
   const atividades = (atividadesSnap?.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Atividade[]) || [];
   const todosOperadores = (operadoresSnap?.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Operator[]) || [];
-  const operadoresDaObra = todosOperadores.filter(op => obra.operadoresIds?.includes(op.id));
+
+  // Estado local otimista para equipe — UI responde na hora sem esperar Realtime
+  const [equipeLocal, setEquipeLocal] = useState(obra.equipe || []);
+  const [idsLocal, setIdsLocal] = useState(obra.operadoresIds || []);
+  const [rolesLocal, setRolesLocal] = useState<Record<string, 'admin' | 'operator'>>(() => {
+    const r: Record<string, 'admin' | 'operator'> = {};
+    todosOperadores.forEach(op => { r[op.id] = (op.role as any) || 'operator'; });
+    return r;
+  });
+
+  useEffect(() => {
+    setEquipeLocal(obra.equipe || []);
+    setIdsLocal(obra.operadoresIds || []);
+  }, [obra.equipe, obra.operadoresIds]);
+
+  useEffect(() => {
+    const r: Record<string, 'admin' | 'operator'> = {};
+    todosOperadores.forEach(op => { r[op.id] = (op.role as any) || 'operator'; });
+    setRolesLocal(r);
+  }, [operadoresSnap]);
 
   const handleToggleOperator = async (opId: string) => {
-    try {
-      const op = todosOperadores.find(o => o.id === opId);
-      const currentEquipe = obra.equipe || [];
-      const currentIds = obra.operadoresIds || [];
-      
-      let newEquipe;
-      let newIds;
+    const op = todosOperadores.find(o => o.id === opId);
+    const prevEquipe = equipeLocal;
+    const prevIds = idsLocal;
+    let newEquipe, newIds;
 
-      if (currentIds.includes(opId)) {
-        newEquipe = currentEquipe.filter(e => e.operatorId !== opId);
-        newIds = currentIds.filter(id => id !== opId);
-      } else {
-        newEquipe = [...currentEquipe, { operatorId: opId, nivel: op?.funcao || 'Operador' }];
-        newIds = [...currentIds, opId];
-      }
-      
-      await updateDoc(doc(db, 'obras', obra.id), { 
-        equipe: newEquipe,
-        operadoresIds: newIds 
-      });
+    if (idsLocal.includes(opId)) {
+      newEquipe = equipeLocal.filter(e => e.operatorId !== opId);
+      newIds = idsLocal.filter(id => id !== opId);
+    } else {
+      newEquipe = [...equipeLocal, { operatorId: opId, nivel: op?.funcao || 'Operador' }];
+      newIds = [...idsLocal, opId];
+    }
+
+    setEquipeLocal(newEquipe);
+    setIdsLocal(newIds);
+
+    try {
+      await updateDoc(doc(db, 'obras', obra.id), { equipe: newEquipe, operadoresIds: newIds });
     } catch (err) {
+      setEquipeLocal(prevEquipe);
+      setIdsLocal(prevIds);
       handleFirestoreError(err, OperationType.WRITE, 'obras-operators');
     }
   };
 
   const handleUpdateNivel = async (opId: string, nivel: string) => {
+    const prevEquipe = equipeLocal;
+    const newEquipe = equipeLocal.map(e => e.operatorId === opId ? { ...e, nivel } : e);
+    setEquipeLocal(newEquipe);
     try {
-      const newEquipe = (obra.equipe || []).map(e => 
-        e.operatorId === opId ? { ...e, nivel } : e
-      );
       await updateDoc(doc(db, 'obras', obra.id), { equipe: newEquipe });
     } catch (err) {
+      setEquipeLocal(prevEquipe);
       handleFirestoreError(err, OperationType.WRITE, 'obras-nivel');
     }
+  };
+
+  const handleToggleAdmin = async (e: React.MouseEvent, opId: string) => {
+    e.stopPropagation();
+    const current = rolesLocal[opId] || 'operator';
+    const newRole = current === 'admin' ? 'operator' : 'admin';
+    setRolesLocal(prev => ({ ...prev, [opId]: newRole }));
+    try {
+      await updateDoc(doc(db, 'operadores', opId), { role: newRole });
+      notify('success', 'Acesso atualizado', `${newRole === 'admin' ? 'Administrador ativado' : 'Acesso alterado para Operador'}.`);
+    } catch (err) {
+      setRolesLocal(prev => ({ ...prev, [opId]: current }));
+      handleFirestoreError(err, OperationType.WRITE, 'operadores-role');
+    }
+  };
+
+  const handleStartChecklist = () => {
+    localStorage.setItem('rascunho-checklist-obra', JSON.stringify(obra.id));
+    localStorage.setItem('rascunho-checklist-etapa', JSON.stringify(1));
+    navigate('/checklist');
   };
 
   const handleUpdateAtividade = async (id: string, qty: number) => {
@@ -548,9 +592,16 @@ function ObraDetails({
             {obra.cliente} • CC: {obra.centroCusto}
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
+          <button
+            onClick={handleStartChecklist}
+            className="px-4 py-2 bg-zinc-900 text-white rounded-lg text-xs font-bold uppercase tracking-widest hover:bg-zinc-700 transition-all flex items-center gap-2"
+          >
+            <ClipboardCheck className="w-4 h-4" />
+            Fazer Checklist
+          </button>
           {obra.status !== 'Concluída' && (
-            <button 
+            <button
               onClick={() => onUpdateStatus(obra.id, 'Concluída')}
               className="px-4 py-2 bg-blue-600 text-white rounded-lg text-xs font-bold uppercase tracking-widest hover:bg-blue-700 transition-all flex items-center gap-2"
             >
@@ -559,7 +610,7 @@ function ObraDetails({
             </button>
           )}
           {obra.status === 'Concluída' && (
-            <button 
+            <button
               onClick={() => onUpdateStatus(obra.id, 'Ativa')}
               className="px-4 py-2 bg-green-600 text-white rounded-lg text-xs font-bold uppercase tracking-widest hover:bg-green-700 transition-all flex items-center gap-2"
             >
@@ -697,9 +748,10 @@ function ObraDetails({
 
           <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-4">
             {todosOperadores.map(op => {
-              const equipeEntry = obra.equipe?.find(e => e.operatorId === op.id);
-              const isAssigned = !!equipeEntry;
-              
+              const equipeEntry = equipeLocal.find(e => e.operatorId === op.id);
+              const isAssigned = idsLocal.includes(op.id);
+              const isAdmin_op = rolesLocal[op.id] === 'admin';
+
               return (
                 <div
                   key={op.id}
@@ -707,34 +759,32 @@ function ObraDetails({
                   tabIndex={0}
                   onClick={() => handleToggleOperator(op.id)}
                   onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      e.preventDefault();
-                      handleToggleOperator(op.id);
-                    }
+                    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleToggleOperator(op.id); }
                   }}
                   className={cn(
-                    "p-4 rounded-2xl border transition-all flex items-center gap-4 text-left relative cursor-pointer select-none",
-                    isAssigned 
-                      ? "bg-zinc-900 border-zinc-900 text-white shadow-lg" 
+                    "p-4 rounded-2xl border transition-all flex items-center gap-3 text-left relative cursor-pointer select-none",
+                    isAssigned
+                      ? "bg-zinc-900 border-zinc-900 text-white shadow-lg"
                       : "bg-white border-zinc-200 hover:border-zinc-400 text-zinc-900"
                   )}
                 >
-                  <div
-                    className={cn(
-                      "w-12 h-12 rounded-full flex items-center justify-center font-bold shrink-0 pointer-events-none",
-                      isAssigned ? "bg-zinc-800" : "bg-zinc-100 text-zinc-500"
-                    )}
-                  >
+                  <div className={cn(
+                    "w-12 h-12 rounded-full flex items-center justify-center font-bold shrink-0 pointer-events-none text-sm",
+                    isAssigned ? "bg-zinc-800" : "bg-zinc-100 text-zinc-500"
+                  )}>
                     {op.nome[0]}{op.sobrenome?.[0]}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="font-bold truncate text-sm">{op.nome} {op.sobrenome}</p>
-                    {isAssigned ? (
+                    <div className="flex items-center gap-1.5 mb-0.5">
+                      <p className="font-bold truncate text-sm">{op.nome} {op.sobrenome}</p>
+                      {isAdmin_op && <ShieldCheck className={cn("w-3.5 h-3.5 shrink-0", isAssigned ? "text-blue-300" : "text-blue-500")} />}
+                    </div>
+                    {isAssigned && equipeEntry ? (
                       <select
                         className="bg-transparent border-none p-0 text-[10px] uppercase tracking-widest font-bold text-zinc-400 focus:ring-0 w-full cursor-pointer"
                         value={equipeEntry.nivel}
                         onClick={(e) => e.stopPropagation()}
-                        onChange={(e) => handleUpdateNivel(op.id, e.target.value)}
+                        onChange={(e) => { e.stopPropagation(); handleUpdateNivel(op.id, e.target.value); }}
                       >
                         <option className="text-zinc-900" value="Operador">Operador</option>
                         <option className="text-zinc-900" value="Encarregado">Encarregado</option>
@@ -746,14 +796,29 @@ function ObraDetails({
                         )}
                       </select>
                     ) : (
-                      <p className="text-[10px] uppercase tracking-widest font-bold text-zinc-500">
+                      <p className={cn("text-[10px] uppercase tracking-widest font-bold", isAssigned ? "text-zinc-500" : "text-zinc-400")}>
                         {op.funcao || 'Disponível'}
                       </p>
                     )}
                   </div>
-                  {isAssigned && (
-                    <CheckCircle2 className="w-4 h-4 text-white pointer-events-none" />
-                  )}
+                  <div className="flex flex-col items-center gap-1.5 shrink-0">
+                    {isAssigned && <CheckCircle2 className="w-4 h-4 text-white" />}
+                    {isAdmin && (
+                      <button
+                        type="button"
+                        title={isAdmin_op ? 'Admin — clique para rebaixar' : 'Operador — clique para tornar admin'}
+                        onClick={(e) => handleToggleAdmin(e, op.id)}
+                        className={cn(
+                          "p-1.5 rounded-lg transition-colors",
+                          isAdmin_op
+                            ? (isAssigned ? "bg-blue-500/30 text-blue-300 hover:bg-blue-500/50" : "bg-blue-100 text-blue-600 hover:bg-blue-200")
+                            : (isAssigned ? "bg-zinc-700 text-zinc-500 hover:bg-zinc-600" : "bg-zinc-100 text-zinc-400 hover:bg-zinc-200")
+                        )}
+                      >
+                        <ShieldCheck className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
                 </div>
               );
             })}
