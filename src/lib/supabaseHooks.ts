@@ -2,7 +2,15 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from './supabase';
 import { CollectionRef, getDocs } from './supabaseDb';
 
-export function useCollection(ref: CollectionRef | null | undefined): [any | undefined, boolean, Error | undefined] {
+/**
+ * Hook de leitura com Realtime.
+ * @param paused Quando true, congela atualizações do Realtime (use quando um modal
+ *               crítico está aberto, ex: captura de foto no mobile).
+ */
+export function useCollection(
+  ref: CollectionRef | null | undefined,
+  paused = false
+): [any | undefined, boolean, Error | undefined] {
   const [snap, setSnap] = useState<any>();
   const [loading, setLoading] = useState(!!ref);
   const [error, setError] = useState<Error>();
@@ -10,6 +18,12 @@ export function useCollection(ref: CollectionRef | null | undefined): [any | und
   const refreshTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hasLoadedRef = useRef(false);
   const isFetchingRef = useRef(false);
+  const pausedRef = useRef(paused);
+
+  // Mantém pausedRef sempre sincronizado sem re-criar loadData
+  useEffect(() => {
+    pausedRef.current = paused;
+  }, [paused]);
 
   const refKey = useMemo(() => JSON.stringify(ref || null), [ref]);
 
@@ -20,12 +34,15 @@ export function useCollection(ref: CollectionRef | null | undefined): [any | und
       return;
     }
 
-    // Ignora refreshes em background enquanto já há uma busca em andamento
+    // Se pausado e não é carga inicial, descarta silenciosamente
+    if (!isInitial && pausedRef.current) return;
+
+    // Evita fetches concorrentes em background
     if (!isInitial && isFetchingRef.current) return;
 
     isFetchingRef.current = true;
 
-    // Só mostra o spinner na carga inicial da query — nunca nos updates do Realtime
+    // Spinner apenas na primeira carga da query
     if (isInitial && !hasLoadedRef.current) setLoading(true);
 
     try {
@@ -37,7 +54,6 @@ export function useCollection(ref: CollectionRef | null | undefined): [any | und
       setError(err instanceof Error ? err : new Error(String(err)));
     } finally {
       isFetchingRef.current = false;
-      // Remove o spinner apenas se foi a carga inicial que o ativou
       if (isInitial) setLoading(false);
     }
   }, [refKey]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -45,7 +61,7 @@ export function useCollection(ref: CollectionRef | null | undefined): [any | und
   // Carga inicial — dispara quando a query muda
   useEffect(() => {
     let alive = true;
-    hasLoadedRef.current = false; // nova query = novo ciclo de loading
+    hasLoadedRef.current = false;
 
     const run = async () => {
       if (!alive) return;
@@ -60,7 +76,7 @@ export function useCollection(ref: CollectionRef | null | undefined): [any | und
     };
   }, [loadData]);
 
-  // Realtime — atualiza dados silenciosamente sem spinner
+  // Realtime — atualiza silenciosamente; respeitando a flag paused
   useEffect(() => {
     if (!ref?.table) return;
 
@@ -73,9 +89,19 @@ export function useCollection(ref: CollectionRef | null | undefined): [any | und
         { event: '*', schema: 'public', table: ref.table },
         () => {
           if (refreshTimer.current) clearTimeout(refreshTimer.current);
-          // Debounce generoso: evita refetches em cascata quando múltiplas
-          // tabelas são atualizadas na mesma operação (ex: checkout de ferramenta)
           refreshTimer.current = setTimeout(() => {
+            // Se ainda pausado quando o timer disparar, agenda para depois do unpause
+            if (pausedRef.current) {
+              const waitForUnpause = setInterval(() => {
+                if (!pausedRef.current) {
+                  clearInterval(waitForUnpause);
+                  loadData(false);
+                }
+              }, 300);
+              // Timeout de segurança para não ficar aguardando para sempre
+              setTimeout(() => clearInterval(waitForUnpause), 30000);
+              return;
+            }
             loadData(false);
           }, 1200);
         }

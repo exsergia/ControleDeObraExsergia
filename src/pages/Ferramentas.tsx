@@ -89,16 +89,23 @@ const getMovementScopeKey = (log: ToolLog) => {
 
 export default function Ferramentas() {
   const { isAdmin, notify } = useAuth();
-  const [toolsSnap] = useCollection(query(collection(db, 'tools'), orderBy('nome', 'asc')));
-  const [logsSnap] = useCollection(query(collection(db, 'toolLogs'), orderBy('dataSaida', 'desc'), limit(50)));
-  const [obrasSnap] = useCollection(query(collection(db, 'obras'), orderBy('nome', 'asc')));
 
+  // Estado dos modais declarado ANTES dos hooks de coleção para que anyModalOpen
+  // esteja disponível ao configurar o Realtime (hooks devem seguir a mesma ordem).
   const [showAddTool, setShowAddTool] = useState(false);
   const [editingTool, setEditingTool] = useState<Tool | null>(null);
   const [showHistory, setShowHistory] = useState<Tool | null>(null);
   const [showCheckOut, setShowCheckOut] = useState<Tool | null>(null);
   const [showCheckIn, setShowCheckIn] = useState<ToolLog | null>(null);
   const [showScanner, setShowScanner] = useState(false);
+
+  // Quando qualquer modal está aberto, congela atualizações do Realtime para não
+  // causar re-renders visíveis durante captura de foto no mobile.
+  const anyModalOpen = !!(showAddTool || editingTool || showHistory || showCheckOut || showCheckIn || showScanner);
+
+  const [toolsSnap] = useCollection(query(collection(db, 'tools'), orderBy('nome', 'asc')), anyModalOpen);
+  const [logsSnap] = useCollection(query(collection(db, 'toolLogs'), orderBy('dataSaida', 'desc'), limit(50)), anyModalOpen);
+  const [obrasSnap] = useCollection(query(collection(db, 'obras'), orderBy('nome', 'asc')), anyModalOpen);
 
   const tools = (toolsSnap?.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Tool[]) || [];
   const logs = (logsSnap?.docs.map(doc => ({ id: doc.id, ...doc.data() })) as ToolLog[]) || [];

@@ -244,15 +244,18 @@ function App() {
       const u = session?.user || null;
       if (!mounted) return;
       if (u) {
-        // TOKEN_REFRESHED acontece em background (ex: iOS ao abrir câmera).
-        // Não mostrar loading nem recarregar perfil — só atualizar o objeto de usuário.
-        if (event === 'TOKEN_REFRESHED') {
+        // Apenas SIGNED_IN e INITIAL_SESSION precisam recarregar o perfil e mostrar loading.
+        // Todos os outros eventos (TOKEN_REFRESHED, USER_UPDATED, MFA, etc.) acontecem
+        // em background — especialmente no iOS ao abrir câmera ou galeria — e não
+        // devem interromper o fluxo do usuário com uma tela de carregamento.
+        const needsFullReload = event === 'SIGNED_IN' || event === 'INITIAL_SESSION';
+        if (needsFullReload) {
+          setLoading(true);
+          resolveUserProfile(u);
+        } else {
           setCurrentUser(u);
           setUser(u);
-          return;
         }
-        setLoading(true);
-        resolveUserProfile(u);
       } else {
         setCurrentUser(null);
         setUser(null);
