@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useCollection } from '../lib/supabaseHooks';
-import { collection, query, where, addDoc, updateDoc, doc, serverTimestamp, deleteDoc } from '../lib/supabaseDb';
+import { collection, query, where, addDoc, updateDoc, setDoc, doc, serverTimestamp, deleteDoc } from '../lib/supabaseDb';
 import { db, handleFirestoreError, OperationType } from '../lib/supabase';
 import { Obra, Atividade, Operator } from '../types';
 import { 
@@ -112,6 +112,22 @@ export default function ProgressoFisico() {
       await updateDoc(doc(db, 'atividades', id), {
         quantidadeExecutada: currentVal,
         percentual: Math.min(100, (currentVal / total) * 100),
+        updatedAt: serverTimestamp()
+      });
+
+      // Snapshot diário: calcula % global com o novo valor aplicado ao estado local
+      const totalPrevisto = atividades.reduce((s, a) => s + Number(a.quantidadePrevista || 0), 0);
+      const totalExecutado = atividades.reduce((s, a) =>
+        s + (a.id === id ? currentVal : Number(a.quantidadeExecutada || 0)), 0);
+      const newPerc = totalPrevisto > 0 ? Math.min(100, (totalExecutado / totalPrevisto) * 100) : 0;
+      const today = new Date().toISOString().split('T')[0];
+
+      await setDoc(doc(db, 'progresso_diario', today), {
+        id: today,
+        data: today,
+        percentual: Number(newPerc.toFixed(4)),
+        totalPrevisto,
+        totalExecutado,
         updatedAt: serverTimestamp()
       });
     } catch (err: any) {

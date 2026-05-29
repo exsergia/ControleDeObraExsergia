@@ -73,12 +73,14 @@ export default function Dashboard() {
   const [materiaisSnap] = useCollection(collection(db, 'materiais'));
   const [atividadesSnap] = useCollection(collection(db, 'atividades'));
   const [checklistsSnap] = useCollection(collection(db, 'checklists'));
+  const [progressoDiarioSnap] = useCollection(collection(db, 'progresso_diario'));
   const [ultimasEntregasSnap] = useCollection(query(collection(db, 'materiais'), orderBy('dataEntrega', 'desc'), limit(5)));
   const [ultimosChecklistsSnap] = useCollection(query(collection(db, 'checklists'), orderBy('data', 'desc'), limit(5)));
 
   const materiais = (materiaisSnap?.docs.map((doc: any) => ({ id: doc.id, ...doc.data() })) as Material[]) || [];
   const atividades = (atividadesSnap?.docs.map((doc: any) => ({ id: doc.id, ...doc.data() })) as Atividade[]) || [];
   const checklists = (checklistsSnap?.docs.map((doc: any) => ({ id: doc.id, ...doc.data() })) as Checklist[]) || [];
+  const progressoDiario = (progressoDiarioSnap?.docs.map((doc: any) => ({ id: doc.id, ...doc.data() }))) || [];
 
   const chartData = useMemo(() => {
     const inicioSemana = inicioDaSemanaAtual();
@@ -90,51 +92,55 @@ export default function Dashboard() {
     materiais.forEach((material) => {
       const dataEntrega = toDate(material.dataEntrega);
       if (!dataEntrega) return;
-
       const diaIndex = getDiaIndex(dataEntrega, inicioSemana);
       if (diaIndex < 0 || diaIndex >= DIAS_SEMANA.length) return;
-
       entregasPorDia[diaIndex].entregas += Number(material.quantidade || 0);
     });
 
-    const totalPrevisto = atividades.reduce((sum, atividade) => sum + Number(atividade.quantidadePrevista || 0), 0);
+    const totalPrevisto = atividades.reduce((sum, a) => sum + Number(a.quantidadePrevista || 0), 0);
     const progressoChecklist = checklists.flatMap((checklist) => {
       const dataChecklist = toDate(checklist.data);
-      return (checklist.progresso || []).map((item) => ({
-        ...item,
-        data: dataChecklist,
-      }));
+      return (checklist.progresso || []).map((item) => ({ ...item, data: dataChecklist }));
     }).filter((item) => item.data && Number(item.qtdExecutadaNoDia || 0) > 0);
 
     const progressoAtual = totalPrevisto > 0
-      ? Math.min(100, (atividades.reduce((sum, atividade) => sum + Number(atividade.quantidadeExecutada || 0), 0) / totalPrevisto) * 100)
+      ? Math.min(100, (atividades.reduce((sum, a) => sum + Number(a.quantidadeExecutada || 0), 0) / totalPrevisto) * 100)
       : 0;
 
-    entregasPorDia.forEach((dia, index) => {
-      if (!totalPrevisto) {
-        dia.progresso = 0;
-        return;
-      }
+    // Snapshots desta semana (tabela progresso_diario): evolução real dia a dia
+    const snapshotsSemana = progressoDiario.filter((p: any) => {
+      const d = new Date(p.id || p.data || '');
+      const idx = getDiaIndex(d, inicioSemana);
+      return idx >= 0 && idx <= 5;
+    });
 
-      // Dias futuros não têm dado real — sem ponto no gráfico
-      if (index > hojeIndex) {
-        dia.progresso = null;
-        return;
-      }
+    let lastKnown = 0;
+
+    entregasPorDia.forEach((dia, index) => {
+      if (!totalPrevisto) { dia.progresso = 0; return; }
+      if (index > hojeIndex) { dia.progresso = null; return; }
 
       if (progressoChecklist.length) {
+        // Progresso via Checklist Diário: acumulado real por dia
         const fimDoDia = new Date(inicioSemana);
         fimDoDia.setDate(inicioSemana.getDate() + index);
         fimDoDia.setHours(23, 59, 59, 999);
-
         const executadoAteODia = progressoChecklist.reduce((sum, item) => {
           if (!item.data || item.data.getTime() > fimDoDia.getTime()) return sum;
           return sum + Number(item.qtdExecutadaNoDia || 0);
         }, 0);
-
         dia.progresso = Math.min(100, (executadoAteODia / totalPrevisto) * 100);
+        lastKnown = dia.progresso;
+      } else if (snapshotsSemana.length > 0) {
+        // Progresso via snapshots diários: fill-forward com o último valor conhecido
+        const dayDate = new Date(inicioSemana);
+        dayDate.setDate(inicioSemana.getDate() + index);
+        const dateStr = dayDate.toISOString().split('T')[0];
+        const snap = snapshotsSemana.find((p: any) => (p.id || p.data) === dateStr);
+        if (snap) lastKnown = Number(snap.percentual || 0);
+        dia.progresso = lastKnown;
       } else {
-        // Sem checklist diário: usa updatedAt das atividades para saber o dia do lançamento
+        // Fallback para registros sem snapshot: linha flat desde o dia do primeiro lançamento
         const primeiroIdx = (() => {
           let earliest: number | null = null;
           for (const a of atividades) {
@@ -146,10 +152,8 @@ export default function Dashboard() {
               if (earliest === null || idx < earliest) earliest = idx;
             }
           }
-          // Sem updatedAt em nenhuma atividade: mostra desde segunda como linha flat
           return earliest !== null ? earliest : (progressoAtual > 0 ? 0 : hojeIndex);
         })();
-
         dia.progresso = index >= primeiroIdx ? progressoAtual : 0;
       }
     });
@@ -159,7 +163,7 @@ export default function Dashboard() {
       entregas: Number(item.entregas.toFixed(2)),
       progresso: item.progresso !== null ? Number(item.progresso.toFixed(2)) : null,
     }));
-  }, [materiais, atividades, checklists]);
+  }, [materiais, atividades, checklists, progressoDiario]);
 
   const stats = [
     {
