@@ -263,11 +263,10 @@ function EncarregadosTab({ isAdmin }: { isAdmin: boolean }) {
       closeModal();
       notify('success', 'Encarregado salvo', 'As obras atribuídas foram atualizadas.');
     } catch (err) {
-      // Remove item otimista se a gravação falhou
       if (savedId) setOptimisticEncs(prev => prev.filter(e => e.id !== savedId));
-      const msg = err instanceof Error ? err.message : String(err);
+      const msg = (err as any)?.message || (err as any)?.details || JSON.stringify(err);
       notify('error', 'Erro ao salvar encarregado', msg);
-      console.error('Erro encarregados:', err);
+      console.error('Erro encarregados (completo):', JSON.stringify(err));
     } finally {
       setSubmitting(false);
     }
