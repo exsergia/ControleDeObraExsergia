@@ -325,7 +325,7 @@ function App() {
                 <Routes>
                   <Route path="/" element={(isAdmin || isEncarregado) ? <Dashboard /> : <Navigate to="/ferramentas" replace />} />
                   <Route path="/obras" element={(isAdmin || isEncarregado) ? <Obras /> : <Navigate to="/ferramentas" replace />} />
-                  <Route path="/materiais" element={<Materiais />} />
+                  <Route path="/materiais" element={(isAdmin || isEncarregado) ? <Materiais /> : <Navigate to="/ferramentas" replace />} />
                   <Route path="/checklist" element={(isAdmin || isEncarregado) ? <Checklist /> : <Navigate to="/ferramentas" replace />} />
                   <Route path="/operadores" element={(isAdmin || isEncarregado) ? <Operadores /> : <Navigate to="/ferramentas" replace />} />
                   <Route path="/financeiro" element={(isAdmin || isEncarregado) ? <Financeiro /> : <Navigate to="/ferramentas" replace />} />
@@ -890,7 +890,7 @@ function Layout({ children }: { children: React.ReactNode }) {
 
   const filteredMenuItems = menuItems.filter(item => {
     if (isAdmin || isEncarregado) return true;
-    return item.path === '/ferramentas' || item.path === '/materiais' || item.path === '/settings';
+    return item.path === '/ferramentas' || item.path === '/settings';
   });
 
   return (

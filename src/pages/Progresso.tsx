@@ -107,7 +107,8 @@ export default function ProgressoFisico() {
     try {
       await updateDoc(doc(db, 'atividades', id), {
         quantidadeExecutada: currentVal,
-        percentual: Math.min(100, (currentVal / total) * 100)
+        percentual: Math.min(100, (currentVal / total) * 100),
+        updatedAt: serverTimestamp()
       });
     } catch (err: any) {
       notify('error', 'Erro ao Salvar', 'Não foi possível salvar o progresso. Verifique sua conexão.');

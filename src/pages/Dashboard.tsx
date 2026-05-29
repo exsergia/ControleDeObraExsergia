@@ -134,8 +134,23 @@ export default function Dashboard() {
 
         dia.progresso = Math.min(100, (executadoAteODia / totalPrevisto) * 100);
       } else {
-        // Sem histórico de checklist: hoje mostra progresso atual, dias passados mostram 0
-        dia.progresso = index === hojeIndex ? progressoAtual : 0;
+        // Sem checklist diário: usa updatedAt das atividades para saber o dia do lançamento
+        const primeiroIdx = (() => {
+          let earliest: number | null = null;
+          for (const a of atividades) {
+            if (!Number(a.quantidadeExecutada || 0)) continue;
+            const dt = toDate((a as any).updatedAt);
+            if (!dt) continue;
+            const idx = getDiaIndex(dt, inicioSemana);
+            if (idx >= 0 && idx <= hojeIndex) {
+              if (earliest === null || idx < earliest) earliest = idx;
+            }
+          }
+          // Sem updatedAt em nenhuma atividade: mostra desde segunda como linha flat
+          return earliest !== null ? earliest : (progressoAtual > 0 ? 0 : hojeIndex);
+        })();
+
+        dia.progresso = index >= primeiroIdx ? progressoAtual : 0;
       }
     });
 
