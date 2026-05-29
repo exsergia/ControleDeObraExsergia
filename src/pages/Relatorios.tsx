@@ -4,10 +4,13 @@ import { collection, query, orderBy, addDoc, serverTimestamp, updateDoc, doc, ar
 import { db, handleFirestoreError, OperationType } from '../lib/supabase';
 import { Attachment, Checklist, Obra, Material, Atividade, Operator, Tool, ToolLog } from '../types';
 import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  LineChart, Line, PieChart, Pie, Cell, Legend
+} from 'recharts';
+import {
   FileText,
   Calendar,
   User,
-  MapPin,
   Search,
   ChevronRight,
   ExternalLink,
@@ -25,7 +28,9 @@ import {
   ArrowUpRight,
   ArrowDownLeft,
   Clock,
-  CheckCircle2
+  CheckCircle2,
+  TrendingUp,
+  AlertTriangle
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { format } from 'date-fns';
@@ -46,7 +51,7 @@ const parseDate = (d: any): Date => {
 export default function Relatorios() {
   const { isAdmin, notify } = useAuth();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<'diarios' | 'ferramentas'>('diarios');
+  const [activeTab, setActiveTab] = useState<'diarios' | 'ferramentas' | 'bi'>('diarios');
 
   const [checklistsSnap, loading] = useCollection(
     query(collection(db, 'checklists'), orderBy('data', 'desc'))
@@ -59,6 +64,7 @@ export default function Relatorios() {
   const [toolLogsSnap, loadingLogs] = useCollection(
     query(collection(db, 'toolLogs'), orderBy('dataSaida', 'desc'))
   );
+  const [progressoDiarioSnap] = useCollection(collection(db, 'progresso_diario'));
 
   const [search, setSearch] = useState('');
   const [selectedDate, setSelectedDate] = useState('');
@@ -71,6 +77,7 @@ export default function Relatorios() {
   const operadores = (operadoresSnap?.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Operator[]) || [];
   const tools = (toolsSnap?.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Tool[]) || [];
   const toolLogs = (toolLogsSnap?.docs.map(doc => ({ id: doc.id, ...doc.data() })) as ToolLog[]) || [];
+  const progressoDiario = (progressoDiarioSnap?.docs.map(doc => ({ id: doc.id, ...doc.data() }))) || [];
 
   const filteredToolLogs = toolLogs.filter(l => {
     if (search) {
@@ -250,17 +257,10 @@ export default function Relatorios() {
             <>
               <button
                 onClick={handleExportBI}
-                className="flex items-center gap-2 px-4 py-2.5 bg-green-50 border border-green-200 text-green-700 rounded-xl text-sm font-bold hover:bg-green-100 transition-all shadow-sm"
-              >
-                <FileDown className="w-4 h-4" />
-                Consolidado BI
-              </button>
-              <button
-                onClick={handleImportTemplate}
                 className="flex items-center gap-2 px-4 py-2.5 bg-white border border-zinc-200 text-zinc-600 rounded-xl text-sm font-bold hover:bg-zinc-50 transition-all shadow-sm"
               >
                 <FileDown className="w-4 h-4" />
-                Base Exemplo
+                Exportar Excel
               </button>
               <button
                 onClick={() => navigate('/checklist')}
@@ -274,7 +274,7 @@ export default function Relatorios() {
           {activeTab === 'ferramentas' && isAdmin && (
             <button
               onClick={handleExportFerramentas}
-              className="flex items-center gap-2 px-4 py-2.5 bg-green-50 border border-green-200 text-green-700 rounded-xl text-sm font-bold hover:bg-green-100 transition-all shadow-sm"
+              className="flex items-center gap-2 px-4 py-2.5 bg-white border border-zinc-200 text-zinc-600 rounded-xl text-sm font-bold hover:bg-zinc-50 transition-all shadow-sm"
             >
               <FileDown className="w-4 h-4" />
               Exportar Excel
@@ -287,7 +287,8 @@ export default function Relatorios() {
       <div className="flex bg-white p-1 rounded-xl border border-zinc-200 w-fit shadow-sm">
         {([
           { id: 'diarios', label: 'Relatórios Diários', icon: FileText },
-          { id: 'ferramentas', label: 'Movimentação de Ferramentas', icon: Hammer },
+          { id: 'ferramentas', label: 'Ferramentas', icon: Hammer },
+          { id: 'bi', label: 'Dashboard BI', icon: TrendingUp },
         ] as const).map(tab => (
           <button
             key={tab.id}
@@ -305,8 +306,21 @@ export default function Relatorios() {
         ))}
       </div>
 
-      {/* Search + Date filter */}
-      <div className="flex flex-col sm:flex-row gap-3">
+      {/* ── DASHBOARD BI TAB ── */}
+      {activeTab === 'bi' && (
+        <BIDashboard
+          obras={obras}
+          materiais={materiais}
+          atividades={atividades}
+          checklists={checklists}
+          tools={tools}
+          toolLogs={toolLogs}
+          progressoDiario={progressoDiario}
+        />
+      )}
+
+      {/* Search + Date filter (hidden on BI tab) */}
+      {activeTab !== 'bi' && <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
           <input
@@ -338,10 +352,10 @@ export default function Relatorios() {
             </button>
           )}
         </div>
-      </div>
+      </div>}
 
       {/* ── FERRAMENTAS TAB ── */}
-      {activeTab === 'ferramentas' && (
+      {activeTab !== 'bi' && activeTab === 'ferramentas' && (
         <div className="bg-white rounded-2xl border border-zinc-200 shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left">
@@ -909,6 +923,309 @@ function ReportDetails({ report, obra, materiais, atividades, operadores }: {
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+// ─── KPI Card ────────────────────────────────────────────────────────────────
+
+function KPICard({ label, value, sub, color }: {
+  label: string; value: string; sub: string;
+  color: 'blue' | 'green' | 'amber' | 'purple' | 'red';
+}) {
+  const styles = {
+    blue:   'border-blue-100   text-blue-700   bg-blue-50',
+    green:  'border-green-100  text-green-700  bg-green-50',
+    amber:  'border-amber-100  text-amber-700  bg-amber-50',
+    purple: 'border-purple-100 text-purple-700 bg-purple-50',
+    red:    'border-red-100    text-red-700    bg-red-50',
+  };
+  return (
+    <div className={cn('p-5 rounded-xl border shadow-sm', styles[color])}>
+      <p className="text-[10px] font-bold uppercase tracking-widest mb-2 opacity-60">{label}</p>
+      <p className="text-2xl font-black mb-0.5">{value}</p>
+      <p className="text-[10px] opacity-50 font-medium">{sub}</p>
+    </div>
+  );
+}
+
+// ─── Dashboard BI ─────────────────────────────────────────────────────────────
+
+const PIE_COLORS = ['#22c55e', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4'];
+const STATUS_COLORS: Record<string, string> = {
+  'Ativa': '#22c55e', 'Concluída': '#3b82f6', 'Pausada': '#f59e0b', 'Cancelada': '#ef4444'
+};
+
+function BIDashboard({ obras, materiais, atividades, checklists, tools, toolLogs, progressoDiario }: {
+  obras: Obra[]; materiais: Material[]; atividades: Atividade[];
+  checklists: Checklist[]; tools: Tool[]; toolLogs: ToolLog[]; progressoDiario: any[];
+}) {
+  const fmtBRL = (v: number) =>
+    new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(v);
+
+  // ── KPIs ──────────────────────────────────────────────────────────────────
+  const obrasAtivas = obras.filter(o => o.status === 'Ativa').length;
+  const totalPrevisto = atividades.reduce((s, a) => s + Number(a.quantidadePrevista || 0), 0);
+  const totalExecutado = atividades.reduce((s, a) => s + Number(a.quantidadeExecutada || 0), 0);
+  const progressoGeral = totalPrevisto > 0 ? Math.min(100, (totalExecutado / totalPrevisto) * 100) : 0;
+  const valorOrcado = atividades.reduce((s, a) => s + Number(a.quantidadePrevista || 0) * Number(a.valorUnitario || 0), 0);
+  const valorExecutado = atividades.reduce((s, a) => s + Number(a.quantidadeExecutada || 0) * Number(a.valorUnitario || 0), 0);
+  const ferramentasEmUso = toolLogs.filter(l => l.statusLog === 'Aberta').length;
+  const checklistsMes = checklists.filter(c => {
+    const d = new Date(c.data || '');
+    const now = new Date();
+    return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+  }).length;
+
+  // ── Progresso por obra ────────────────────────────────────────────────────
+  const progressoPorObra = obras.map(obra => {
+    const atvsObra = atividades.filter(a => a.obraId === obra.id);
+    const prev = atvsObra.reduce((s, a) => s + Number(a.quantidadePrevista || 0), 0);
+    const exec = atvsObra.reduce((s, a) => s + Number(a.quantidadeExecutada || 0), 0);
+    const orcado = atvsObra.reduce((s, a) => s + Number(a.quantidadePrevista || 0) * Number(a.valorUnitario || 0), 0);
+    const executadoVal = atvsObra.reduce((s, a) => s + Number(a.quantidadeExecutada || 0) * Number(a.valorUnitario || 0), 0);
+    const perc = prev > 0 ? Number(Math.min(100, (exec / prev) * 100).toFixed(1)) : 0;
+    const nomeShort = obra.nome.length > 22 ? obra.nome.substring(0, 22) + '…' : obra.nome;
+    return { nome: nomeShort, nomeCompleto: obra.nome, progresso: perc, status: obra.status, orcado, executado: executadoVal, centroCusto: (obra as any).centroCusto || 'N/A' };
+  }).sort((a, b) => b.progresso - a.progresso);
+
+  // ── Status das obras ──────────────────────────────────────────────────────
+  const statusData = obras.reduce((acc: { name: string; value: number }[], o) => {
+    const s = o.status || 'Sem Status';
+    const found = acc.find(x => x.name === s);
+    if (found) found.value++; else acc.push({ name: s, value: 1 });
+    return acc;
+  }, []);
+
+  // ── Centro de custo ───────────────────────────────────────────────────────
+  const centroCustoData = obras.reduce((acc: { name: string; orcado: number; obras: number }[], o) => {
+    const cc = (o as any).centroCusto || 'N/A';
+    const atvsObra = atividades.filter(a => a.obraId === o.id);
+    const orcado = atvsObra.reduce((s, a) => s + Number(a.quantidadePrevista || 0) * Number(a.valorUnitario || 0), 0);
+    const found = acc.find(x => x.name === cc);
+    if (found) { found.orcado += orcado; found.obras++; }
+    else acc.push({ name: cc, orcado, obras: 1 });
+    return acc;
+  }, []).filter(c => c.obras > 0);
+
+  // ── Evolução temporal (últimos 30 dias) ───────────────────────────────────
+  const evolucao = [...progressoDiario]
+    .filter((p: any) => p.id && p.percentual !== undefined)
+    .sort((a: any, b: any) => new Date(a.id).getTime() - new Date(b.id).getTime())
+    .slice(-30)
+    .map((p: any) => ({
+      data: format(new Date(p.id + 'T12:00:00'), 'dd/MM'),
+      percentual: Number(Number(p.percentual || 0).toFixed(1))
+    }));
+
+  // ── Atividades críticas (< 30%) ───────────────────────────────────────────
+  const atividadesCriticas = atividades
+    .filter(a => Number(a.quantidadePrevista || 0) > 0 && Number(a.percentual || 0) < 30)
+    .sort((a, b) => Number(a.percentual || 0) - Number(b.percentual || 0))
+    .slice(0, 6)
+    .map(a => ({ ...a, obraNome: obras.find(o => o.id === a.obraId)?.nome || 'N/A' }));
+
+  // ── Top materiais ─────────────────────────────────────────────────────────
+  const topMateriais = materiais
+    .reduce((acc: { descricao: string; total: number }[], m) => {
+      const found = acc.find(x => x.descricao === m.descricao);
+      if (found) found.total += Number(m.quantidade || 0);
+      else acc.push({ descricao: m.descricao?.length > 18 ? m.descricao.substring(0, 18) + '…' : (m.descricao || 'N/A'), total: Number(m.quantidade || 0) });
+      return acc;
+    }, [])
+    .sort((a, b) => b.total - a.total)
+    .slice(0, 5);
+
+  return (
+    <div className="space-y-6 animate-in fade-in duration-500">
+
+      {/* KPIs */}
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+        <KPICard label="Obras Ativas" value={String(obrasAtivas)} sub={`de ${obras.length} total`} color="blue" />
+        <KPICard label="Progresso Geral" value={`${progressoGeral.toFixed(1)}%`} sub="mão de obra" color="green" />
+        <KPICard label="Valor Executado" value={fmtBRL(valorExecutado)} sub={`orçado: ${fmtBRL(valorOrcado)}`} color="amber" />
+        <KPICard label="Ferramentas em Uso" value={String(ferramentasEmUso)} sub={`de ${tools.length} cadastradas`} color="purple" />
+        <KPICard label="Checklists no Mês" value={String(checklistsMes)} sub={`de ${checklists.length} total`} color="red" />
+      </div>
+
+      {/* Progresso por Obra + Status */}
+      <div className="grid lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2 bg-white p-6 rounded-xl border border-zinc-200 shadow-sm">
+          <h3 className="font-semibold text-zinc-900 mb-0.5">Progresso por Obra</h3>
+          <p className="text-xs text-zinc-400 mb-5">% de execução da mão de obra — verde ≥80% · amarelo ≥40% · vermelho &lt;40%</p>
+          {progressoPorObra.length > 0 ? (
+            <ResponsiveContainer width="100%" height={Math.max(180, progressoPorObra.length * 44)}>
+              <BarChart data={progressoPorObra} layout="vertical" margin={{ left: 4, right: 52, top: 0, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f1f1f1" />
+                <XAxis type="number" domain={[0, 100]} fontSize={10} tickFormatter={v => `${v}%`} axisLine={false} tickLine={false} />
+                <YAxis type="category" dataKey="nome" width={135} fontSize={10} axisLine={false} tickLine={false} />
+                <Tooltip formatter={(v: any) => [`${v}%`, 'Progresso']} contentStyle={{ borderRadius: '8px', border: '1px solid #e4e4e7', fontSize: 12 }} />
+                <Bar dataKey="progresso" radius={[0, 4, 4, 0]} barSize={20}
+                  label={{ position: 'right', fontSize: 10, fontWeight: 700, formatter: (v: any) => `${v}%` }}>
+                  {progressoPorObra.map((entry, i) => (
+                    <Cell key={i} fill={entry.progresso >= 80 ? '#22c55e' : entry.progresso >= 40 ? '#f59e0b' : '#ef4444'} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <p className="text-sm text-zinc-400 py-12 text-center">Nenhuma atividade cadastrada nas obras.</p>
+          )}
+        </div>
+
+        <div className="bg-white p-6 rounded-xl border border-zinc-200 shadow-sm">
+          <h3 className="font-semibold text-zinc-900 mb-0.5">Status das Obras</h3>
+          <p className="text-xs text-zinc-400 mb-5">distribuição atual</p>
+          {obras.length > 0 ? (
+            <>
+              <ResponsiveContainer width="100%" height={180}>
+                <PieChart>
+                  <Pie data={statusData} cx="50%" cy="50%" innerRadius={50} outerRadius={78} paddingAngle={3} dataKey="value">
+                    {statusData.map((entry, i) => (
+                      <Cell key={i} fill={STATUS_COLORS[entry.name] || PIE_COLORS[i % PIE_COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip formatter={(v: any, name: any) => [v, name]} contentStyle={{ borderRadius: '8px', border: '1px solid #e4e4e7', fontSize: 12 }} />
+                </PieChart>
+              </ResponsiveContainer>
+              <div className="space-y-2 mt-2">
+                {statusData.map((s, i) => (
+                  <div key={i} className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: STATUS_COLORS[s.name] || PIE_COLORS[i % PIE_COLORS.length] }} />
+                      <span className="text-xs text-zinc-600">{s.name}</span>
+                    </div>
+                    <span className="text-xs font-bold text-zinc-900">{s.value} obra{s.value !== 1 ? 's' : ''}</span>
+                  </div>
+                ))}
+              </div>
+            </>
+          ) : (
+            <p className="text-sm text-zinc-400 py-12 text-center">Nenhuma obra cadastrada.</p>
+          )}
+        </div>
+      </div>
+
+      {/* Evolução temporal + Centro de Custo */}
+      <div className="grid lg:grid-cols-2 gap-6">
+        <div className="bg-white p-6 rounded-xl border border-zinc-200 shadow-sm">
+          <h3 className="font-semibold text-zinc-900 mb-0.5">Evolução do Progresso Global</h3>
+          <p className="text-xs text-zinc-400 mb-5">últimos 30 dias — % geral de todas as obras</p>
+          {evolucao.length > 1 ? (
+            <ResponsiveContainer width="100%" height={220}>
+              <LineChart data={evolucao}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f1f1" />
+                <XAxis dataKey="data" fontSize={10} axisLine={false} tickLine={false} interval="preserveStartEnd" />
+                <YAxis domain={[0, 100]} fontSize={10} axisLine={false} tickLine={false} tickFormatter={v => `${v}%`} />
+                <Tooltip formatter={(v: any) => [`${v}%`, 'Progresso']} contentStyle={{ borderRadius: '8px', border: '1px solid #e4e4e7', fontSize: 12 }} />
+                <Line type="monotone" dataKey="percentual" stroke="#18181b" strokeWidth={2.5}
+                  dot={{ r: 3, fill: '#fff', strokeWidth: 2, stroke: '#18181b' }}
+                  activeDot={{ r: 5, fill: '#18181b' }} />
+              </LineChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="py-12 text-center">
+              <TrendingUp className="w-10 h-10 text-zinc-200 mx-auto mb-3" />
+              <p className="text-sm text-zinc-400">Ainda sem histórico suficiente.</p>
+              <p className="text-xs text-zinc-400 mt-1">Atualize progressos em Progresso Físico para gerar o gráfico.</p>
+            </div>
+          )}
+        </div>
+
+        <div className="bg-white p-6 rounded-xl border border-zinc-200 shadow-sm">
+          <h3 className="font-semibold text-zinc-900 mb-0.5">Obras por Centro de Custo</h3>
+          <p className="text-xs text-zinc-400 mb-5">quantidade de obras por categoria</p>
+          {centroCustoData.length > 0 ? (
+            <ResponsiveContainer width="100%" height={220}>
+              <BarChart data={centroCustoData} margin={{ bottom: 24 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f1f1" />
+                <XAxis dataKey="name" fontSize={10} axisLine={false} tickLine={false} angle={-15} textAnchor="end" />
+                <YAxis fontSize={10} axisLine={false} tickLine={false} allowDecimals={false} />
+                <Tooltip formatter={(v: any, name: any) => [v, name === 'obras' ? 'Qtd. Obras' : name]} contentStyle={{ borderRadius: '8px', border: '1px solid #e4e4e7', fontSize: 12 }} />
+                <Bar dataKey="obras" fill="#3b82f6" radius={[4, 4, 0, 0]} barSize={36}
+                  label={{ position: 'top', fontSize: 11, fontWeight: 700 }} />
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <p className="text-sm text-zinc-400 py-12 text-center">Nenhuma obra com centro de custo definido.</p>
+          )}
+        </div>
+      </div>
+
+      {/* Orçado × Executado + Atividades Críticas */}
+      <div className="grid lg:grid-cols-2 gap-6">
+        <div className="bg-white p-6 rounded-xl border border-zinc-200 shadow-sm">
+          <h3 className="font-semibold text-zinc-900 mb-0.5">Orçado × Executado por Obra</h3>
+          <p className="text-xs text-zinc-400 mb-5">valor financeiro em R$ — requer valor unitário nas atividades</p>
+          {progressoPorObra.filter(o => o.orcado > 0 || o.executado > 0).length > 0 ? (
+            <ResponsiveContainer width="100%" height={220}>
+              <BarChart data={progressoPorObra.filter(o => o.orcado > 0 || o.executado > 0)} margin={{ bottom: 24 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f1f1" />
+                <XAxis dataKey="nome" fontSize={9} axisLine={false} tickLine={false} angle={-15} textAnchor="end" />
+                <YAxis fontSize={10} axisLine={false} tickLine={false} tickFormatter={v => `${(v / 1000).toFixed(0)}k`} />
+                <Tooltip formatter={(v: any, name: any) => [fmtBRL(Number(v)), name === 'orcado' ? 'Orçado' : 'Executado']} contentStyle={{ borderRadius: '8px', border: '1px solid #e4e4e7', fontSize: 12 }} />
+                <Legend iconType="square" iconSize={8} formatter={(v: any) => v === 'orcado' ? 'Orçado' : 'Executado'} />
+                <Bar dataKey="orcado" name="orcado" fill="#e4e4e7" radius={[4, 4, 0, 0]} barSize={16} />
+                <Bar dataKey="executado" name="executado" fill="#22c55e" radius={[4, 4, 0, 0]} barSize={16} />
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <p className="text-sm text-zinc-400 py-12 text-center">Cadastre valor unitário nas atividades para ver os dados financeiros.</p>
+          )}
+        </div>
+
+        <div className="bg-white p-6 rounded-xl border border-zinc-200 shadow-sm">
+          <h3 className="font-semibold text-zinc-900 mb-0.5 flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 text-red-500" />
+            Atividades Críticas
+          </h3>
+          <p className="text-xs text-zinc-400 mb-5">menos de 30% de execução — requer atenção imediata</p>
+          {atividadesCriticas.length > 0 ? (
+            <div className="space-y-4">
+              {atividadesCriticas.map(a => {
+                const perc = Number(a.percentual || 0);
+                return (
+                  <div key={a.id}>
+                    <div className="flex items-center justify-between mb-0.5">
+                      <p className="text-xs font-bold text-zinc-800 truncate flex-1 pr-2">{a.descricao}</p>
+                      <span className="text-[11px] font-black text-red-500 shrink-0">{perc.toFixed(0)}%</span>
+                    </div>
+                    <p className="text-[10px] text-zinc-400 mb-1.5 truncate">{a.obraNome}</p>
+                    <div className="h-2 bg-zinc-100 rounded-full overflow-hidden">
+                      <div className="h-full bg-red-500 rounded-full" style={{ width: `${perc}%` }} />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="py-10 text-center">
+              <CheckCircle2 className="w-10 h-10 text-green-200 mx-auto mb-3" />
+              <p className="text-sm text-zinc-500 font-medium">Nenhuma atividade crítica.</p>
+              <p className="text-xs text-zinc-400">Todas acima de 30% de execução.</p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Top Materiais */}
+      {topMateriais.length > 0 && (
+        <div className="bg-white p-6 rounded-xl border border-zinc-200 shadow-sm">
+          <h3 className="font-semibold text-zinc-900 mb-0.5">Top 5 Materiais por Volume</h3>
+          <p className="text-xs text-zinc-400 mb-5">maior quantidade total entregue</p>
+          <ResponsiveContainer width="100%" height={180}>
+            <BarChart data={topMateriais}>
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f1f1" />
+              <XAxis dataKey="descricao" fontSize={10} axisLine={false} tickLine={false} />
+              <YAxis fontSize={10} axisLine={false} tickLine={false} allowDecimals={false} />
+              <Tooltip formatter={(v: any) => [v, 'Quantidade']} contentStyle={{ borderRadius: '8px', border: '1px solid #e4e4e7', fontSize: 12 }} />
+              <Bar dataKey="total" fill="#18181b" radius={[4, 4, 0, 0]} barSize={40}
+                label={{ position: 'top', fontSize: 10, fontWeight: 700 }} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+
     </div>
   );
 }
