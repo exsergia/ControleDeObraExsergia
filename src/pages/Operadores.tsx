@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useCollection } from '../lib/supabaseHooks';
 import { collection, addDoc, updateDoc, deleteDoc, setDoc, doc, serverTimestamp, getDocs } from '../lib/supabaseDb';
 import { db, handleFirestoreError, OperationType } from '../lib/supabase';
@@ -201,11 +201,19 @@ function EncarregadosTab({ isAdmin }: { isAdmin: boolean }) {
   const [editingEnc, setEditingEnc] = useState<any | null>(null);
   const [search, setSearch] = useState('');
   const [formData, setFormData] = useState(emptyEnc);
+  const [submitting, setSubmitting] = useState(false);
+  const [optimisticEncs, setOptimisticEncs] = useState<any[]>([]);
   const { notify } = useAuth();
 
-  const encarregados = (encarregadosSnap?.docs.map(d => ({ id: d.id, ...d.data() })) as any[]) || [];
-  const obras = (obrasSnap?.docs.map(d => ({ id: d.id, ...d.data() })) as Obra[]) || [];
-  const operadores = (operadoresSnap?.docs.map(d => ({ id: d.id, ...d.data() })) as Operator[]) || [];
+  // Merge lista real com itens otimistas (aparece instantâneo antes do Realtime confirmar)
+  const encarregados = useMemo(() => {
+    const real = (encarregadosSnap?.docs?.map(d => ({ id: d.id, ...d.data() })) as any[]) || [];
+    const realIds = new Set(real.map((e: any) => e.id));
+    return [...real, ...optimisticEncs.filter(e => !realIds.has(e.id))];
+  }, [encarregadosSnap, optimisticEncs]);
+
+  const obras = (obrasSnap?.docs?.map(d => ({ id: d.id, ...d.data() })) as Obra[]) || [];
+  const operadores = (operadoresSnap?.docs?.map(d => ({ id: d.id, ...d.data() })) as Operator[]) || [];
 
   const filtered = encarregados.filter(e =>
     (e.nome || '').toLowerCase().includes(search.toLowerCase()) ||
@@ -222,8 +230,9 @@ function EncarregadosTab({ isAdmin }: { isAdmin: boolean }) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setSubmitting(true);
+    let savedId = '';
     try {
-      // Tenta vincular ao usuário existente pelo e-mail
       let operadorId = editingEnc?.id || editingEnc?.operadorId || '';
       if (!operadorId) {
         const op = operadores.find(o => (o.email || '').toLowerCase() === formData.email.toLowerCase());
@@ -231,7 +240,9 @@ function EncarregadosTab({ isAdmin }: { isAdmin: boolean }) {
       }
 
       const id = operadorId || `enc_${Date.now()}`;
-      await setDoc(doc(db, 'encarregados', id), {
+      savedId = id;
+
+      const payload = {
         id,
         operadorId: id,
         nome: formData.nome,
@@ -242,12 +253,23 @@ function EncarregadosTab({ isAdmin }: { isAdmin: boolean }) {
         ativo: true,
         updatedAt: serverTimestamp(),
         ...(editingEnc ? {} : { createdAt: serverTimestamp() }),
-      });
+      };
+
+      // Atualiza lista imediatamente (resposta rápida) — Realtime confirma logo depois
+      setOptimisticEncs(prev => [...prev.filter(e => e.id !== id), { ...payload }]);
+
+      await setDoc(doc(db, 'encarregados', id), payload);
 
       closeModal();
       notify('success', 'Encarregado salvo', 'As obras atribuídas foram atualizadas.');
     } catch (err) {
-      handleFirestoreError(err, OperationType.WRITE, 'encarregados');
+      // Remove item otimista se a gravação falhou
+      if (savedId) setOptimisticEncs(prev => prev.filter(e => e.id !== savedId));
+      const msg = err instanceof Error ? err.message : String(err);
+      notify('error', 'Erro ao salvar encarregado', msg);
+      console.error('Erro encarregados:', err);
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -394,9 +416,21 @@ function EncarregadosTab({ isAdmin }: { isAdmin: boolean }) {
                 </div>
 
                 <div className="flex gap-3 pt-1">
-                  <button type="button" onClick={closeModal} className="flex-1 py-3 bg-zinc-100 rounded-2xl font-bold text-sm">Cancelar</button>
-                  <button type="submit" className="flex-[2] py-3 bg-amber-500 text-white rounded-2xl font-bold text-sm hover:bg-amber-600 transition-all">
-                    {editingEnc ? 'Salvar Alterações' : 'Cadastrar Encarregado'}
+                  <button type="button" onClick={closeModal} disabled={submitting}
+                    className="flex-1 py-3 bg-zinc-100 rounded-2xl font-bold text-sm disabled:opacity-50">
+                    Cancelar
+                  </button>
+                  <button type="submit" disabled={submitting}
+                    className="flex-[2] py-3 bg-amber-500 text-white rounded-2xl font-bold text-sm hover:bg-amber-600 transition-all disabled:opacity-70 flex items-center justify-center gap-2">
+                    {submitting ? (
+                      <>
+                        <svg className="animate-spin w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                        </svg>
+                        Salvando...
+                      </>
+                    ) : editingEnc ? 'Salvar Alterações' : 'Cadastrar Encarregado'}
                   </button>
                 </div>
               </form>
