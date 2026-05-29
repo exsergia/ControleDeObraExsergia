@@ -158,6 +158,11 @@ export async function setDoc(ref: DocRef, value: any) {
     if (updatedAt !== undefined) row.updated_at = updatedAt;
   }
 
+  if (ref.table === 'encarregados') {
+    const { operadorId } = payload;
+    if (operadorId !== undefined) row.operador_id = operadorId;
+  }
+
   const { error } = await supabase.from(ref.table).upsert(row);
   if (error) throw error;
 }

@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useCollection } from '../lib/supabaseHooks';
-import { collection, addDoc, updateDoc, deleteDoc, doc, serverTimestamp } from '../lib/supabaseDb';
+import { collection, addDoc, updateDoc, deleteDoc, setDoc, doc, serverTimestamp } from '../lib/supabaseDb';
 import { db, handleFirestoreError, OperationType } from '../lib/supabase';
-import { Operator } from '../types';
+import { Operator, Obra } from '../types';
 import { useAuth } from '../App';
 import { 
   Mail, 
@@ -21,11 +21,13 @@ import {
 import { cn } from '../lib/utils';
 
 const DRAFT_KEY = 'operador-form-draft';
-const emptyForm = { nome: '', sobrenome: '', funcao: '', email: '', role: 'operator' as 'admin' | 'encarregado' | 'operator' };
+const emptyForm = { nome: '', sobrenome: '', funcao: '', email: '', role: 'operator' as 'admin' | 'encarregado' | 'operator', obraIds: [] as string[] };
 
 export default function Operadores() {
   const { isAdmin } = useAuth();
   const [operadoresSnap, loading] = useCollection(collection(db, 'operadores'));
+  const [obrasSnap] = useCollection(collection(db, 'obras'));
+  const [encarregadosSnap] = useCollection(collection(db, 'encarregados'));
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingOperator, setEditingOperator] = useState<Operator | null>(null);
   const [search, setSearch] = useState('');
@@ -47,6 +49,8 @@ export default function Operadores() {
   };
 
   const operators = (operadoresSnap?.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Operator[]) || [];
+  const obras = (obrasSnap?.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Obra[]) || [];
+  const encarregados = (encarregadosSnap?.docs.map(doc => ({ id: doc.id, ...doc.data() })) as any[]) || [];
 
   const filteredOperators = operators.filter(op => 
     op.nome?.toLowerCase().includes(search.toLowerCase()) ||
@@ -58,17 +62,30 @@ export default function Operadores() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      let operadorId: string;
+      const { obraIds, ...opData } = formData;
+
       if (editingOperator) {
-        await updateDoc(doc(db, 'operadores', editingOperator.id), {
-          ...formData,
+        await updateDoc(doc(db, 'operadores', editingOperator.id), { ...opData, updatedAt: serverTimestamp() });
+        operadorId = editingOperator.id;
+      } else {
+        const result = await addDoc(collection(db, 'operadores'), { ...opData, createdAt: serverTimestamp() });
+        operadorId = result.id;
+      }
+
+      // Sincroniza tabela encarregados
+      if (formData.role === 'encarregado') {
+        await setDoc(doc(db, 'encarregados', operadorId), {
+          id: operadorId,
+          operadorId,
+          nome: formData.nome,
+          sobrenome: formData.sobrenome,
+          obraIds,
+          ativo: true,
           updatedAt: serverTimestamp()
         });
-      } else {
-        await addDoc(collection(db, 'operadores'), {
-          ...formData,
-          createdAt: serverTimestamp()
-        });
       }
+
       handleCloseModal();
     } catch (err) {
       handleFirestoreError(err, OperationType.WRITE, 'operadores');
@@ -76,13 +93,15 @@ export default function Operadores() {
   };
 
   const handleEdit = (op: Operator) => {
+    const enc = encarregados.find(e => e.id === op.id);
     setEditingOperator(op);
     setFormData({
       nome: op.nome,
       sobrenome: op.sobrenome || '',
       funcao: op.funcao || '',
       email: op.email,
-      role: op.role || 'operator'
+      role: op.role || 'operator',
+      obraIds: enc?.obraIds || []
     });
     setIsModalOpen(true);
   };
@@ -273,8 +292,38 @@ export default function Operadores() {
                   </select>
                 </div>
 
+                {formData.role === 'encarregado' && (
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-zinc-500 uppercase tracking-widest pl-1">Obras Gerenciadas</label>
+                    <div className="max-h-40 overflow-y-auto rounded-2xl border border-zinc-200 bg-zinc-50 divide-y divide-zinc-100">
+                      {obras.length === 0 ? (
+                        <p className="text-xs text-zinc-400 p-3 text-center">Nenhuma obra cadastrada.</p>
+                      ) : obras.map(obra => (
+                        <label key={obra.id} className="flex items-center gap-3 px-4 py-2.5 cursor-pointer hover:bg-zinc-100 transition-colors">
+                          <input
+                            type="checkbox"
+                            className="w-4 h-4 accent-zinc-900 rounded"
+                            checked={formData.obraIds.includes(obra.id)}
+                            onChange={e => setFormData({
+                              ...formData,
+                              obraIds: e.target.checked
+                                ? [...formData.obraIds, obra.id]
+                                : formData.obraIds.filter(id => id !== obra.id)
+                            })}
+                          />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-semibold text-zinc-800 truncate">{obra.nome}</p>
+                            <p className="text-[10px] text-zinc-400">{(obra as any).status} · {(obra as any).centroCusto || 'Sem centro de custo'}</p>
+                          </div>
+                        </label>
+                      ))}
+                    </div>
+                    <p className="text-[10px] text-zinc-400 pl-1">{formData.obraIds.length} obra{formData.obraIds.length !== 1 ? 's' : ''} selecionada{formData.obraIds.length !== 1 ? 's' : ''}</p>
+                  </div>
+                )}
+
                 <div className="pt-4 flex gap-3">
-                  <button 
+                  <button
                     type="button"
                     onClick={handleCloseModal}
                     className="flex-1 py-4 bg-zinc-100 text-zinc-900 rounded-2xl font-bold uppercase tracking-widest hover:bg-zinc-200 transition-all"

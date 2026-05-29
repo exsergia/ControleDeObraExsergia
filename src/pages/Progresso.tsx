@@ -28,7 +28,7 @@ import { useAuth } from '../App';
 import { useAutoSaveForm } from '../hooks/useAutoSaveForm';
 
 export default function ProgressoFisico() {
-  const { isAdmin, notify } = useAuth();
+  const { isAdmin, isEncarregado, encarregadoObraIds, notify } = useAuth();
   const [selectedObraId, setSelectedObraId] = useState<string>('all');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [search, setSearch] = useState('');
@@ -44,7 +44,10 @@ export default function ProgressoFisico() {
     
   const [atividadesSnap, loading] = useCollection(actividadesQuery);
 
-  const obras = (obrasSnap?.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Obra[]) || [];
+  const todasObras = (obrasSnap?.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Obra[]) || [];
+  const obras = isEncarregado && encarregadoObraIds.length > 0
+    ? todasObras.filter(o => encarregadoObraIds.includes(o.id))
+    : isEncarregado ? [] : todasObras;
   const atividades = (atividadesSnap?.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Atividade[]) || [];
   const operadores = (operadoresSnap?.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Operator[]) || [];
 

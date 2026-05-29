@@ -45,6 +45,7 @@ const AuthContext = createContext<{
   loading: boolean;
   isAdmin: boolean;
   isEncarregado: boolean;
+  encarregadoObraIds: string[];
   notify: (type: 'error' | 'success' | 'info' | 'warning', title: string, message?: string) => void;
 }>({
   user: null,
@@ -52,6 +53,7 @@ const AuthContext = createContext<{
   loading: true,
   isAdmin: false,
   isEncarregado: false,
+  encarregadoObraIds: [],
   notify: () => {},
 });
 
@@ -149,6 +151,7 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [isRecovery, setIsRecovery] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [encarregadoObraIds, setEncarregadoObraIds] = useState<string[]>([]);
 
   const notify = (type: 'error' | 'success' | 'info' | 'warning', title: string, message?: string) => {
     const id = Math.random().toString(36).substring(7);
@@ -207,6 +210,14 @@ function App() {
           await withTimeout(updateDoc(opRef, { role: nextRole }), 8000, 'Atualização do perfil no Supabase');
         }
         setUserProfile(nextProfile);
+
+        // Carrega obras do encarregado
+        if (nextRole === 'encarregado') {
+          const encSnap = await withTimeout(getDoc(doc(db, 'encarregados', u.id)), 8000, 'Encarregado');
+          setEncarregadoObraIds(encSnap.exists() ? (encSnap.data().obraIds || []) : []);
+        } else {
+          setEncarregadoObraIds([]);
+        }
       }
     } catch (e) {
       console.error('Error fetching/registering user profile', e);
@@ -290,7 +301,7 @@ function App() {
   }
 
   return (
-    <AuthContext.Provider value={{ user, userProfile, loading, isAdmin, isEncarregado, notify }}>
+    <AuthContext.Provider value={{ user, userProfile, loading, isAdmin, isEncarregado, encarregadoObraIds, notify }}>
       <div className="relative">
         {/* Global Notifications Container */}
         <div className="fixed bottom-4 right-4 z-[9999] flex flex-col items-end pointer-events-none w-full max-w-sm px-4">

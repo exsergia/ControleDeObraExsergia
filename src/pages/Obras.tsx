@@ -30,7 +30,7 @@ import { useAuth } from '../App';
 import { useAutoSaveForm } from '../hooks/useAutoSaveForm';
 
 export default function Obras() {
-  const { isAdmin, notify } = useAuth();
+  const { isAdmin, isEncarregado, encarregadoObraIds, notify } = useAuth();
   const [obrasSnap, loading] = useCollection(collection(db, 'obras'));
   const [operadoresSnap] = useCollection(collection(db, 'operadores'));
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -88,9 +88,13 @@ export default function Obras() {
     }
   };
 
-  const obras = (obrasSnap?.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Obra[]) || [];
+  const todasObras = (obrasSnap?.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Obra[]) || [];
+  // Encarregado só vê as obras que estão sob sua responsabilidade
+  const obras = isEncarregado && encarregadoObraIds.length > 0
+    ? todasObras.filter(o => encarregadoObraIds.includes(o.id))
+    : isEncarregado ? [] : todasObras;
 
-  const filteredObras = obras.filter(o => 
+  const filteredObras = obras.filter(o =>
     (o.nome.toLowerCase().includes(search.toLowerCase()) || o.cliente?.toLowerCase().includes(search.toLowerCase())) &&
     (filterStatus === 'Todas' || o.status === filterStatus)
   );
