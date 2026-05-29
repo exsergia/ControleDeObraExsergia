@@ -125,7 +125,7 @@ export default function ChecklistPage() {
           const newTotal = (ativ.quantidadeExecutada || 0) + addedQty;
           batch.update(ativRef, {
             quantidadeExecutada: newTotal,
-            percentual: Math.min(100, (newTotal / ativ.quantidadePrevista) * 100)
+            percentual: ativ.quantidadePrevista > 0 ? Math.min(100, (newTotal / ativ.quantidadePrevista) * 100) : 0
           });
         }
       });
@@ -359,7 +359,7 @@ export default function ChecklistPage() {
                     "w-12 h-12 rounded-full flex items-center justify-center font-bold text-lg",
                     isSelected ? "bg-zinc-800" : "bg-zinc-100 text-zinc-400"
                   )}>
-                    {op.nome[0]}{op.sobrenome?.[0] || ''}
+                    {op.nome?.[0] || '?'}{op.sobrenome?.[0] || ''}
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="font-bold truncate">{op.nome} {op.sobrenome}</p>

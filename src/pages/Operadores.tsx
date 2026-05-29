@@ -117,7 +117,7 @@ function OperadoresTab({ isAdmin }: { isAdmin: boolean }) {
           <div key={op.id} className="bg-white p-5 rounded-2xl border border-zinc-100 shadow-sm hover:shadow-md transition-all flex flex-col gap-4 group">
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 rounded-xl bg-zinc-50 group-hover:bg-zinc-900 group-hover:text-white flex items-center justify-center font-bold text-lg transition-colors text-zinc-400">
-                {op.nome[0]}{op.sobrenome?.[0] || ''}
+                {op.nome?.[0] || '?'}{op.sobrenome?.[0] || ''}
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-1.5 mb-0.5">

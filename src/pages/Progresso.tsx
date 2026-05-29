@@ -97,7 +97,7 @@ export default function ProgressoFisico() {
     try {
       await addDoc(collection(db, 'atividades'), {
         ...formData,
-        percentual: (formData.quantidadeExecutada / formData.quantidadePrevista) * 100 || 0,
+        percentual: formData.quantidadePrevista > 0 ? (formData.quantidadeExecutada / formData.quantidadePrevista) * 100 : 0,
         valorUnitario: Number(formData.valorUnitario),
         createdAt: serverTimestamp()
       });

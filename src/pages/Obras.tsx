@@ -569,7 +569,7 @@ function ObraDetails({
       const newTotal = Number(qty);
       await updateDoc(doc(db, 'atividades', id), {
         quantidadeExecutada: newTotal,
-        percentual: Math.min(100, (newTotal / ativ.quantidadePrevista) * 100)
+        percentual: ativ.quantidadePrevista > 0 ? Math.min(100, (newTotal / ativ.quantidadePrevista) * 100) : 0
       });
     } catch (err) {
       handleFirestoreError(err, OperationType.WRITE, 'atividades-update');
@@ -779,7 +779,7 @@ function ObraDetails({
                     "w-12 h-12 rounded-full flex items-center justify-center font-bold shrink-0 pointer-events-none text-sm",
                     isAssigned ? "bg-zinc-800" : "bg-zinc-100 text-zinc-500"
                   )}>
-                    {op.nome[0]}{op.sobrenome?.[0]}
+                    {op.nome?.[0] || '?'}{op.sobrenome?.[0] || ''}
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5 mb-0.5">

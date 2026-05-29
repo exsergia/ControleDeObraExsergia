@@ -422,7 +422,7 @@ function LoginView() {
         const digits = input.replace(/\D/g, '');
         const cpfSnap = await getDoc(doc(db, 'cpfs', digits));
         if (cpfSnap.exists()) {
-          emailTarget = cpfSnap.data().email;
+          emailTarget = cpfSnap.data()?.email || '';
         } else {
           const opSnap = await getDocs(collection(db, 'operadores'));
           const match = opSnap.docs.find(d => {
@@ -565,7 +565,7 @@ function LoginView() {
         // 1. Tabela cpfs (cadastro via app)
         const cpfSnap = await getDoc(doc(db, 'cpfs', digits));
         if (cpfSnap.exists()) {
-          emailLogin = cpfSnap.data().email;
+          emailLogin = cpfSnap.data()?.email || '';
         } else {
           // 2. Busca direta em operadores por CPF ou telefone (admin-created users)
           const opSnap = await getDocs(collection(db, 'operadores'));
