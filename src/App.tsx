@@ -44,12 +44,14 @@ const AuthContext = createContext<{
   userProfile: Operator | null;
   loading: boolean;
   isAdmin: boolean;
+  isEncarregado: boolean;
   notify: (type: 'error' | 'success' | 'info' | 'warning', title: string, message?: string) => void;
 }>({
   user: null,
   userProfile: null,
   loading: true,
   isAdmin: false,
+  isEncarregado: false,
   notify: () => {},
 });
 
@@ -199,7 +201,7 @@ function App() {
         setUserProfile(newProfile);
       } else {
         const data = opSnap.data() as Operator;
-        const nextRole = isAdminByRegistry ? 'admin' : 'operator';
+        const nextRole = isAdminByRegistry ? 'admin' : (data.role === 'encarregado' ? 'encarregado' : 'operator');
         const nextProfile = { ...data, role: nextRole } as Operator;
         if (data.role !== nextRole) {
           await withTimeout(updateDoc(opRef, { role: nextRole }), 8000, 'Atualização do perfil no Supabase');
@@ -277,6 +279,7 @@ function App() {
   }, []);
 
   const isAdmin = userProfile?.role === 'admin';
+  const isEncarregado = userProfile?.role === 'encarregado';
 
   if (loading) {
     return (
@@ -287,7 +290,7 @@ function App() {
   }
 
   return (
-    <AuthContext.Provider value={{ user, userProfile, loading, isAdmin, notify }}>
+    <AuthContext.Provider value={{ user, userProfile, loading, isAdmin, isEncarregado, notify }}>
       <div className="relative">
         {/* Global Notifications Container */}
         <div className="fixed bottom-4 right-4 z-[9999] flex flex-col items-end pointer-events-none w-full max-w-sm px-4">
@@ -321,9 +324,9 @@ function App() {
               <React.Suspense fallback={<PageLoader />}>
                 <Routes>
                   <Route path="/" element={<Dashboard />} />
-                  <Route path="/obras" element={isAdmin ? <Obras /> : <Navigate to="/" replace />} />
+                  <Route path="/obras" element={(isAdmin || isEncarregado) ? <Obras /> : <Navigate to="/" replace />} />
                   <Route path="/materiais" element={<Materiais />} />
-                  <Route path="/checklist" element={isAdmin ? <Checklist /> : <Navigate to="/" replace />} />
+                  <Route path="/checklist" element={(isAdmin || isEncarregado) ? <Checklist /> : <Navigate to="/" replace />} />
                   <Route path="/operadores" element={isAdmin ? <Operadores /> : <Navigate to="/" replace />} />
                   <Route path="/financeiro" element={isAdmin ? <Financeiro /> : <Navigate to="/" replace />} />
                   <Route path="/relatorios" element={<Relatorios />} />
@@ -870,13 +873,13 @@ function PageLoader() {
 function Layout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
-  const { userProfile, isAdmin } = useAuth();
- 
+  const { userProfile, isAdmin, isEncarregado } = useAuth();
+
   const menuItems = [
     { label: 'Dashboard', icon: LayoutDashboard, path: '/' },
-    { label: 'Obras', icon: HardHat, path: '/obras', adminOnly: true },
+    { label: 'Obras', icon: HardHat, path: '/obras', adminOnly: true, encarregadoOk: true },
     { label: 'Materiais', icon: Package, path: '/materiais' },
-    { label: 'Checklist Diário', icon: ClipboardCheck, path: '/checklist', adminOnly: true },
+    { label: 'Checklist Diário', icon: ClipboardCheck, path: '/checklist', adminOnly: true, encarregadoOk: true },
     { label: 'Operadores', icon: Users, path: '/operadores', adminOnly: true },
     { label: 'Progresso Físico', icon: Activity, path: '/progresso' },
     { label: 'Financeiro', icon: DollarSign, path: '/financeiro', adminOnly: true },
@@ -887,6 +890,7 @@ function Layout({ children }: { children: React.ReactNode }) {
 
   const filteredMenuItems = menuItems.filter(item => {
     if (isAdmin) return true;
+    if (isEncarregado && (item.encarregadoOk || !item.adminOnly)) return true;
     return !item.adminOnly;
   });
 

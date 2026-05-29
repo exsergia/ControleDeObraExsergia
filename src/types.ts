@@ -39,7 +39,7 @@ export interface Operator {
   email: string;
   telefone?: string;
   cpf?: string;
-  role: 'admin' | 'operator';
+  role: 'admin' | 'encarregado' | 'operator';
 }
 
 export interface Atividade {

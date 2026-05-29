@@ -89,7 +89,7 @@ const getMovementScopeKey = (log: ToolLog) => {
 };
 
 export default function Ferramentas() {
-  const { isAdmin, notify } = useAuth();
+  const { isAdmin, isEncarregado, notify } = useAuth();
 
   // Estado dos modais declarado ANTES dos hooks de coleção para que anyModalOpen
   // esteja disponível ao configurar o Realtime (hooks devem seguir a mesma ordem).
@@ -146,8 +146,8 @@ export default function Ferramentas() {
             <QrCode className="w-4 h-4" />
             Escanear Código
           </button>
-          {isAdmin && (
-            <button 
+          {(isAdmin || isEncarregado) && (
+            <button
               onClick={() => setShowAddTool(true)}
               className="flex items-center gap-2 px-5 py-2.5 bg-zinc-900 text-white rounded-xl text-sm font-bold hover:bg-zinc-800 transition-all shadow-lg active:scale-95"
             >

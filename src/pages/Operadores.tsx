@@ -21,7 +21,7 @@ import {
 import { cn } from '../lib/utils';
 
 const DRAFT_KEY = 'operador-form-draft';
-const emptyForm = { nome: '', sobrenome: '', funcao: '', email: '', role: 'operator' as 'admin' | 'operator' };
+const emptyForm = { nome: '', sobrenome: '', funcao: '', email: '', role: 'operator' as 'admin' | 'encarregado' | 'operator' };
 
 export default function Operadores() {
   const { isAdmin } = useAuth();
@@ -155,6 +155,8 @@ export default function Operadores() {
                     </h4>
                     {op.role === 'admin' ? (
                       <ShieldCheck className="w-4 h-4 text-blue-500" />
+                    ) : op.role === 'encarregado' ? (
+                      <ShieldCheck className="w-4 h-4 text-amber-500" />
                     ) : (
                       <User className="w-4 h-4 text-zinc-400" />
                     )}
@@ -266,6 +268,7 @@ export default function Operadores() {
                     onChange={(e) => setFormData({...formData, role: e.target.value as any})}
                   >
                     <option value="operator">Operador (Acesso Limitado)</option>
+                    <option value="encarregado">Encarregado (Acesso Intermediário)</option>
                     <option value="admin">Administrador (Acesso Total)</option>
                   </select>
                 </div>

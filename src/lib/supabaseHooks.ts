@@ -40,11 +40,17 @@ export function useCollection(
   const hasLoadedRef = useRef(false);
   const isFetchingRef = useRef(false);
   const pausedRef = useRef(paused);
+  const pendingRefreshRef = useRef(false);
 
-  // Mantém pausedRef sincronizado sem recriar loadData
+  // Mantém pausedRef sincronizado. Quando despausa com eventos pendentes, recarrega.
   useEffect(() => {
+    const wasPaused = pausedRef.current;
     pausedRef.current = paused;
-  }, [paused]);
+    if (wasPaused && !paused && pendingRefreshRef.current) {
+      pendingRefreshRef.current = false;
+      loadData(false);
+    }
+  }, [paused, loadData]);
 
   const refKey = useMemo(() => JSON.stringify(ref || null), [ref]);
 
@@ -118,15 +124,18 @@ export function useCollection(
         'postgres_changes',
         { event: '*', schema: 'public', table: ref.table },
         () => {
-          // Bloqueia se: modal aberto, página oculta, ou retornando de background
-          if (pausedRef.current || document.hidden || wasHiddenSinceLastLoad) return;
+          if (document.hidden || wasHiddenSinceLastLoad) return;
+          // Modal aberto: marca evento como pendente para recarregar ao fechar
+          if (pausedRef.current) { pendingRefreshRef.current = true; return; }
 
           if (refreshTimer.current) clearTimeout(refreshTimer.current);
           refreshTimer.current = setTimeout(() => {
-            // Verifica novamente quando o timer dispara (pode ter mudado)
-            if (pausedRef.current || document.hidden || wasHiddenSinceLastLoad) return;
+            if (pausedRef.current || document.hidden || wasHiddenSinceLastLoad) {
+              if (pausedRef.current) pendingRefreshRef.current = true;
+              return;
+            }
             loadData(false);
-          }, 1200);
+          }, 300);
         }
       )
       .subscribe();
