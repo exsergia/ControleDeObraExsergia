@@ -41,9 +41,8 @@ function OperadoresTab({ isAdmin }: { isAdmin: boolean }) {
 
   // Operadores = registros em operadores que NÃO estão na tabela encarregados
   const operators = (
-    operadoresSnap?.docs
-      .map(d => ({ id: d.id, ...d.data() })) as Operator[]
-  ).filter(op => !encarregadoIds.has(op.id) && op.role !== 'admin') || [];
+    (operadoresSnap?.docs?.map(d => ({ id: d.id, ...d.data() })) || []) as Operator[]
+  ).filter(op => !encarregadoIds.has(op.id) && op.role !== 'admin');
 
   const filtered = operators.filter(op =>
     (op.nome || '').toLowerCase().includes(search.toLowerCase()) ||
