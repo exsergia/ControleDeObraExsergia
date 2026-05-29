@@ -29,7 +29,7 @@ import { useAuth } from '../App';
 import { useAutoSaveForm } from '../hooks/useAutoSaveForm';
 
 export default function ChecklistPage() {
-  const { notify } = useAuth();
+  const { notify, isAdmin } = useAuth();
   const navigate = useNavigate();
   const [activeStep, setActiveStep, limparRascunhoEtapa] = useAutoSaveForm('rascunho-checklist-etapa', 1);
   const [selectedObraId, setSelectedObraId, limparRascunhoObraChecklist] = useAutoSaveForm('rascunho-checklist-obra', '');
@@ -145,12 +145,11 @@ export default function ChecklistPage() {
       limparRascunhoAvancos();
       limparRascunhoEquipe();
       limparRascunhoObs();
-      navigate('/relatorios');
+      navigate(isAdmin ? '/relatorios' : '/progresso');
     } catch (err: any) {
       console.error('Erro detalhado no checklist:', err);
-      const errorMessage = err instanceof Error ? err.message : 'Erro desconhecido';
+      const errorMessage = (err as any)?.message || (err as any)?.details || JSON.stringify(err);
       notify('error', 'Erro ao Finalizar', `Não foi possível concluir o checklist: ${errorMessage}`);
-      handleFirestoreError(err, OperationType.WRITE, 'checklist-batch');
     } finally {
       setUploading(false);
     }

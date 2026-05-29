@@ -216,7 +216,7 @@ export default function ProgressoFisico() {
               obra={obras.find(o => o.id === ativ.obraId)}
               onUpdate={handleUpdateProgress}
               onDelete={() => handleDelete(ativ.id)}
-              readOnly={!isAdmin}
+              readOnly={!isAdmin && !isEncarregado}
             />
           ))
         ) : (
@@ -370,28 +370,24 @@ function ActivityCard({ ativ, obra, onUpdate, onDelete, readOnly = false }: {
   onDelete: () => void | Promise<void>,
   readOnly?: boolean
 }) {
-  // Estado local para o input — sem lag, nunca chama o banco durante a digitação
   const [localValue, setLocalValue] = useState<string>(String(ativ.quantidadeExecutada ?? 0));
   const hasFocus = useRef(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState(false);
 
-  // Sincroniza com prop apenas quando o campo NÃO está em foco (evita reset durante digitação)
   useEffect(() => {
-    if (!hasFocus.current) {
-      setLocalValue(String(ativ.quantidadeExecutada ?? 0));
-    }
+    if (!hasFocus.current) setLocalValue(String(ativ.quantidadeExecutada ?? 0));
   }, [ativ.quantidadeExecutada]);
 
   const handleFocus = (e: React.FocusEvent<HTMLInputElement>) => {
     hasFocus.current = true;
     setSaveError(false);
-    e.target.select(); // seleciona tudo → digitar substitui o valor atual
+    e.target.select();
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (readOnly) return;
-    setLocalValue(e.target.value); // só atualiza estado local — zero lag
+    setLocalValue(e.target.value);
   };
 
   const commit = () => {
@@ -413,109 +409,101 @@ function ActivityCard({ ativ, obra, onUpdate, onDelete, readOnly = false }: {
 
   const displayedExec = parseFloat(localValue) || 0;
   const perc = Math.min(100, Math.round(ativ.quantidadePrevista > 0 ? (displayedExec / ativ.quantidadePrevista) * 100 : 0));
-  const status = perc < 50 ? 'Abaixo de 50%' : perc < 100 ? 'Entre 50% e 99%' : 'Concluído';
   const colorClass = perc < 50 ? 'bg-red-500' : perc < 100 ? 'bg-amber-500' : 'bg-green-500';
   const badgeClass = perc < 50 ? 'bg-red-50 text-red-600 border-red-100' : perc < 100 ? 'bg-amber-50 text-amber-600 border-amber-100' : 'bg-green-50 text-green-600 border-green-100';
+  const percTextClass = perc < 50 ? 'text-red-500' : perc < 100 ? 'text-amber-500' : 'text-green-500';
 
   return (
-    <div className="bg-white p-8 rounded-[2.5rem] border border-zinc-100 shadow-sm hover:shadow-xl hover:shadow-zinc-100 transition-all flex flex-col gap-8 relative overflow-hidden group">
-      <div className="flex items-start justify-between gap-6">
-        <div className="flex-1 space-y-3">
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] font-black text-zinc-300 uppercase tracking-[0.3em]">ATIVIDADE</span>
+    <div className="bg-white rounded-2xl border border-zinc-100 shadow-sm overflow-hidden">
+      {/* Cabeçalho */}
+      <div className="px-4 py-3 sm:px-5 sm:py-4 flex items-start justify-between gap-3">
+        <div className="flex-1 min-w-0">
+          <div className="flex flex-wrap items-center gap-1.5 mb-1">
             {obra && (
-              <span className="text-[10px] font-bold text-zinc-400 bg-zinc-50 px-2 py-0.5 rounded border border-zinc-100 uppercase tracking-tighter">
+              <span className="text-[10px] font-bold text-zinc-400 bg-zinc-50 px-2 py-0.5 rounded border border-zinc-100 truncate max-w-[140px]">
                 {obra.nome}
               </span>
             )}
-          </div>
-          <h4 className="text-2xl font-black text-zinc-900 leading-tight pr-10">{ativ.descricao}</h4>
-          <div className="flex flex-col gap-1">
-            <p className="text-sm text-zinc-500 font-medium leading-relaxed flex items-center gap-2">
-              <Users className="w-3.5 h-3.5" />
-              Equipe: <span className="font-bold text-zinc-800">{ativ.equipeResponsavel || 'Não atribuída'}</span>
-            </p>
-            <p className="text-sm text-zinc-400 font-medium flex items-center gap-2">
-              <Target className="w-3.5 h-3.5" />
-              Meta Total: <span className="font-bold">{ativ.quantidadePrevista} {ativ.unidade}</span>
-            </p>
-            <p className="text-sm text-zinc-400 font-medium flex items-center gap-2">
-              <DollarSign className="w-3.5 h-3.5" />
-              Executado: <span className="font-bold text-zinc-900">
-                {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(displayedExec * (ativ.valorUnitario || 0))}
-              </span>
-              <span className="text-[10px] text-zinc-400 font-normal"> / Orçado: {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(ativ.quantidadePrevista * (ativ.valorUnitario || 0))}</span>
-            </p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <div className="text-center space-y-2">
-            <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block">Total ({ativ.unidade})</span>
-            <div className="w-20 py-4 bg-zinc-50 border border-zinc-100 rounded-3xl text-xl font-black text-zinc-900 shadow-inner text-center">
-              {ativ.quantidadePrevista}
-            </div>
-          </div>
-
-          <div className="text-center space-y-2">
-            <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block">
-              Executado ({ativ.unidade}){saving && <span className="ml-1 text-zinc-300">↑</span>}
+            <span className={cn('text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full border', badgeClass)}>
+              {perc}%
             </span>
-            <input
-              type="number"
-              inputMode="numeric"
-              className={cn(
-                "w-24 py-4 border-2 rounded-3xl text-xl font-black text-zinc-900 focus:outline-none transition-colors text-center shadow-lg",
-                readOnly
-                  ? "bg-zinc-50 cursor-not-allowed border-zinc-100"
-                  : saveError
-                    ? "bg-red-50 border-red-400"
-                    : saving
-                      ? "bg-white border-amber-300"
-                      : "bg-white border-zinc-100 focus:border-zinc-900"
-              )}
-              value={localValue}
-              min="0"
-              readOnly={readOnly}
-              onFocus={handleFocus}
-              onChange={handleChange}
-              onBlur={commit}
-              onKeyDown={handleKeyDown}
-            />
           </div>
-
-          <div className="text-center space-y-2 hidden sm:block">
-            <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block">Resumo</span>
-            <div className="px-5 py-4 bg-zinc-50 border border-zinc-100 rounded-3xl text-xs font-black text-zinc-400 leading-tight">
-              {displayedExec} / <br /> {ativ.quantidadePrevista} {ativ.unidade}
-            </div>
-          </div>
+          <h4 className="text-sm sm:text-base font-bold text-zinc-900 leading-snug">{ativ.descricao}</h4>
+          {ativ.equipeResponsavel && (
+            <p className="text-[11px] text-zinc-400 mt-0.5 flex items-center gap-1">
+              <Users className="w-3 h-3" />{ativ.equipeResponsavel}
+            </p>
+          )}
         </div>
-
         {!readOnly && (
-          <button
-            onClick={onDelete}
-            className="absolute top-8 right-8 p-2 text-zinc-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all"
-          >
-            <Trash2 className="w-5 h-5" />
+          <button onClick={onDelete} className="p-2 text-zinc-300 hover:text-red-500 transition-colors shrink-0 -mr-1">
+            <Trash2 className="w-4 h-4" />
           </button>
         )}
       </div>
 
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <span className={cn("px-4 py-1.5 rounded-full text-[11px] font-black uppercase tracking-[0.1em] border-2", badgeClass)}>
-            {status}
-          </span>
-          <span className="text-xs font-black text-zinc-400">{perc}%</span>
+      {/* Barra de progresso */}
+      <div className="h-1.5 w-full bg-zinc-100">
+        <div className={cn('h-full transition-all duration-500', colorClass)} style={{ width: `${perc}%` }} />
+      </div>
+
+      {/* Valores + Input */}
+      <div className="px-4 py-3 sm:px-5 sm:py-4 flex items-center gap-3">
+        {/* Previsto */}
+        <div className="flex-1 text-center bg-zinc-50 rounded-xl py-2.5 px-2 border border-zinc-100">
+          <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest">Previsto</p>
+          <p className="text-lg font-black text-zinc-700 leading-tight">{ativ.quantidadePrevista}</p>
+          <p className="text-[9px] text-zinc-400">{ativ.unidade}</p>
         </div>
-        <div className="h-4 w-full bg-zinc-100 rounded-full overflow-hidden shadow-inner">
-          <div
-            className={cn("h-full transition-all duration-500 ease-out", colorClass)}
-            style={{ width: `${perc}%` }}
+
+        {/* Input executado — principal área de interação */}
+        <div className="flex-[1.4] text-center">
+          <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest mb-1">
+            Executado {saving && <span className="text-amber-400">↑</span>}
+          </p>
+          <input
+            type="number"
+            inputMode="decimal"
+            className={cn(
+              'w-full py-3 border-2 rounded-xl text-xl font-black text-zinc-900 focus:outline-none transition-colors text-center',
+              readOnly ? 'bg-zinc-50 cursor-not-allowed border-zinc-100'
+                : saveError ? 'bg-red-50 border-red-400'
+                : saving ? 'bg-white border-amber-300'
+                : 'bg-white border-zinc-200 focus:border-zinc-900'
+            )}
+            value={localValue}
+            min="0"
+            readOnly={readOnly}
+            onFocus={handleFocus}
+            onChange={handleChange}
+            onBlur={commit}
+            onKeyDown={handleKeyDown}
           />
+          <p className="text-[9px] text-zinc-400 mt-0.5">{ativ.unidade}</p>
+        </div>
+
+        {/* % avanço */}
+        <div className="flex-1 text-center bg-zinc-50 rounded-xl py-2.5 px-2 border border-zinc-100">
+          <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest">Avanço</p>
+          <p className={cn('text-lg font-black leading-tight', percTextClass)}>{perc}%</p>
+          <p className="text-[9px] text-zinc-400 truncate">{displayedExec}/{ativ.quantidadePrevista}</p>
         </div>
       </div>
+
+      {/* Rodapé financeiro — só se tiver valor unitário */}
+      {(ativ.valorUnitario || 0) > 0 && (
+        <div className="px-4 py-2 sm:px-5 border-t border-zinc-50 flex items-center justify-between">
+          <p className="text-[10px] text-zinc-400 flex items-center gap-1">
+            <DollarSign className="w-3 h-3" />
+            Exec: <span className="font-bold text-zinc-700 ml-0.5">
+              {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(displayedExec * (ativ.valorUnitario || 0))}
+            </span>
+          </p>
+          <p className="text-[10px] text-zinc-300">
+            / Orç: {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(ativ.quantidadePrevista * (ativ.valorUnitario || 0))}
+          </p>
+        </div>
+      )}
     </div>
   );
 }
