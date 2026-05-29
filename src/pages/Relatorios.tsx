@@ -1036,8 +1036,167 @@ function BIDashboard({ obras, materiais, atividades, checklists, tools, toolLogs
     .sort((a, b) => b.total - a.total)
     .slice(0, 5);
 
+  // ── Exportação Excel ─────────────────────────────────────────────────────
+  const handleExportExcel = () => {
+    const wb = utils.book_new();
+    const hoje = format(new Date(), 'dd/MM/yyyy HH:mm');
+
+    // Aba 1 – Resumo KPIs
+    utils.book_append_sheet(wb, utils.aoa_to_sheet([
+      ['DASHBOARD BI — CONTROLE DE OBRAS', ''],
+      ['Gerado em:', hoje],
+      [''],
+      ['INDICADOR', 'VALOR'],
+      ['Obras Ativas', obrasAtivas],
+      ['Total de Obras', obras.length],
+      ['Progresso Geral (%)', Number(progressoGeral.toFixed(2))],
+      ['Valor Orçado (R$)', valorOrcado],
+      ['Valor Executado (R$)', valorExecutado],
+      ['% Financeiro Executado', valorOrcado > 0 ? Number(((valorExecutado / valorOrcado) * 100).toFixed(2)) : 0],
+      ['Ferramentas em Uso', ferramentasEmUso],
+      ['Total de Ferramentas', tools.length],
+      ['Checklists no Mês', checklistsMes],
+      ['Total de Checklists', checklists.length],
+      ['Total de Atividades', atividades.length],
+      ['Total de Materiais', materiais.length],
+    ]), 'RESUMO_KPIs');
+
+    // Aba 2 – Progresso por Obra
+    utils.book_append_sheet(wb, utils.json_to_sheet(
+      progressoPorObra.map(o => ({
+        'Obra': o.nomeCompleto,
+        'Status': o.status,
+        'Centro de Custo': o.centroCusto,
+        'Progresso (%)': o.progresso,
+        'Valor Orçado (R$)': Number(o.orcado.toFixed(2)),
+        'Valor Executado (R$)': Number(o.executado.toFixed(2)),
+        '% Financeiro': o.orcado > 0 ? Number(((o.executado / o.orcado) * 100).toFixed(2)) : 0,
+      }))
+    ), 'PROGRESSO_POR_OBRA');
+
+    // Aba 3 – Todas as Atividades
+    utils.book_append_sheet(wb, utils.json_to_sheet(
+      atividades.map(a => {
+        const obra = obras.find(o => o.id === a.obraId);
+        return {
+          'Obra': obra?.nome || 'N/A',
+          'Centro de Custo': (obra as any)?.centroCusto || 'N/A',
+          'Atividade': a.descricao,
+          'Unidade': a.unidade,
+          'Qtd Prevista': Number(a.quantidadePrevista || 0),
+          'Qtd Executada': Number(a.quantidadeExecutada || 0),
+          'Progresso (%)': Number(Number(a.percentual || 0).toFixed(2)),
+          'Valor Unitário (R$)': Number(a.valorUnitario || 0),
+          'Valor Orçado (R$)': Number((Number(a.quantidadePrevista || 0) * Number(a.valorUnitario || 0)).toFixed(2)),
+          'Valor Executado (R$)': Number((Number(a.quantidadeExecutada || 0) * Number(a.valorUnitario || 0)).toFixed(2)),
+          'Equipe': a.equipeResponsavel || '',
+        };
+      })
+    ), 'TODAS_ATIVIDADES');
+
+    // Aba 4 – Evolução Temporal (histórico completo)
+    const evolucaoCompleta = [...progressoDiario]
+      .filter((p: any) => p.id && p.percentual !== undefined)
+      .sort((a: any, b: any) => new Date(a.id).getTime() - new Date(b.id).getTime());
+    utils.book_append_sheet(wb, utils.json_to_sheet(
+      evolucaoCompleta.map((p: any) => ({
+        'Data': p.id,
+        'Progresso Global (%)': Number(Number(p.percentual || 0).toFixed(2)),
+        'Total Previsto': Number(p.totalPrevisto || 0),
+        'Total Executado': Number(p.totalExecutado || 0),
+      }))
+    ), 'EVOLUCAO_HISTORICO');
+
+    // Aba 5 – Centro de Custo
+    utils.book_append_sheet(wb, utils.json_to_sheet(
+      centroCustoData.map(c => ({
+        'Centro de Custo': c.name,
+        'Qtd de Obras': c.obras,
+        'Valor Orçado (R$)': Number(c.orcado.toFixed(2)),
+      }))
+    ), 'CENTRO_DE_CUSTO');
+
+    // Aba 6 – Status das Obras
+    utils.book_append_sheet(wb, utils.json_to_sheet(
+      statusData.map(s => ({ 'Status': s.name, 'Quantidade de Obras': s.value }))
+    ), 'STATUS_OBRAS');
+
+    // Aba 7 – Atividades Críticas (< 30%)
+    const todasCriticas = atividades
+      .filter(a => Number(a.quantidadePrevista || 0) > 0 && Number(a.percentual || 0) < 30)
+      .sort((a, b) => Number(a.percentual || 0) - Number(b.percentual || 0))
+      .map(a => {
+        const obra = obras.find(o => o.id === a.obraId);
+        return {
+          'Obra': obra?.nome || 'N/A',
+          'Atividade': a.descricao,
+          'Progresso (%)': Number(Number(a.percentual || 0).toFixed(2)),
+          'Qtd Prevista': Number(a.quantidadePrevista || 0),
+          'Qtd Executada': Number(a.quantidadeExecutada || 0),
+          'Falta Executar': Number(a.quantidadePrevista || 0) - Number(a.quantidadeExecutada || 0),
+          'Unidade': a.unidade,
+        };
+      });
+    utils.book_append_sheet(wb, utils.json_to_sheet(todasCriticas.length ? todasCriticas : [{ 'Resultado': 'Nenhuma atividade crítica' }]), 'ATIVIDADES_CRITICAS');
+
+    // Aba 8 – Materiais (todas as entregas)
+    utils.book_append_sheet(wb, utils.json_to_sheet(
+      materiais.map(m => {
+        const obra = obras.find(o => o.id === (m as any).obraId);
+        return {
+          'Obra': obra?.nome || 'N/A',
+          'Material': m.descricao,
+          'Fornecedor': m.fornecedor || '',
+          'Quantidade': Number(m.quantidade || 0),
+          'Unidade': m.unidade || '',
+          'Preço Unitário (R$)': Number((m as any).precoUnitario || 0),
+          'Valor Total (R$)': Number((Number(m.quantidade || 0) * Number((m as any).precoUnitario || 0)).toFixed(2)),
+          'Data de Entrega': m.dataEntrega ? format(new Date(m.dataEntrega), 'dd/MM/yyyy') : '',
+          'Código': m.codigoEntrega || '',
+        };
+      })
+    ), 'MATERIAIS');
+
+    // Aba 9 – Movimentação de Ferramentas
+    utils.book_append_sheet(wb, utils.json_to_sheet(
+      toolLogs.map(l => {
+        const tool = tools.find(t => t.id === l.toolId);
+        const obra = obras.find(o => o.id === l.obraId);
+        const saida = l.dataSaida ? parseDate(l.dataSaida) : null;
+        const dev = l.dataDevolucao ? parseDate(l.dataDevolucao) : null;
+        return {
+          'Ferramenta': tool?.nome || '---',
+          'Código': tool?.codigo || '---',
+          'Responsável': l.responsavelNome,
+          'Obra': obra?.nome || '---',
+          'Data Saída': saida ? format(saida, 'dd/MM/yyyy HH:mm') : '',
+          'Data Devolução': dev ? format(dev, 'dd/MM/yyyy HH:mm') : 'Pendente',
+          'Status': l.statusLog,
+          'Dias em Uso': saida ? Math.floor((dev || new Date()).getTime() - saida.getTime()) / 86400000 : 0,
+        };
+      })
+    ), 'FERRAMENTAS');
+
+    writeFile(wb, `BI_Obras_${format(new Date(), 'yyyy-MM-dd_HHmm')}.xlsx`);
+  };
+
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
+
+      {/* Header BI */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="text-lg font-bold text-zinc-900">Dashboard BI</h3>
+          <p className="text-xs text-zinc-400">Dados em tempo real · {format(new Date(), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}</p>
+        </div>
+        <button
+          onClick={handleExportExcel}
+          className="flex items-center gap-2 px-4 py-2.5 bg-green-50 border border-green-200 text-green-700 rounded-xl text-sm font-bold hover:bg-green-100 transition-all shadow-sm active:scale-95"
+        >
+          <FileDown className="w-4 h-4" />
+          Exportar Excel (9 abas)
+        </button>
+      </div>
 
       {/* KPIs */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
