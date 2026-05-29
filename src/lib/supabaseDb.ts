@@ -106,8 +106,23 @@ export async function getDoc(ref: DocRef) {
   return docSnap(ref.id, data ? unwrap(data) : null);
 }
 
+// Campos que têm coluna flat no PostgreSQL (para filtro server-side)
+const FLAT_COLUMN_MAP: Record<string, Record<string, string>> = {
+  atividades: { obraId: 'obra_id' },
+};
+
 export async function getDocs(ref: CollectionRef) {
-  const { data, error } = await supabase.from(ref.table).select('id,data');
+  let q = supabase.from(ref.table).select('id,data');
+
+  // Empurra WHERE com campo flat para o servidor (evita carregar todas as linhas em JS)
+  for (const c of ref.constraints) {
+    if (c.type === 'where' && c.op === '==') {
+      const flatCol = FLAT_COLUMN_MAP[ref.table]?.[c.field];
+      if (flatCol) q = q.eq(flatCol, c.value);
+    }
+  }
+
+  const { data, error } = await q;
   if (error) throw error;
   const items = applyConstraints((data || []).map(unwrap), ref.constraints);
   return docsSnap(items);
@@ -135,6 +150,12 @@ export async function setDoc(ref: DocRef, value: any) {
     if (cliente !== undefined) row.cliente = cliente;
     if (responsavel !== undefined) row.responsavel = responsavel;
     if (centroCusto !== undefined) row.centro_custo = centroCusto;
+  }
+
+  if (ref.table === 'atividades') {
+    const { obraId, updatedAt } = payload;
+    if (obraId !== undefined) row.obra_id = obraId;
+    if (updatedAt !== undefined) row.updated_at = updatedAt;
   }
 
   const { error } = await supabase.from(ref.table).upsert(row);

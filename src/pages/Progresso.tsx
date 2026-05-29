@@ -32,11 +32,13 @@ export default function ProgressoFisico() {
   const [selectedObraId, setSelectedObraId] = useState<string>('all');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 20;
 
   const [obrasSnap] = useCollection(collection(db, 'obras'));
   const [operadoresSnap] = useCollection(collection(db, 'operadores'));
   
-  const actividadesQuery = selectedObraId === 'all' 
+  const actividadesQuery = selectedObraId === 'all'
     ? collection(db, 'atividades')
     : query(collection(db, 'atividades'), where('obraId', '==', selectedObraId));
     
@@ -46,9 +48,11 @@ export default function ProgressoFisico() {
   const atividades = (atividadesSnap?.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Atividade[]) || [];
   const operadores = (operadoresSnap?.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Operator[]) || [];
 
-  const filteredAtividades = atividades.filter(a => 
+  const filteredAtividades = atividades.filter(a =>
     a.descricao.toLowerCase().includes(search.toLowerCase())
   );
+  const totalPages = Math.max(1, Math.ceil(filteredAtividades.length / PAGE_SIZE));
+  const pagedAtividades = filteredAtividades.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   const handleExportBI = () => {
     const workbook = utils.book_new();
@@ -157,20 +161,20 @@ export default function ProgressoFisico() {
       <div className="flex flex-col sm:flex-row gap-4">
         <div className="flex-1 relative">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
-          <input 
-            type="text" 
-            placeholder="Buscar atividade..." 
+          <input
+            type="text"
+            placeholder="Buscar atividade..."
             className="w-full pl-12 pr-4 py-3 bg-white border border-zinc-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900/10 shadow-sm transition-all"
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
           />
         </div>
         <div className="flex items-center gap-2 bg-white p-1.5 rounded-2xl border border-zinc-200 shadow-sm">
           <Building2 className="w-4 h-4 text-zinc-400 ml-2" />
-          <select 
+          <select
             className="bg-transparent border-none text-sm font-bold text-zinc-900 focus:ring-0 pr-8"
             value={selectedObraId}
-            onChange={(e) => setSelectedObraId(e.target.value)}
+            onChange={(e) => { setSelectedObraId(e.target.value); setPage(1); }}
           >
             <option value="all">Todas as Obras</option>
             {obras.map(o => (
@@ -186,10 +190,10 @@ export default function ProgressoFisico() {
             <div key={i} className="h-64 bg-white animate-pulse rounded-[2.5rem] border border-zinc-100" />
           ))
         ) : filteredAtividades.length > 0 ? (
-          filteredAtividades.map(ativ => (
-            <ActivityCard 
-              key={ativ.id} 
-              ativ={ativ} 
+          pagedAtividades.map(ativ => (
+            <ActivityCard
+              key={ativ.id}
+              ativ={ativ}
               obra={obras.find(o => o.id === ativ.obraId)}
               onUpdate={handleUpdateProgress}
               onDelete={() => handleDelete(ativ.id)}
@@ -204,6 +208,29 @@ export default function ProgressoFisico() {
           </div>
         )}
       </div>
+
+      {totalPages > 1 && (
+        <div className="flex items-center justify-center gap-3 pb-4">
+          <button
+            onClick={() => setPage(p => Math.max(1, p - 1))}
+            disabled={page === 1}
+            className="px-4 py-2 text-sm font-bold bg-white border border-zinc-200 rounded-xl disabled:opacity-40 hover:bg-zinc-50 transition-all"
+          >
+            ← Anterior
+          </button>
+          <span className="text-sm font-medium text-zinc-500">
+            {page} / {totalPages}
+            <span className="ml-2 text-zinc-400">({filteredAtividades.length} atividades)</span>
+          </span>
+          <button
+            onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+            disabled={page === totalPages}
+            className="px-4 py-2 text-sm font-bold bg-white border border-zinc-200 rounded-xl disabled:opacity-40 hover:bg-zinc-50 transition-all"
+          >
+            Próxima →
+          </button>
+        </div>
+      )}
 
       {isModalOpen && (
         <div className="fixed inset-0 bg-zinc-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
