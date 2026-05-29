@@ -377,7 +377,7 @@ function RouteTracker() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const saved = localStorage.getItem(LAST_ROUTE_KEY);
+    const saved = sessionStorage.getItem(LAST_ROUTE_KEY);
     if (saved && saved !== '/' && location.pathname === '/') {
       navigate(saved, { replace: true });
     }
@@ -385,7 +385,7 @@ function RouteTracker() {
 
   useEffect(() => {
     if (location.pathname !== '/') {
-      localStorage.setItem(LAST_ROUTE_KEY, location.pathname);
+      sessionStorage.setItem(LAST_ROUTE_KEY, location.pathname);
     }
   }, [location.pathname]);
 

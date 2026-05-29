@@ -252,109 +252,110 @@ export default function ProgressoFisico() {
       )}
 
       {isModalOpen && (
-        <div className="fixed inset-0 bg-zinc-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white w-full max-w-xl rounded-[2.5rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
-            <div className="p-8 space-y-8">
+        <div className="fixed inset-0 bg-zinc-900/50 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center sm:p-4">
+          <div className="bg-white w-full sm:max-w-lg rounded-t-[2rem] sm:rounded-[2rem] shadow-2xl animate-in slide-in-from-bottom-4 sm:zoom-in-95 duration-300 max-h-[92dvh] overflow-y-auto">
+            <div className="sticky top-0 bg-white z-10 px-6 pt-6 pb-4 border-b border-zinc-100 rounded-t-[2rem]">
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="text-2xl font-bold text-zinc-900 tracking-tight">Nova Atividade</h3>
+                  <h3 className="text-xl font-bold text-zinc-900 tracking-tight">Nova Atividade</h3>
                   <p className="text-zinc-500 text-sm">Cadastre uma nova tarefa de mão de obra.</p>
                 </div>
-                <button onClick={() => setIsModalOpen(false)} className="p-2 hover:bg-zinc-100 rounded-full">
-                  <X className="w-6 h-6 text-zinc-400" />
+                <button onClick={() => setIsModalOpen(false)} className="p-2 hover:bg-zinc-100 rounded-full transition-colors">
+                  <X className="w-5 h-5 text-zinc-400" />
                 </button>
               </div>
+            </div>
 
-              <form onSubmit={handleAddAtividade} className="space-y-5 text-left">
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-zinc-500 uppercase tracking-widest pl-1">Vincular à Obra</label>
-                  <select 
+            <form onSubmit={handleAddAtividade} className="p-6 space-y-5">
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-zinc-500 uppercase tracking-widest pl-1">Vincular à Obra</label>
+                <select
+                  required
+                  className="w-full px-4 py-3 bg-zinc-50 border border-zinc-200 rounded-2xl text-sm focus:outline-none focus:border-zinc-900"
+                  value={formData.obraId}
+                  onChange={(e) => setFormData({...formData, obraId: e.target.value})}
+                >
+                  <option value="">Selecione a Obra...</option>
+                  {obras.map(o => (
+                    <option key={o.id} value={o.id}>{o.nome}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-zinc-500 uppercase tracking-widest pl-1">Descrição da Atividade</label>
+                <input
+                  required
+                  placeholder="Ex: Lançamento de Cabos, Pintura..."
+                  className="w-full px-4 py-3 bg-zinc-50 border border-zinc-200 rounded-2xl text-sm focus:outline-none focus:border-zinc-900"
+                  value={formData.descricao}
+                  onChange={(e) => setFormData({...formData, descricao: e.target.value})}
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-zinc-500 uppercase tracking-widest pl-1">Quantidade Prevista</label>
+                <div className="flex gap-2">
+                  <input
                     required
-                    className="w-full px-4 py-3 bg-zinc-50 border border-zinc-200 rounded-2xl text-sm focus:outline-none focus:border-zinc-900"
-                    value={formData.obraId}
-                    onChange={(e) => setFormData({...formData, obraId: e.target.value})}
+                    type="number"
+                    className="flex-1 px-4 py-3 bg-zinc-50 border border-zinc-200 rounded-2xl text-sm focus:outline-none focus:border-zinc-900"
+                    value={!formData.quantidadePrevista ? '' : formData.quantidadePrevista}
+                    onKeyDown={(e) => ['-', '+', 'e', 'E'].includes(e.key) && e.preventDefault()}
+                    onChange={(e) => setFormData({...formData, quantidadePrevista: Math.max(0, parseFloat(e.target.value) || 0)})}
+                  />
+                  <select
+                    className="w-20 px-2 py-3 bg-zinc-50 border border-zinc-200 rounded-2xl text-sm font-bold"
+                    value={formData.unidade}
+                    onChange={(e) => setFormData({...formData, unidade: e.target.value})}
                   >
-                    <option value="">Selecione a Obra...</option>
-                    {obras.map(o => (
-                      <option key={o.id} value={o.id}>{o.nome}</option>
-                    ))}
+                    <option value="m">m</option>
+                    <option value="m²">m²</option>
+                    <option value="un">un</option>
+                    <option value="pt">pt</option>
                   </select>
                 </div>
+              </div>
 
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-zinc-500 uppercase tracking-widest pl-1">Descrição do Atividade</label>
-                  <input 
-                    required
-                    placeholder="Ex: Lançamento de Cabos, Pintura..."
+                  <label className="text-xs font-bold text-zinc-500 uppercase tracking-widest pl-1">Valor Unitário (R$)</label>
+                  <input
+                    type="number"
+                    step="0.01"
                     className="w-full px-4 py-3 bg-zinc-50 border border-zinc-200 rounded-2xl text-sm focus:outline-none focus:border-zinc-900"
-                    value={formData.descricao}
-                    onChange={(e) => setFormData({...formData, descricao: e.target.value})}
+                    value={!formData.valorUnitario ? '' : formData.valorUnitario}
+                    onKeyDown={(e) => ['-', '+', 'e', 'E'].includes(e.key) && e.preventDefault()}
+                    onChange={(e) => setFormData({...formData, valorUnitario: Math.max(0, parseFloat(e.target.value) || 0)})}
                   />
                 </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                   <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-zinc-500 uppercase tracking-widest pl-1">Quantidade Prevista</label>
-                    <div className="flex gap-2">
-                       <input 
-                        required
-                        type="number"
-                        className="flex-1 px-4 py-3 bg-zinc-50 border border-zinc-200 rounded-2xl text-sm focus:outline-none focus:border-zinc-900"
-                        value={!formData.quantidadePrevista ? '' : formData.quantidadePrevista}
-                        onKeyDown={(e) => ['-', '+', 'e', 'E'].includes(e.key) && e.preventDefault()}
-                        onChange={(e) => setFormData({...formData, quantidadePrevista: Math.max(0, parseFloat(e.target.value) || 0)})}
-                      />
-                      <select 
-                        className="w-20 px-2 py-3 bg-zinc-50 border border-zinc-200 rounded-2xl text-sm font-bold"
-                        value={formData.unidade}
-                        onChange={(e) => setFormData({...formData, unidade: e.target.value})}
-                      >
-                        <option value="m">m</option>
-                        <option value="m²">m²</option>
-                        <option value="un">un</option>
-                        <option value="pt">pt</option>
-                      </select>
-                    </div>
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-zinc-500 uppercase tracking-widest pl-1">Valor Unitário (R$)</label>
-                    <input 
-                      type="number"
-                      step="0.01"
-                      className="w-full px-4 py-3 bg-zinc-50 border border-zinc-200 rounded-2xl text-sm focus:outline-none focus:border-zinc-900"
-                      value={!formData.valorUnitario ? '' : formData.valorUnitario}
-                      onKeyDown={(e) => ['-', '+', 'e', 'E'].includes(e.key) && e.preventDefault()}
-                      onChange={(e) => setFormData({...formData, valorUnitario: Math.max(0, parseFloat(e.target.value) || 0)})}
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-zinc-500 uppercase tracking-widest pl-1">Equipe Resp.</label>
-                    <input 
-                      placeholder="Ex: Equipe Alfa"
-                      className="w-full px-4 py-3 bg-zinc-50 border border-zinc-200 rounded-2xl text-sm focus:outline-none focus:border-zinc-900"
-                      value={formData.equipeResponsavel}
-                      onChange={(e) => setFormData({...formData, equipeResponsavel: e.target.value})}
-                    />
-                  </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-zinc-500 uppercase tracking-widest pl-1">Equipe Resp.</label>
+                  <input
+                    placeholder="Ex: Equipe Alfa"
+                    className="w-full px-4 py-3 bg-zinc-50 border border-zinc-200 rounded-2xl text-sm focus:outline-none focus:border-zinc-900"
+                    value={formData.equipeResponsavel}
+                    onChange={(e) => setFormData({...formData, equipeResponsavel: e.target.value})}
+                  />
                 </div>
+              </div>
 
-                <div className="pt-4 flex gap-3">
-                  <button 
-                    type="button" 
-                    onClick={() => setIsModalOpen(false)}
-                    className="flex-1 py-4 bg-zinc-100 text-zinc-900 rounded-2xl font-bold uppercase tracking-widest"
-                  >
-                    Cancelar
-                  </button>
-                  <button 
-                    type="submit"
-                    className="flex-[2] py-4 bg-zinc-900 text-white rounded-2xl font-bold uppercase tracking-widest hover:bg-zinc-800 transition-all shadow-lg shadow-zinc-200"
-                  >
-                    Criar Atividade
-                  </button>
-                </div>
-              </form>
-            </div>
+              <div className="pt-2 flex flex-col sm:flex-row gap-3">
+                <button
+                  type="button"
+                  onClick={() => setIsModalOpen(false)}
+                  className="flex-1 py-4 bg-zinc-100 text-zinc-900 rounded-2xl font-bold uppercase tracking-widest hover:bg-zinc-200 transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="flex-[2] py-4 bg-zinc-900 text-white rounded-2xl font-bold uppercase tracking-widest hover:bg-zinc-800 transition-colors shadow-lg shadow-zinc-200"
+                >
+                  Criar Atividade
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

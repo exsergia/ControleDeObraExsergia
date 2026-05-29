@@ -153,6 +153,9 @@ create policy "admin all admin_access" on public.admin_access for all to authent
 
 create policy "authenticated write tools" on public.tools for all to authenticated using (true) with check (true);
 create policy "authenticated write toolLogs" on public."toolLogs" for all to authenticated using (true) with check (true);
+create policy "authenticated write atividades" on public.atividades for all to authenticated using (true) with check (true);
+create policy "authenticated write checklists" on public.checklists for all to authenticated using (true) with check (true);
+create policy "authenticated write materiais" on public.materiais for all to authenticated using (true) with check (true);
 
 create policy "read cpf map" on public.cpfs for select to anon, authenticated using (true);
 create policy "insert cpf map" on public.cpfs for insert to anon, authenticated with check (true);
