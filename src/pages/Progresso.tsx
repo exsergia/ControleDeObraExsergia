@@ -134,8 +134,9 @@ export default function ProgressoFisico() {
         updatedAt: serverTimestamp()
       });
     } catch (err: any) {
-      notify('error', 'Erro ao Salvar', 'Não foi possível salvar o progresso. Verifique sua conexão.');
-      console.error('Erro ao atualizar progresso:', err);
+      const msg = (err as any)?.message || (err as any)?.details || JSON.stringify(err);
+      notify('error', 'Erro ao Salvar', msg);
+      console.error('Erro ao atualizar progresso:', JSON.stringify(err));
     }
   };
 
