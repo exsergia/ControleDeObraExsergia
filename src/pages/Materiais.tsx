@@ -20,7 +20,8 @@ const parseDate = (d: any): Date | null => {
 };
 
 export default function Materiais() {
-  const { isAdmin, notify } = useAuth();
+  const { isAdmin, isEncarregado, notify } = useAuth();
+  const canEdit = isAdmin || isEncarregado;
   const [obrasSnap] = useCollection(collection(db, 'obras'));
   const [materiaisSnap, loading] = useCollection(query(collection(db, 'materiais'), orderBy('dataEntrega', 'desc')));
 
@@ -131,13 +132,15 @@ export default function Materiais() {
           <h2 className="text-2xl font-bold tracking-tight text-zinc-900">Materiais Entregues</h2>
           <p className="text-zinc-500">Controle de tudo que chega nas obras.</p>
         </div>
-        <button
-          onClick={() => setIsModalOpen(true)}
-          className="flex items-center justify-center gap-2 px-5 py-2.5 bg-zinc-900 text-white rounded-lg font-semibold hover:bg-zinc-800 transition-all shadow-lg active:scale-95"
-        >
-          <Plus className="w-5 h-5" />
-          Registrar Entrega
-        </button>
+        {canEdit && (
+          <button
+            onClick={() => setIsModalOpen(true)}
+            className="flex items-center justify-center gap-2 px-5 py-2.5 bg-zinc-900 text-white rounded-lg font-semibold hover:bg-zinc-800 transition-all shadow-lg active:scale-95"
+          >
+            <Plus className="w-5 h-5" />
+            Registrar Entrega
+          </button>
+        )}
       </div>
 
       {/* Search */}
@@ -163,7 +166,7 @@ export default function Materiais() {
                 <th className="px-6 py-4 text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Material</th>
                 <th className="px-6 py-4 text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Fornecedor</th>
                 <th className="px-6 py-4 text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Qtd</th>
-                {isAdmin && <th className="px-6 py-4 text-[10px] font-bold text-zinc-400 uppercase tracking-widest text-right">Valor Total</th>}
+                {canEdit && <th className="px-6 py-4 text-[10px] font-bold text-zinc-400 uppercase tracking-widest text-right">Valor Total</th>}
                 <th className="px-6 py-4 text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Status</th>
               </tr>
             </thead>
@@ -212,7 +215,7 @@ export default function Materiais() {
                           <span className="text-xs text-zinc-400">{mat.unidade}</span>
                         </div>
                       </td>
-                      {isAdmin && (
+                      {canEdit && (
                         <td className="px-6 py-4 text-right">
                           <span className="text-sm font-mono font-bold text-zinc-900">
                             {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(mat.valorTotal || 0)}
@@ -337,7 +340,7 @@ export default function Materiais() {
                     }}
                   />
                 </div>
-                {isAdmin && (
+                {canEdit && (
                   <div className="space-y-2">
                     <label className="text-xs font-bold text-zinc-500 uppercase tracking-widest">Preço Un.</label>
                     <div className="relative">
