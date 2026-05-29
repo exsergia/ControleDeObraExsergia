@@ -162,23 +162,23 @@ export default function ChecklistPage() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto space-y-8 pb-20 animate-in fade-in duration-500">
-      <div className="flex items-center justify-between border-b border-zinc-200 pb-6">
-        <div className="flex items-center gap-4">
-          <div className="w-12 h-12 bg-zinc-900 rounded-xl flex items-center justify-center text-white shadow-lg">
-            <ClipboardCheck className="w-6 h-6" />
+    <div className="max-w-4xl mx-auto space-y-5 pb-24 animate-in fade-in duration-500">
+      <div className="flex items-center justify-between border-b border-zinc-200 pb-4">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 sm:w-12 sm:h-12 bg-zinc-900 rounded-xl flex items-center justify-center text-white shadow-lg shrink-0">
+            <ClipboardCheck className="w-4 h-4 sm:w-6 sm:h-6" />
           </div>
           <div>
-            <h2 className="text-2xl font-bold tracking-tight text-zinc-900">Checklist Diário</h2>
-            <p className="text-zinc-500 text-sm">Registro de conferência e avanço de campo.</p>
+            <h2 className="text-lg sm:text-2xl font-bold tracking-tight text-zinc-900">Checklist Diário</h2>
+            <p className="text-zinc-500 text-xs sm:text-sm">Registro de conferência e avanço de campo.</p>
           </div>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-1.5 sm:gap-2">
           {[1, 2, 3, 4].map(step => (
-            <div 
-              key={step} 
+            <div
+              key={step}
               className={cn(
-                "w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all border-2",
+                "w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all border-2",
                 activeStep >= step ? "bg-zinc-900 border-zinc-900 text-white" : "bg-white border-zinc-200 text-zinc-400"
               )}
             >
@@ -189,86 +189,81 @@ export default function ChecklistPage() {
       </div>
 
       {activeStep === 1 && (
-        <section className="space-y-6 animate-in slide-in-from-right duration-300">
-          <div className="bg-white p-8 rounded-2xl border border-zinc-200 shadow-sm space-y-6">
-            <div className="text-center space-y-2">
-              <h3 className="text-xl font-bold text-zinc-900 tracking-tight">Qual obra estamos acompanhando hoje?</h3>
-              <p className="text-zinc-500 text-sm">Selecione a obra para carregar os materiais e atividades.</p>
+        <section className="space-y-4 animate-in slide-in-from-right duration-300">
+          <div className="bg-white p-4 sm:p-8 rounded-2xl border border-zinc-200 shadow-sm space-y-4">
+            <div className="text-center space-y-1">
+              <h3 className="text-base sm:text-xl font-bold text-zinc-900 tracking-tight">Qual obra estamos acompanhando hoje?</h3>
+              <p className="text-zinc-500 text-xs sm:text-sm">Selecione a obra para carregar os materiais e atividades.</p>
             </div>
-            
-            <div className="grid gap-4">
+            <div className="grid gap-3">
               {obras.map(obra => (
                 <button
                   key={obra.id}
                   onClick={() => setSelectedObraId(obra.id)}
                   className={cn(
-                    "p-5 rounded-xl border text-left transition-all group flex items-center justify-between",
-                    selectedObraId === obra.id 
-                      ? "bg-zinc-900 border-zinc-900 text-white shadow-xl shadow-zinc-200 scale-102" 
+                    "p-3 sm:p-5 rounded-xl border text-left transition-all flex items-center justify-between",
+                    selectedObraId === obra.id
+                      ? "bg-zinc-900 border-zinc-900 text-white shadow-lg"
                       : "bg-zinc-50 border-zinc-200 hover:border-zinc-400 text-zinc-900"
                   )}
                 >
-                  <div className="flex items-center gap-4">
-                    <div className={cn("p-2 rounded-lg", selectedObraId === obra.id ? "bg-zinc-800" : "bg-white border border-zinc-200")}>
-                      <MapPin className="w-5 h-5" />
+                  <div className="flex items-center gap-3">
+                    <div className={cn("p-1.5 rounded-lg shrink-0", selectedObraId === obra.id ? "bg-zinc-800" : "bg-white border border-zinc-200")}>
+                      <MapPin className="w-4 h-4" />
                     </div>
-                    <div>
-                      <p className="font-bold tracking-tight">{obra.nome}</p>
-                      <p className={cn("text-xs", selectedObraId === obra.id ? "text-zinc-400" : "text-zinc-500")}>
+                    <div className="min-w-0">
+                      <p className="font-bold tracking-tight text-sm truncate">{obra.nome}</p>
+                      <p className={cn("text-xs truncate", selectedObraId === obra.id ? "text-zinc-400" : "text-zinc-500")}>
                         {obra.cliente} • CC: {obra.centroCusto}
                       </p>
                     </div>
                   </div>
-                  {selectedObraId === obra.id && <CheckCircle2 className="w-5 h-5 text-white" />}
+                  {selectedObraId === obra.id && <CheckCircle2 className="w-4 h-4 text-white shrink-0 ml-2" />}
                 </button>
               ))}
             </div>
-
-            <div className="pt-4">
-              <button
-                disabled={!selectedObraId}
-                onClick={() => setActiveStep(2)}
-                className="w-full py-4 bg-zinc-900 text-white rounded-xl font-bold uppercase tracking-widest disabled:opacity-50 disabled:cursor-not-allowed hover:bg-zinc-800 transition-all flex items-center justify-center gap-2 group"
-              >
-                Próximo Passo
-                <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-              </button>
-            </div>
+            <button
+              disabled={!selectedObraId}
+              onClick={() => setActiveStep(2)}
+              className="w-full py-3.5 bg-zinc-900 text-white rounded-xl font-bold uppercase tracking-widest disabled:opacity-50 disabled:cursor-not-allowed hover:bg-zinc-800 transition-all flex items-center justify-center gap-2 text-sm"
+            >
+              Próximo Passo
+              <ChevronRight className="w-4 h-4" />
+            </button>
           </div>
         </section>
       )}
 
       {activeStep === 2 && (
-        <section className="space-y-6 animate-in slide-in-from-right duration-300">
-          <div className="space-y-4">
-            <h3 className="text-xl font-bold text-zinc-900 flex items-center gap-2">
-              <Package className="w-6 h-6 text-zinc-400" />
+        <section className="space-y-4 animate-in slide-in-from-right duration-300">
+          <div>
+            <h3 className="text-base sm:text-xl font-bold text-zinc-900 flex items-center gap-2">
+              <Package className="w-5 h-5 text-zinc-400" />
               Conferência de Materiais ({materiais.length})
             </h3>
-            <p className="text-zinc-500 text-sm">Informe as quantidades recebidas e conferidas.</p>
+            <p className="text-zinc-500 text-xs sm:text-sm">Informe as quantidades recebidas e conferidas.</p>
           </div>
 
           <div className="bg-white rounded-2xl border border-zinc-200 shadow-sm overflow-hidden">
             <div className="divide-y divide-zinc-100">
               {materiais.length > 0 ? materiais.map(mat => (
-                <div key={mat.id} className="p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-6">
-                  <div className="space-y-1 flex-1">
-                    <div className="flex items-center gap-2">
-                      <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-400 bg-zinc-100 px-2 py-0.5 rounded">#{mat.codigoEntrega}</span>
-                      <span className="text-[10px] font-bold uppercase tracking-widest text-blue-600 bg-blue-50 px-2 py-0.5 rounded border border-blue-100">{mat.categoria}</span>
+                <div key={mat.id} className="p-3 sm:p-4 flex items-center gap-3">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5 mb-0.5">
+                      <span className="text-[9px] font-bold uppercase tracking-widest text-zinc-400 bg-zinc-100 px-1.5 py-0.5 rounded">#{mat.codigoEntrega}</span>
+                      <span className="text-[9px] font-bold uppercase tracking-widest text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-100">{mat.categoria}</span>
                     </div>
-                    <h4 className="font-bold text-zinc-900 tracking-tight">{mat.descricao}</h4>
-                    <p className="text-xs text-zinc-500">Esperado: <span className="font-bold text-zinc-900">{mat.quantidade} {mat.unidade}</span> de {mat.fornecedor}</p>
+                    <p className="text-sm font-bold text-zinc-900 truncate">{mat.descricao}</p>
+                    <p className="text-xs text-zinc-500">Esperado: <b>{mat.quantidade} {mat.unidade}</b></p>
                   </div>
-                  
-                  <div className="flex items-center gap-3 bg-zinc-50 p-2 rounded-xl border border-zinc-200">
-                     <button 
+                  <div className="flex items-center gap-1.5 bg-zinc-50 p-1.5 rounded-xl border border-zinc-200 shrink-0">
+                    <button
                       onClick={() => setConferencias(prev => ({ ...prev, [mat.id]: Math.max(0, (prev[mat.id] || 0) - 1) }))}
-                      className="w-10 h-10 flex items-center justify-center bg-white border border-zinc-200 rounded-lg hover:bg-zinc-100 font-bold"
+                      className="w-8 h-8 flex items-center justify-center bg-white border border-zinc-200 rounded-lg hover:bg-zinc-100 font-bold text-lg"
                     >-</button>
-                    <input 
+                    <input
                       type="number"
-                      className="w-20 bg-transparent text-center font-bold text-lg focus:outline-none"
+                      className="w-14 bg-transparent text-center font-bold text-sm focus:outline-none"
                       value={!conferencias[mat.id] ? '' : conferencias[mat.id]}
                       min="0"
                       onKeyDown={(e) => ['-', '+', 'e', 'E'].includes(e.key) && e.preventDefault()}
@@ -277,52 +272,44 @@ export default function ChecklistPage() {
                         setConferencias(prev => ({ ...prev, [mat.id]: val }));
                       }}
                     />
-                    <button 
+                    <button
                       onClick={() => setConferencias(prev => ({ ...prev, [mat.id]: (prev[mat.id] || 0) + 1 }))}
-                      className="w-10 h-10 flex items-center justify-center bg-zinc-900 text-white rounded-lg hover:bg-zinc-800 font-bold"
+                      className="w-8 h-8 flex items-center justify-center bg-zinc-900 text-white rounded-lg hover:bg-zinc-800 font-bold text-lg"
                     >+</button>
                   </div>
                 </div>
               )) : (
-                <div className="p-12 text-center space-y-4">
-                  <div className="w-12 h-12 bg-zinc-50 rounded-full flex items-center justify-center mx-auto">
-                    <AlertCircle className="w-6 h-6 text-zinc-300" />
-                  </div>
-                  <p className="text-zinc-500 font-medium tracking-tight">Não há materiais pendentes para esta obra.</p>
+                <div className="p-10 text-center space-y-3">
+                  <AlertCircle className="w-8 h-8 text-zinc-300 mx-auto" />
+                  <p className="text-zinc-500 font-medium text-sm">Não há materiais pendentes para esta obra.</p>
                 </div>
               )}
             </div>
           </div>
 
-          <div className="flex gap-4">
-             <button
-                onClick={() => setActiveStep(1)}
-                className="flex-1 py-4 bg-white text-zinc-600 rounded-xl font-bold border border-zinc-200 hover:bg-zinc-50 transition-all uppercase tracking-widest"
-              >
-                Voltar
-              </button>
-              <button
-                onClick={() => setActiveStep(3)}
-                className="flex-[2] py-4 bg-zinc-900 text-white rounded-xl font-bold uppercase tracking-widest hover:bg-zinc-800 transition-all flex items-center justify-center gap-2"
-              >
-                Próximo Passo
-                <ChevronRight className="w-5 h-5" />
-              </button>
+          <div className="flex gap-3">
+            <button onClick={() => setActiveStep(1)} className="flex-1 py-3.5 bg-white text-zinc-600 rounded-xl font-bold border border-zinc-200 hover:bg-zinc-50 transition-all uppercase tracking-widest text-sm">
+              Voltar
+            </button>
+            <button onClick={() => setActiveStep(3)} className="flex-[2] py-3.5 bg-zinc-900 text-white rounded-xl font-bold uppercase tracking-widest hover:bg-zinc-800 transition-all flex items-center justify-center gap-2 text-sm">
+              Próximo Passo
+              <ChevronRight className="w-4 h-4" />
+            </button>
           </div>
         </section>
       )}
 
       {activeStep === 3 && (
-        <section className="space-y-6 animate-in slide-in-from-right duration-300">
+        <section className="space-y-4 animate-in slide-in-from-right duration-300">
           <div className="flex items-center justify-between">
-            <div className="space-y-1">
-              <h3 className="text-xl font-bold text-zinc-900 flex items-center gap-2">
-                <Users className="w-6 h-6 text-zinc-400" />
+            <div>
+              <h3 className="text-base sm:text-xl font-bold text-zinc-900 flex items-center gap-2">
+                <Users className="w-5 h-5 text-zinc-400" />
                 Equipe em Campo
               </h3>
-              <p className="text-zinc-500 text-sm">Quem está trabalhando na obra agora?</p>
+              <p className="text-zinc-500 text-xs sm:text-sm">Quem está trabalhando na obra agora?</p>
             </div>
-            <button 
+            <button
               onClick={() => {
                 if (selectedEquipeIds.length === operadores.length) {
                   setSelectedEquipeIds([]);
@@ -330,48 +317,43 @@ export default function ChecklistPage() {
                   setSelectedEquipeIds(operadores.map(o => o.id));
                 }
               }}
-              className="text-xs font-bold text-zinc-900 bg-zinc-100 px-4 py-2 rounded-lg hover:bg-zinc-200 transition-colors uppercase tracking-widest flex items-center gap-2"
+              className="text-xs font-bold text-zinc-900 bg-zinc-100 px-3 py-2 rounded-lg hover:bg-zinc-200 transition-colors uppercase tracking-widest flex items-center gap-1.5"
             >
               <UserPlus className="w-3 h-3" />
-              {selectedEquipeIds.length === operadores.length ? 'Remover Todos' : 'Adicionar Todos'}
+              <span className="hidden sm:inline">{selectedEquipeIds.length === operadores.length ? 'Remover Todos' : 'Adicionar Todos'}</span>
+              <span className="sm:hidden">{selectedEquipeIds.length === operadores.length ? 'Remover' : 'Todos'}</span>
             </button>
           </div>
 
-          <div className="grid sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-2 gap-2 sm:gap-4">
             {operadores.map(op => {
               const isSelected = selectedEquipeIds.includes(op.id);
               return (
                 <button
                   key={op.id}
                   onClick={() => {
-                    setSelectedEquipeIds(prev => 
+                    setSelectedEquipeIds(prev =>
                       isSelected ? prev.filter(id => id !== op.id) : [...prev, op.id]
                     );
                   }}
                   className={cn(
-                    "p-4 rounded-2xl border transition-all flex items-center gap-4 text-left relative",
-                    isSelected 
-                      ? "bg-zinc-900 border-zinc-900 text-white shadow-lg scale-102" 
+                    "p-3 sm:p-4 rounded-2xl border transition-all flex items-center gap-2 sm:gap-4 text-left",
+                    isSelected
+                      ? "bg-zinc-900 border-zinc-900 text-white shadow-lg"
                       : "bg-white border-zinc-200 hover:border-zinc-400 text-zinc-900"
                   )}
                 >
                   <div className={cn(
-                    "w-12 h-12 rounded-full flex items-center justify-center font-bold text-lg",
+                    "w-9 h-9 sm:w-12 sm:h-12 rounded-full flex items-center justify-center font-bold text-sm sm:text-lg shrink-0",
                     isSelected ? "bg-zinc-800" : "bg-zinc-100 text-zinc-400"
                   )}>
                     {op.nome?.[0] || '?'}{op.sobrenome?.[0] || ''}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="font-bold truncate">{op.nome} {op.sobrenome}</p>
+                    <p className="font-bold truncate text-sm">{op.nome} {op.sobrenome}</p>
                     <p className={cn("text-[10px] uppercase tracking-widest font-bold", isSelected ? "text-zinc-400" : "text-zinc-500")}>
                       {op.funcao || 'Operador'}
                     </p>
-                  </div>
-                  <div className={cn(
-                    "w-6 h-6 rounded-full border-2 flex items-center justify-center",
-                    isSelected ? "bg-white border-white text-zinc-900" : "bg-white border-zinc-200 text-transparent"
-                  )}>
-                    <CheckCircle2 className="w-4 h-4" />
                   </div>
                 </button>
               );
@@ -379,82 +361,69 @@ export default function ChecklistPage() {
           </div>
 
           {operadores.length === 0 && (
-            <div className="p-12 text-center bg-white rounded-2xl border border-dashed border-zinc-200">
-              <Users className="w-12 h-12 text-zinc-200 mx-auto mb-4" />
-              <p className="text-zinc-500 font-medium">Nenhum operador {selectedObra?.operadoresIds?.length ? 'atribuído a esta obra' : 'cadastrado'}.</p>
-              <a href="/equipe" className="text-sm font-bold text-zinc-900 underline block mt-2">Gerenciar Operadores</a>
+            <div className="p-10 text-center bg-white rounded-2xl border border-dashed border-zinc-200">
+              <Users className="w-10 h-10 text-zinc-200 mx-auto mb-3" />
+              <p className="text-zinc-500 font-medium text-sm">Nenhum operador {selectedObra?.operadoresIds?.length ? 'atribuído a esta obra' : 'cadastrado'}.</p>
             </div>
           )}
 
-          <div className="flex gap-4">
-             <button
-                onClick={() => setActiveStep(2)}
-                className="flex-1 py-4 bg-white text-zinc-600 rounded-xl font-bold border border-zinc-200 hover:bg-zinc-50 transition-all uppercase tracking-widest"
-              >
-                Voltar
-              </button>
-              <button
-                onClick={() => setActiveStep(4)}
-                className="flex-[2] py-4 bg-zinc-900 text-white rounded-xl font-bold uppercase tracking-widest hover:bg-zinc-800 transition-all flex items-center justify-center gap-2"
-              >
-                Próximo Passo
-                <ChevronRight className="w-5 h-5" />
-              </button>
+          <div className="flex gap-3">
+            <button onClick={() => setActiveStep(2)} className="flex-1 py-3.5 bg-white text-zinc-600 rounded-xl font-bold border border-zinc-200 hover:bg-zinc-50 transition-all uppercase tracking-widest text-sm">
+              Voltar
+            </button>
+            <button onClick={() => setActiveStep(4)} className="flex-[2] py-3.5 bg-zinc-900 text-white rounded-xl font-bold uppercase tracking-widest hover:bg-zinc-800 transition-all flex items-center justify-center gap-2 text-sm">
+              Próximo Passo
+              <ChevronRight className="w-4 h-4" />
+            </button>
           </div>
         </section>
       )}
 
       {activeStep === 4 && (
-        <section className="space-y-6 animate-in slide-in-from-right duration-300">
-           <div className="space-y-4">
-            <h3 className="text-xl font-bold text-zinc-900 flex items-center gap-2">
-              <Activity className="w-6 h-6 text-zinc-400" />
+        <section className="space-y-4 animate-in slide-in-from-right duration-300">
+          <div>
+            <h3 className="text-base sm:text-xl font-bold text-zinc-900 flex items-center gap-2">
+              <Activity className="w-5 h-5 text-zinc-400" />
               Avanço de Mão de Obra
             </h3>
-            <p className="text-zinc-500 text-sm">Registre o quanto foi executado de cada serviço no dia.</p>
+            <p className="text-zinc-500 text-xs sm:text-sm">Registre o quanto foi executado de cada serviço no dia.</p>
           </div>
 
           <div className="bg-white rounded-2xl border border-zinc-200 shadow-sm overflow-hidden">
             <div className="divide-y divide-zinc-100">
               {atividades.length > 0 ? atividades.map(ativ => (
-                <div key={ativ.id} className="p-6 space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h4 className="font-bold text-zinc-900 tracking-tight">{ativ.descricao}</h4>
-                      <div className="flex items-center gap-2 text-xs text-zinc-500 mt-1">
-                        <span>Total: <b>{ativ.quantidadePrevista} {ativ.unidade}</b></span>
-                        <div className="w-1 h-1 rounded-full bg-zinc-300" />
-                        <span>Executado: <b>{ativ.quantidadeExecutada} {ativ.unidade} ({Math.round(ativ.percentual)}%)</b></span>
+                <div key={ativ.id} className="p-3 sm:p-4 flex items-center gap-3">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-bold text-zinc-900 truncate">{ativ.descricao}</p>
+                    <div className="flex items-center gap-2 mt-1">
+                      <div className="flex-1 bg-zinc-100 h-1.5 rounded-full overflow-hidden">
+                        <div
+                          className={cn(
+                            "h-full transition-all duration-500",
+                            ativ.percentual < 50 ? "bg-red-400" : ativ.percentual < 100 ? "bg-amber-400" : "bg-green-500"
+                          )}
+                          style={{ width: `${ativ.percentual}%` }}
+                        />
                       </div>
-                    </div>
-                    <div className="w-32 bg-zinc-100 h-2 rounded-full overflow-hidden border border-zinc-200">
-                      <div 
-                        className={cn(
-                          "h-full transition-all duration-500",
-                          ativ.percentual < 50 ? "bg-red-500" : ativ.percentual < 100 ? "bg-amber-500" : "bg-green-500"
-                        )}
-                        style={{ width: `${ativ.percentual}%` }}
-                      />
+                      <span className="text-[10px] font-bold text-zinc-400 shrink-0">
+                        {ativ.quantidadeExecutada}/{ativ.quantidadePrevista} {ativ.unidade} · {Math.round(ativ.percentual)}%
+                      </span>
                     </div>
                   </div>
-                  
-                  <div className="flex items-center gap-4 bg-zinc-50/50 p-4 rounded-xl border border-dashed border-zinc-300">
-                    <span className="text-xs font-bold text-zinc-400 uppercase tracking-widest pl-2">Executado Hoje:</span>
-                    <div className="flex-1 flex items-center gap-3">
-                       <input 
-                        type="number"
-                        placeholder="Ex: 50"
-                        className="flex-1 bg-white border border-zinc-200 px-4 py-2 rounded-lg text-lg font-bold focus:ring-2 focus:ring-zinc-900/10 outline-none"
-                        value={!avancos[ativ.id] ? '' : avancos[ativ.id]}
-                        min="0"
-                        onKeyDown={(e) => ['-', '+', 'e', 'E'].includes(e.key) && e.preventDefault()}
-                        onChange={(e) => {
-                          const val = Math.max(0, parseFloat(e.target.value) || 0);
-                          setAvancos(prev => ({ ...prev, [ativ.id]: val }));
-                        }}
-                      />
-                      <span className="text-sm font-bold text-zinc-500">{ativ.unidade}</span>
-                    </div>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <input
+                      type="number"
+                      placeholder="0"
+                      className="w-16 bg-zinc-50 border border-zinc-200 px-2 py-1.5 rounded-xl text-sm font-bold text-center focus:ring-2 focus:ring-zinc-900/10 outline-none"
+                      value={!avancos[ativ.id] ? '' : avancos[ativ.id]}
+                      min="0"
+                      onKeyDown={(e) => ['-', '+', 'e', 'E'].includes(e.key) && e.preventDefault()}
+                      onChange={(e) => {
+                        const val = Math.max(0, parseFloat(e.target.value) || 0);
+                        setAvancos(prev => ({ ...prev, [ativ.id]: val }));
+                      }}
+                    />
+                    <span className="text-xs font-bold text-zinc-400 w-6">{ativ.unidade}</span>
                   </div>
                 </div>
               )) : (
@@ -467,9 +436,9 @@ export default function ChecklistPage() {
             </div>
           </div>
 
-          <div className="space-y-3">
+          <div className="space-y-2">
             <div className="flex items-center gap-2 pl-1">
-              <label className="text-sm font-bold text-zinc-600 uppercase tracking-widest">Foto de Evidência / Ocorrência</label>
+              <label className="text-xs font-bold text-zinc-600 uppercase tracking-widest">Foto de Evidência / Ocorrência</label>
               <span className="text-[10px] font-bold text-zinc-400 bg-zinc-100 px-2 py-0.5 rounded-full uppercase tracking-widest">Opcional</span>
             </div>
             {photoPreview ? (
@@ -477,24 +446,24 @@ export default function ChecklistPage() {
                 <img src={photoPreview} alt="Preview" className="w-full h-full object-cover" />
                 <button
                   onClick={clearPhoto}
-                  className="absolute top-4 right-4 p-2 bg-red-500 text-white rounded-full shadow-lg hover:scale-110 transition-transform"
+                  className="absolute top-2 right-2 p-1.5 bg-red-500 text-white rounded-full shadow-lg"
                 >
-                  <X className="w-5 h-5" />
+                  <X className="w-4 h-4" />
                 </button>
               </div>
             ) : (
-              <div className="flex gap-3">
+              <div className="flex gap-2">
                 <button
                   type="button"
                   onClick={() => setShowCamera(true)}
-                  className="flex-1 flex flex-col items-center justify-center gap-2 py-6 bg-white border-2 border-dashed border-zinc-200 rounded-2xl hover:border-zinc-400 hover:bg-zinc-50 transition-all"
+                  className="flex-1 flex flex-col items-center justify-center gap-1.5 py-4 bg-white border-2 border-dashed border-zinc-200 rounded-2xl hover:border-zinc-400 hover:bg-zinc-50 transition-all"
                 >
-                  <Camera className="w-8 h-8 text-zinc-400" />
-                  <span className="text-xs font-bold text-zinc-500 uppercase tracking-widest">Tirar Foto</span>
+                  <Camera className="w-6 h-6 text-zinc-400" />
+                  <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Tirar Foto</span>
                 </button>
-                <label className="flex-1 flex flex-col items-center justify-center gap-2 py-6 bg-white border-2 border-dashed border-zinc-200 rounded-2xl hover:border-zinc-400 hover:bg-zinc-50 transition-all cursor-pointer">
-                  <Paperclip className="w-8 h-8 text-zinc-400" />
-                  <span className="text-xs font-bold text-zinc-500 uppercase tracking-widest">Da Galeria</span>
+                <label className="flex-1 flex flex-col items-center justify-center gap-1.5 py-4 bg-white border-2 border-dashed border-zinc-200 rounded-2xl hover:border-zinc-400 hover:bg-zinc-50 transition-all cursor-pointer">
+                  <Paperclip className="w-6 h-6 text-zinc-400" />
+                  <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Da Galeria</span>
                   <input ref={galleryInputRef} type="file" accept="image/*" className="hidden" onChange={handlePhotoChange} />
                 </label>
               </div>
@@ -504,51 +473,47 @@ export default function ChecklistPage() {
             <ChecklistCamera onCapture={handleCameraCapture} onClose={() => setShowCamera(false)} />
           )}
 
-          <div className="space-y-4">
-            <label className="text-sm font-bold text-zinc-600 uppercase tracking-widest pl-1">Observações do Fechamento</label>
-            <textarea 
-              className="w-full h-32 p-4 bg-white border border-zinc-200 rounded-xl focus:ring-2 focus:ring-zinc-900/10 outline-none text-sm resize-none"
+          <div className="space-y-2">
+            <label className="text-xs font-bold text-zinc-600 uppercase tracking-widest pl-1">Observações do Fechamento</label>
+            <textarea
+              className="w-full h-24 sm:h-32 p-3 bg-white border border-zinc-200 rounded-xl focus:ring-2 focus:ring-zinc-900/10 outline-none text-sm resize-none"
               placeholder="Alguma divergência ou aviso importante?"
               value={obs}
               onChange={(e) => setObs(e.target.value)}
             />
           </div>
 
-          <div className="p-6 bg-zinc-900 rounded-2xl border border-zinc-800 text-white space-y-6 shadow-2xl relative overflow-hidden group">
-            <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:scale-110 transition-transform">
-               <ClipboardCheck className="w-32 h-32" />
-            </div>
-            
+          <div className="p-4 sm:p-6 bg-zinc-900 rounded-2xl border border-zinc-800 text-white space-y-4 shadow-2xl">
             <div>
-              <h4 className="text-lg font-bold tracking-tight">Finalizar Relatório</h4>
-              <p className="text-zinc-400 text-sm">Ao clicar em finalizar, os dados serão consolidados no banco de dados e enviados para o financeiro.</p>
+              <h4 className="text-base font-bold tracking-tight">Finalizar Relatório</h4>
+              <p className="text-zinc-400 text-xs sm:text-sm mt-0.5">Os dados serão consolidados e enviados para o financeiro.</p>
             </div>
 
             <div className="flex items-center gap-3 p-3 bg-zinc-800 rounded-xl border border-zinc-700">
-               <div className="w-10 h-10 rounded-full bg-zinc-700 flex items-center justify-center">
-                  {auth.currentUser?.user_metadata?.avatar_url ? (
-                    <img src={auth.currentUser.user_metadata.avatar_url} className="w-10 h-10 rounded-full" />
-                  ) : <User className="w-5 h-5 text-zinc-400" />}
-               </div>
-               <div>
-                  <p className="text-xs font-bold text-zinc-500 uppercase tracking-widest">Assinado por:</p>
-                  <p className="text-sm font-bold">{(auth.currentUser?.user_metadata?.name || auth.currentUser?.email)}</p>
-               </div>
+              <div className="w-9 h-9 rounded-full bg-zinc-700 flex items-center justify-center shrink-0">
+                {auth.currentUser?.user_metadata?.avatar_url ? (
+                  <img src={auth.currentUser.user_metadata.avatar_url} className="w-9 h-9 rounded-full" />
+                ) : <User className="w-4 h-4 text-zinc-400" />}
+              </div>
+              <div className="min-w-0">
+                <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Assinado por:</p>
+                <p className="text-sm font-bold truncate">{(auth.currentUser?.user_metadata?.name || auth.currentUser?.email)}</p>
+              </div>
             </div>
 
-            <div className="flex gap-4">
+            <div className="flex gap-3">
               <button
                 onClick={() => setActiveStep(3)}
-                className="flex-1 py-4 bg-zinc-800 text-white rounded-xl font-bold border border-zinc-700 hover:bg-zinc-700 transition-all uppercase tracking-widest"
+                className="flex-1 py-3.5 bg-zinc-800 text-white rounded-xl font-bold border border-zinc-700 hover:bg-zinc-700 transition-all uppercase tracking-widest text-sm"
               >
                 Voltar
               </button>
               <button
                 onClick={handleFinish}
                 disabled={uploading}
-                className="flex-[2] py-4 bg-white text-zinc-900 rounded-xl font-bold uppercase tracking-widest hover:bg-zinc-100 transition-all flex items-center justify-center gap-2 shadow-lg disabled:opacity-50"
+                className="flex-[2] py-3.5 bg-white text-zinc-900 rounded-xl font-bold uppercase tracking-widest hover:bg-zinc-100 transition-all flex items-center justify-center gap-2 shadow-lg disabled:opacity-50 text-sm"
               >
-                <Save className="w-5 h-5" />
+                <Save className="w-4 h-4" />
                 {uploading ? 'Enviando...' : 'Finalizar Checklist'}
               </button>
             </div>
