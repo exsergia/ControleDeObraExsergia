@@ -167,13 +167,19 @@ function App() {
       const emailLower = (u.email || '').toLowerCase();
       const cpfLimpo = String(meta.cpf || '').replace(/\D/g, '');
 
-      const [adminEmailSnap, adminCpfSnap] = await withTimeout(
+      const opRef = doc(db, 'operadores', u.id);
+      const encRef = doc(db, 'encarregados', u.id);
+
+      // Todas as consultas em paralelo — reduz latência de login de 3 round-trips para 1
+      const [adminEmailSnap, adminCpfSnap, opSnap, encSnap] = await withTimeout(
         Promise.all([
           emailLower ? getDoc(doc(db, 'admin_access', `email:${emailLower}`)) : Promise.resolve(null),
           cpfLimpo ? getDoc(doc(db, 'admin_access', `cpf:${cpfLimpo}`)) : Promise.resolve(null),
+          getDoc(opRef),
+          getDoc(encRef),
         ]),
-        8000,
-        'Consulta de perfil no Supabase'
+        10000,
+        'Consulta de perfil'
       );
 
       const emailAdminAtivo = adminEmailSnap?.exists()
@@ -185,12 +191,6 @@ function App() {
         : false;
 
       const isAdminByRegistry = emailAdminAtivo || cpfAdminAtivo;
-
-      const opRef = doc(db, 'operadores', u.id);
-      const opSnap = await withTimeout(getDoc(opRef), 8000, 'Consulta do operador no Supabase');
-
-      // Verifica se é encarregado pela tabela dedicada (tem prioridade sobre operadores)
-      const encSnap = await withTimeout(getDoc(doc(db, 'encarregados', u.id)), 8000, 'Encarregado');
       const isEncarregadoByRegistry = !isAdminByRegistry && encSnap.exists() && encSnap.data()?.ativo !== false;
 
       if (isEncarregadoByRegistry) {
@@ -217,7 +217,7 @@ function App() {
           funcao: isAdminByRegistry ? 'Administrador' : 'Operador de Campo',
           role: isAdminByRegistry ? 'admin' : 'operator',
         };
-        await withTimeout(setDoc(opRef, newProfile), 8000, 'Criação do perfil no Supabase');
+        await withTimeout(setDoc(opRef, newProfile), 5000, 'Criação do perfil');
         setUserProfile(newProfile);
         setEncarregadoObraIds([]);
       } else {
@@ -225,7 +225,7 @@ function App() {
         const nextRole = isAdminByRegistry ? 'admin' : 'operator';
         const nextProfile = { ...data, role: nextRole } as Operator;
         if (data.role !== nextRole) {
-          await withTimeout(updateDoc(opRef, { role: nextRole }), 8000, 'Atualização do perfil no Supabase');
+          await withTimeout(updateDoc(opRef, { role: nextRole }), 5000, 'Atualização do perfil');
         }
         setUserProfile(nextProfile);
         setEncarregadoObraIds([]);
@@ -350,8 +350,8 @@ function App() {
                   <Route path="/materiais" element={<Materiais />} />
                   <Route path="/checklist" element={(isAdmin || isEncarregado) ? <Checklist /> : <Navigate to="/" replace />} />
                   <Route path="/operadores" element={(isAdmin || isEncarregado) ? <Operadores /> : <Navigate to="/" replace />} />
-                  <Route path="/financeiro" element={(isAdmin || isEncarregado) ? <Financeiro /> : <Navigate to="/" replace />} />
-                  <Route path="/relatorios" element={<Relatorios />} />
+                  <Route path="/financeiro" element={isAdmin ? <Financeiro /> : <Navigate to="/" replace />} />
+                  <Route path="/relatorios" element={isAdmin ? <Relatorios /> : <Navigate to="/" replace />} />
                   <Route path="/progresso" element={<Progresso />} />
                   <Route path="/ferramentas" element={<Ferramentas />} />
                   <Route path="/settings" element={<SettingsPage />} />
@@ -904,14 +904,15 @@ function Layout({ children }: { children: React.ReactNode }) {
     { label: 'Checklist Diário', icon: ClipboardCheck, path: '/checklist', adminOnly: true },
     { label: 'Operadores', icon: Users, path: '/operadores', adminOnly: true },
     { label: 'Progresso Físico', icon: Activity, path: '/progresso' },
-    { label: 'Financeiro', icon: DollarSign, path: '/financeiro', adminOnly: true },
-    { label: 'Relatórios', icon: FileText, path: '/relatorios' },
+    { label: 'Financeiro', icon: DollarSign, path: '/financeiro', adminOnly: true, soAdmin: true },
+    { label: 'Relatórios', icon: FileText, path: '/relatorios', soAdmin: true },
     { label: 'Ferramentas', icon: Hammer, path: '/ferramentas' },
     { label: 'Configurações', icon: Settings, path: '/settings' },
   ];
 
   const filteredMenuItems = menuItems.filter(item => {
-    if (isAdmin || isEncarregado) return true;
+    if (isAdmin) return true;
+    if (isEncarregado) return !item.soAdmin;  // encarregado vê tudo exceto financeiro e relatórios
     return !item.adminOnly;
   });
 

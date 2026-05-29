@@ -165,8 +165,8 @@ export default function ProgressoFisico() {
             <Download className="w-5 h-5" />
             Exportar BI
           </button>
-          {isAdmin && (
-            <button 
+          {(isAdmin || isEncarregado) && (
+            <button
               onClick={() => setIsModalOpen(true)}
               className="flex items-center justify-center gap-2 px-5 py-3 bg-zinc-900 text-white rounded-2xl font-bold hover:bg-zinc-800 transition-all shadow-lg shadow-zinc-200 active:scale-95"
             >
