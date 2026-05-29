@@ -42,16 +42,6 @@ export function useCollection(
   const pausedRef = useRef(paused);
   const pendingRefreshRef = useRef(false);
 
-  // Mantém pausedRef sincronizado. Quando despausa com eventos pendentes, recarrega.
-  useEffect(() => {
-    const wasPaused = pausedRef.current;
-    pausedRef.current = paused;
-    if (wasPaused && !paused && pendingRefreshRef.current) {
-      pendingRefreshRef.current = false;
-      loadData(false);
-    }
-  }, [paused, loadData]);
-
   const refKey = useMemo(() => JSON.stringify(ref || null), [ref]);
 
   const loadData = useCallback(async (isInitial: boolean) => {
@@ -82,6 +72,16 @@ export function useCollection(
       if (isInitial) setLoading(false);
     }
   }, [refKey]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Mantém pausedRef sincronizado. Quando despausa com eventos pendentes, recarrega.
+  useEffect(() => {
+    const wasPaused = pausedRef.current;
+    pausedRef.current = paused;
+    if (wasPaused && !paused && pendingRefreshRef.current) {
+      pendingRefreshRef.current = false;
+      loadData(false);
+    }
+  }, [paused, loadData]);
 
   // ── Carga inicial ─────────────────────────────────────────────────────────
   // Roda quando a query muda — na prática, quando o usuário navega para outra
