@@ -323,17 +323,17 @@ function App() {
             <Layout>
               <React.Suspense fallback={<PageLoader />}>
                 <Routes>
-                  <Route path="/" element={(isAdmin || isEncarregado) ? <Dashboard /> : <Navigate to="/ferramentas" replace />} />
-                  <Route path="/obras" element={(isAdmin || isEncarregado) ? <Obras /> : <Navigate to="/ferramentas" replace />} />
-                  <Route path="/materiais" element={(isAdmin || isEncarregado) ? <Materiais /> : <Navigate to="/ferramentas" replace />} />
-                  <Route path="/checklist" element={(isAdmin || isEncarregado) ? <Checklist /> : <Navigate to="/ferramentas" replace />} />
-                  <Route path="/operadores" element={(isAdmin || isEncarregado) ? <Operadores /> : <Navigate to="/ferramentas" replace />} />
-                  <Route path="/financeiro" element={(isAdmin || isEncarregado) ? <Financeiro /> : <Navigate to="/ferramentas" replace />} />
-                  <Route path="/relatorios" element={(isAdmin || isEncarregado) ? <Relatorios /> : <Navigate to="/ferramentas" replace />} />
-                  <Route path="/progresso" element={(isAdmin || isEncarregado) ? <Progresso /> : <Navigate to="/ferramentas" replace />} />
+                  <Route path="/" element={<Dashboard />} />
+                  <Route path="/obras" element={(isAdmin || isEncarregado) ? <Obras /> : <Navigate to="/" replace />} />
+                  <Route path="/materiais" element={<Materiais />} />
+                  <Route path="/checklist" element={(isAdmin || isEncarregado) ? <Checklist /> : <Navigate to="/" replace />} />
+                  <Route path="/operadores" element={(isAdmin || isEncarregado) ? <Operadores /> : <Navigate to="/" replace />} />
+                  <Route path="/financeiro" element={(isAdmin || isEncarregado) ? <Financeiro /> : <Navigate to="/" replace />} />
+                  <Route path="/relatorios" element={<Relatorios />} />
+                  <Route path="/progresso" element={<Progresso />} />
                   <Route path="/ferramentas" element={<Ferramentas />} />
                   <Route path="/settings" element={<SettingsPage />} />
-                  <Route path="*" element={<Navigate to={isAdmin || isEncarregado ? "/" : "/ferramentas"} replace />} />
+                  <Route path="*" element={<Navigate to="/" replace />} />
                 </Routes>
               </React.Suspense>
             </Layout>
@@ -877,12 +877,12 @@ function Layout({ children }: { children: React.ReactNode }) {
 
   const menuItems = [
     { label: 'Dashboard', icon: LayoutDashboard, path: '/' },
-    { label: 'Obras', icon: HardHat, path: '/obras' },
+    { label: 'Obras', icon: HardHat, path: '/obras', adminOnly: true },
     { label: 'Materiais', icon: Package, path: '/materiais' },
-    { label: 'Checklist Diário', icon: ClipboardCheck, path: '/checklist' },
-    { label: 'Operadores', icon: Users, path: '/operadores' },
+    { label: 'Checklist Diário', icon: ClipboardCheck, path: '/checklist', adminOnly: true },
+    { label: 'Operadores', icon: Users, path: '/operadores', adminOnly: true },
     { label: 'Progresso Físico', icon: Activity, path: '/progresso' },
-    { label: 'Financeiro', icon: DollarSign, path: '/financeiro' },
+    { label: 'Financeiro', icon: DollarSign, path: '/financeiro', adminOnly: true },
     { label: 'Relatórios', icon: FileText, path: '/relatorios' },
     { label: 'Ferramentas', icon: Hammer, path: '/ferramentas' },
     { label: 'Configurações', icon: Settings, path: '/settings' },
@@ -890,7 +890,7 @@ function Layout({ children }: { children: React.ReactNode }) {
 
   const filteredMenuItems = menuItems.filter(item => {
     if (isAdmin || isEncarregado) return true;
-    return item.path === '/ferramentas' || item.path === '/settings';
+    return !item.adminOnly;
   });
 
   return (
