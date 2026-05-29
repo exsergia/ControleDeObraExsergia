@@ -392,8 +392,9 @@ function ToolCard({ tool, onCheckOut, activeLog, onCheckIn, onEdit, onViewHistor
   onEdit?: () => void,
   onViewHistory?: () => void
 }) {
-  const { isAdmin, notify } = useAuth();
+  const { isAdmin, isEncarregado, notify } = useAuth();
   const isAvailable = tool.status === 'Disponível';
+  const canReturn = isAdmin || isEncarregado || (!!activeLog?.responsavelId && auth.currentUser?.id === activeLog.responsavelId);
   
   return (
     <div className="bg-white p-5 rounded-3xl border border-zinc-200 shadow-sm hover:shadow-md transition-all group relative">
@@ -474,13 +475,20 @@ function ToolCard({ tool, onCheckOut, activeLog, onCheckIn, onEdit, onViewHistor
               {activeLog.responsavelNome}
             </div>
           </div>
-          <button 
-            onClick={() => onCheckIn(activeLog)}
-            className="w-full flex items-center justify-center gap-2 py-2.5 bg-zinc-100 text-zinc-900 rounded-xl text-xs font-bold hover:bg-zinc-200 transition-all"
-          >
-            <ArrowDownLeft className="w-4 h-4" />
-            Devolver
-          </button>
+          {canReturn ? (
+            <button
+              onClick={() => onCheckIn(activeLog)}
+              className="w-full flex items-center justify-center gap-2 py-2.5 bg-zinc-100 text-zinc-900 rounded-xl text-xs font-bold hover:bg-zinc-200 transition-all"
+            >
+              <ArrowDownLeft className="w-4 h-4" />
+              Devolver
+            </button>
+          ) : (
+            <div className="w-full flex items-center justify-center gap-2 py-2.5 bg-zinc-50 text-zinc-400 rounded-xl text-xs font-bold cursor-not-allowed border border-dashed border-zinc-200">
+              <ArrowDownLeft className="w-4 h-4" />
+              Só quem retirou pode devolver
+            </div>
+          )}
         </div>
       ) : (
         <button 
@@ -956,6 +964,7 @@ function CheckOutModal({ tool, obras, onClose }: { tool: Tool, obras: Obra[], on
         toolId: tool.id,
         obraId,
         responsavelNome: responsavel,
+        responsavelId: userProfile?.id || auth.currentUser?.id || '',
         dataSaida: retiradaEm,
         dataDevolucao: null,
         statusLog: 'Aberta'
