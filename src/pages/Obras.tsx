@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { usePersistedTab } from '../hooks/usePersistedTab';
 import { useCollection } from '../lib/supabaseHooks';
 import { collection, addDoc, serverTimestamp, updateDoc, doc, deleteDoc, query, where } from '../lib/supabaseDb';
 import { db, handleFirestoreError, OperationType } from '../lib/supabase';
@@ -477,7 +478,7 @@ function ObraDetails({
   const navigate = useNavigate();
   const [atividadesSnap] = useCollection(query(collection(db, 'atividades'), where('obraId', '==', obra.id)));
   const [operadoresSnap] = useCollection(collection(db, 'operadores'));
-  const [activeTab, setActiveTab] = useState<'progresso' | 'equipe' | 'informacoes'>('progresso');
+  const [activeTab, setActiveTab] = usePersistedTab<'progresso' | 'equipe' | 'informacoes'>('tab-obra-detalhes', 'progresso');
 
   const atividades = (atividadesSnap?.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Atividade[]) || [];
   const todosOperadores = (operadoresSnap?.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Operator[]) || [];

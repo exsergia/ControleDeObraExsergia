@@ -136,7 +136,6 @@ export default function ProgressoFisico() {
     } catch (err: any) {
       const msg = (err as any)?.message || (err as any)?.details || JSON.stringify(err);
       notify('error', 'Erro ao Salvar', msg);
-      console.error('Erro ao atualizar progresso:', JSON.stringify(err));
     }
   };
 

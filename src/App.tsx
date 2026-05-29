@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useContext, createContext } from 'react';
-import { HashRouter as BrowserRouter, Routes, Route, Navigate, Link, useLocation } from 'react-router-dom';
+import { HashRouter as BrowserRouter, Routes, Route, Navigate, Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   auth,
   supabase,
@@ -37,6 +37,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from './lib/utils';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { requestNotificationPermission } from './lib/services';
 
 const AuthContext = createContext<{
@@ -342,28 +343,53 @@ function App() {
           <LoginView />
         ) : (
           <BrowserRouter>
-            <Layout>
-              <React.Suspense fallback={<PageLoader />}>
-                <Routes>
-                  <Route path="/" element={<Dashboard />} />
-                  <Route path="/obras" element={(isAdmin || isEncarregado) ? <Obras /> : <Navigate to="/" replace />} />
-                  <Route path="/materiais" element={<Materiais />} />
-                  <Route path="/checklist" element={(isAdmin || isEncarregado) ? <Checklist /> : <Navigate to="/" replace />} />
-                  <Route path="/operadores" element={(isAdmin || isEncarregado) ? <Operadores /> : <Navigate to="/" replace />} />
-                  <Route path="/financeiro" element={isAdmin ? <Financeiro /> : <Navigate to="/" replace />} />
-                  <Route path="/relatorios" element={isAdmin ? <Relatorios /> : <Navigate to="/" replace />} />
-                  <Route path="/progresso" element={<Progresso />} />
-                  <Route path="/ferramentas" element={<Ferramentas />} />
-                  <Route path="/settings" element={<SettingsPage />} />
-                  <Route path="*" element={<Navigate to="/" replace />} />
-                </Routes>
-              </React.Suspense>
-            </Layout>
+            <RouteTracker />
+            <ErrorBoundary>
+              <Layout>
+                <React.Suspense fallback={<PageLoader />}>
+                  <Routes>
+                    <Route path="/" element={<Dashboard />} />
+                    <Route path="/obras" element={(isAdmin || isEncarregado) ? <Obras /> : <Navigate to="/" replace />} />
+                    <Route path="/materiais" element={<Materiais />} />
+                    <Route path="/checklist" element={(isAdmin || isEncarregado) ? <Checklist /> : <Navigate to="/" replace />} />
+                    <Route path="/operadores" element={(isAdmin || isEncarregado) ? <Operadores /> : <Navigate to="/" replace />} />
+                    <Route path="/financeiro" element={isAdmin ? <Financeiro /> : <Navigate to="/" replace />} />
+                    <Route path="/relatorios" element={isAdmin ? <Relatorios /> : <Navigate to="/" replace />} />
+                    <Route path="/progresso" element={<Progresso />} />
+                    <Route path="/ferramentas" element={<Ferramentas />} />
+                    <Route path="/settings" element={<SettingsPage />} />
+                    <Route path="*" element={<Navigate to="/" replace />} />
+                  </Routes>
+                </React.Suspense>
+              </Layout>
+            </ErrorBoundary>
           </BrowserRouter>
         )}
       </div>
     </AuthContext.Provider>
   );
+}
+
+const LAST_ROUTE_KEY = 'last-route';
+
+function RouteTracker() {
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const saved = localStorage.getItem(LAST_ROUTE_KEY);
+    if (saved && saved !== '/' && location.pathname === '/') {
+      navigate(saved, { replace: true });
+    }
+  }, []);
+
+  useEffect(() => {
+    if (location.pathname !== '/') {
+      localStorage.setItem(LAST_ROUTE_KEY, location.pathname);
+    }
+  }, [location.pathname]);
+
+  return null;
 }
 
 function LoginView() {

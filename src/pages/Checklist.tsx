@@ -27,6 +27,7 @@ import { cn } from '../lib/utils';
 import { uploadPhoto, uploadFile, sendBrowserNotification } from '../lib/services';
 import { useAuth } from '../App';
 import { useAutoSaveForm } from '../hooks/useAutoSaveForm';
+import { usePhotoCapture } from '../hooks/usePhotoCapture';
 
 export default function ChecklistPage() {
   const { notify, isAdmin } = useAuth();
@@ -51,9 +52,10 @@ export default function ChecklistPage() {
   const [avancos, setAvancos, limparRascunhoAvancos] = useAutoSaveForm<Record<string, number>>('rascunho-checklist-avancos', {});
   const [selectedEquipeIds, setSelectedEquipeIds, limparRascunhoEquipe] = useAutoSaveForm<string[]>('rascunho-checklist-equipe', []);
   const [obs, setObs, limparRascunhoObs] = useAutoSaveForm('rascunho-checklist-observacoes', '');
-  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
-  const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
+  const { photoFile, photoPreview, applyPhotoFile, clearPhoto } = usePhotoCapture(
+    () => notify('warning', 'Arquivo Muito Grande', 'A foto deve ter no máximo 5MB.')
+  );
   const [showCamera, setShowCamera] = useState(false);
   const galleryInputRef = useRef<HTMLInputElement>(null);
 
@@ -71,14 +73,11 @@ export default function ChecklistPage() {
   const handleFinish = async () => {
     if (!selectedObraId) return notify('warning', 'Atenção', 'Selecione uma obra antes de finalizar.');
 
-    console.log('Iniciando finalização de checklist...', { selectedObraId, hasPhoto: !!photoFile });
     setUploading(true);
     try {
       let photoUrl = '';
       if (photoFile) {
-        console.log('Enviando foto de campo...');
         photoUrl = await uploadPhoto(photoFile, 'checklists');
-        console.log('Foto enviada:', photoUrl);
       }
 
       const batch = writeBatch(db);
@@ -102,7 +101,6 @@ export default function ChecklistPage() {
         }))
       };
 
-      console.log('Dados do checklist:', checklistData);
       const checklistRef = doc(collection(db, 'checklists'));
       batch.set(checklistRef, checklistData);
 
@@ -132,9 +130,7 @@ export default function ChecklistPage() {
         }
       });
 
-      console.log('Executando batch commit...');
       await batch.commit();
-      console.log('Batch commit concluído com sucesso.');
 
       sendBrowserNotification('Checklist Enviado!', `Relatório da obra ${todasObras.find(o => o.id === selectedObraId)?.nome} finalizado.`);
 
@@ -147,23 +143,11 @@ export default function ChecklistPage() {
       limparRascunhoObs();
       navigate(isAdmin ? '/relatorios' : '/progresso');
     } catch (err: any) {
-      console.error('Erro detalhado no checklist:', err);
-      const errorMessage = (err as any)?.message || (err as any)?.details || JSON.stringify(err);
+      const errorMessage = err?.message || err?.details || 'Tente novamente.';
       notify('error', 'Erro ao Finalizar', `Não foi possível concluir o checklist: ${errorMessage}`);
     } finally {
       setUploading(false);
     }
-  };
-
-  const applyPhotoFile = (file: File) => {
-    if (file.size > 5 * 1024 * 1024) {
-      notify('warning', 'Arquivo Muito Grande', 'A foto deve ter no máximo 5MB.');
-      return;
-    }
-    setPhotoFile(file);
-    const reader = new FileReader();
-    reader.onloadend = () => setPhotoPreview(reader.result as string);
-    reader.readAsDataURL(file);
   };
 
   const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -492,7 +476,7 @@ export default function ChecklistPage() {
               <div className="relative w-full aspect-video rounded-xl overflow-hidden border-2 border-dashed border-zinc-300">
                 <img src={photoPreview} alt="Preview" className="w-full h-full object-cover" />
                 <button
-                  onClick={() => { setPhotoFile(null); setPhotoPreview(null); }}
+                  onClick={clearPhoto}
                   className="absolute top-4 right-4 p-2 bg-red-500 text-white rounded-full shadow-lg hover:scale-110 transition-transform"
                 >
                   <X className="w-5 h-5" />

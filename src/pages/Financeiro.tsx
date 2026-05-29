@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { usePersistedTab } from '../hooks/usePersistedTab';
 import { useCollection } from '../lib/supabaseHooks';
 import { collection, query, orderBy } from '../lib/supabaseDb';
 import { db } from '../lib/supabase';
@@ -22,24 +23,17 @@ import { cn } from '../lib/utils';
 import { utils, writeFile } from 'xlsx';
 import { format } from 'date-fns';
 import { useAuth } from '../App';
-
-const parseDate = (d: any): Date | null => {
-  if (!d) return null;
-  if (typeof d?.toDate === 'function') return d.toDate();
-  if (typeof d === 'string' && d) return new Date(d);
-  if (d instanceof Date) return d;
-  return null;
-};
+import { parseDate } from '../lib/dateUtils';
 
 export default function Financeiro() {
-  const { notify } = useAuth();
+  const { notify, isAdmin } = useAuth();
   const [obrasSnap] = useCollection(collection(db, 'obras'));
   const [materiaisSnap, loading] = useCollection(query(collection(db, 'materiais'), orderBy('dataEntrega', 'desc')));
   const [atividadesSnap] = useCollection(collection(db, 'atividades'));
   
   const [search, setSearch] = useState('');
   const [selectedObraId, setSelectedObraId] = useState('Todas');
-  const [activeTab, setActiveTab] = useState<'materiais' | 'atividades'>('materiais');
+  const [activeTab, setActiveTab] = usePersistedTab<'materiais' | 'atividades'>('tab-financeiro', 'materiais');
 
   const obras = (obrasSnap?.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Obra[]) || [];
   const materiais = (materiaisSnap?.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Material[]) || [];
@@ -338,22 +332,24 @@ export default function Financeiro() {
           <h2 className="text-2xl font-bold tracking-tight text-zinc-900 uppercase tracking-widest">Painel Financeiro</h2>
           <p className="text-zinc-500 text-sm font-medium">Consolidação de custos e auditoria de entregas.</p>
         </div>
-        <div className="flex flex-wrap gap-3">
-          <button
-            onClick={handleExport}
-            className="flex items-center justify-center gap-2 px-5 py-3 bg-zinc-900 text-white rounded-xl font-bold hover:bg-zinc-800 transition-all shadow-xl shadow-zinc-200 active:scale-95"
-          >
-            <Download className="w-4 h-4" />
-            Exportar Excel
-          </button>
-          <button
-            onClick={handleExportBoletim}
-            className="flex items-center justify-center gap-2 px-5 py-3 bg-zinc-700 text-white rounded-xl font-bold hover:bg-zinc-600 transition-all shadow-xl shadow-zinc-200 active:scale-95"
-          >
-            <FileText className="w-4 h-4" />
-            Boletim de Medição
-          </button>
-        </div>
+        {isAdmin && (
+          <div className="flex flex-wrap gap-3">
+            <button
+              onClick={handleExport}
+              className="flex items-center justify-center gap-2 px-5 py-3 bg-zinc-900 text-white rounded-xl font-bold hover:bg-zinc-800 transition-all shadow-xl shadow-zinc-200 active:scale-95"
+            >
+              <Download className="w-4 h-4" />
+              Exportar Excel
+            </button>
+            <button
+              onClick={handleExportBoletim}
+              className="flex items-center justify-center gap-2 px-5 py-3 bg-zinc-700 text-white rounded-xl font-bold hover:bg-zinc-600 transition-all shadow-xl shadow-zinc-200 active:scale-95"
+            >
+              <FileText className="w-4 h-4" />
+              Boletim de Medição
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Finance Stats */}

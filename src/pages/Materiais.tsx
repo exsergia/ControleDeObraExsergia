@@ -10,14 +10,8 @@ import { cn } from '../lib/utils';
 import { uploadPhoto, sendBrowserNotification } from '../lib/services';
 import { useAuth } from '../App';
 import { useAutoSaveForm } from '../hooks/useAutoSaveForm';
-
-const parseDate = (d: any): Date | null => {
-  if (!d) return null;
-  if (typeof d?.toDate === 'function') return d.toDate();
-  if (typeof d === 'string' && d) return new Date(d);
-  if (d instanceof Date) return d;
-  return null;
-};
+import { parseDate } from '../lib/dateUtils';
+import { usePhotoCapture } from '../hooks/usePhotoCapture';
 
 export default function Materiais() {
   const { isAdmin, isEncarregado, notify } = useAuth();
@@ -28,9 +22,10 @@ export default function Materiais() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [uploading, setUploading] = useState(false);
-  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
-  const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [showCamera, setShowCamera] = useState(false);
+  const { photoFile, photoPreview, applyPhotoFile, clearPhoto } = usePhotoCapture(
+    () => notify('warning', 'Arquivo Muito Grande', 'A foto deve ter no máximo 5MB.')
+  );
   const galleryInputRef = useRef<HTMLInputElement>(null);
 
   const [formData, setFormData, limparRascunhoMaterial] = useAutoSaveForm<Partial<Material>>('rascunho-novo-material', {
@@ -83,8 +78,7 @@ export default function Materiais() {
       notify('success', 'Sucesso', 'Material registrado com sucesso!');
       setIsModalOpen(false);
       limparRascunhoMaterial();
-      setPhotoFile(null);
-      setPhotoPreview(null);
+      clearPhoto();
     } catch (err: any) {
       const errorMessage = err instanceof Error ? err.message : 'Erro desconhecido';
       notify('error', 'Erro no Registro', `Não foi possível registrar o material: ${errorMessage}`);
@@ -92,17 +86,6 @@ export default function Materiais() {
     } finally {
       setUploading(false);
     }
-  };
-
-  const applyPhotoFile = (file: File) => {
-    if (file.size > 5 * 1024 * 1024) {
-      notify('warning', 'Arquivo Muito Grande', 'A foto deve ter no máximo 5MB.');
-      return;
-    }
-    setPhotoFile(file);
-    const reader = new FileReader();
-    reader.onloadend = () => setPhotoPreview(reader.result as string);
-    reader.readAsDataURL(file);
   };
 
   const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -388,7 +371,7 @@ export default function Materiais() {
                       <img src={photoPreview} alt="Preview" className="w-full h-full object-cover" />
                       <button
                         type="button"
-                        onClick={() => { setPhotoFile(null); setPhotoPreview(null); }}
+                        onClick={clearPhoto}
                         className="absolute top-2 right-2 p-1 bg-red-500 text-white rounded-full shadow-lg hover:scale-110 transition-transform"
                       >
                         <X className="w-4 h-4" />

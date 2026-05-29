@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { usePersistedTab } from '../hooks/usePersistedTab';
 import { useCollection } from '../lib/supabaseHooks';
 import { collection, query, orderBy, addDoc, serverTimestamp, updateDoc, doc, arrayUnion, arrayRemove } from '../lib/supabaseDb';
 import { db, handleFirestoreError, OperationType } from '../lib/supabase';
@@ -40,18 +41,12 @@ import { uploadFile } from '../lib/services';
 import { utils, read, writeFile } from 'xlsx';
 import { useAuth } from '../App';
 
-const parseDate = (d: any): Date => {
-  if (!d) return new Date();
-  if (typeof d?.toDate === 'function') return d.toDate();
-  if (typeof d === 'string' && d) return new Date(d);
-  if (d instanceof Date) return d;
-  return new Date();
-};
+import { parseDateSafe as parseDate } from '../lib/dateUtils';
 
 export default function Relatorios() {
   const { isAdmin, notify } = useAuth();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<'diarios' | 'ferramentas' | 'bi'>('diarios');
+  const [activeTab, setActiveTab] = usePersistedTab<'diarios' | 'ferramentas' | 'bi'>('tab-relatorios', 'diarios');
 
   const [checklistsSnap, loading] = useCollection(
     query(collection(db, 'checklists'), orderBy('data', 'desc'))

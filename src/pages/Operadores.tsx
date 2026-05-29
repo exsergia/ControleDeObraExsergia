@@ -73,7 +73,7 @@ function OperadoresTab({ isAdmin }: { isAdmin: boolean }) {
         await addDoc(collection(db, 'operadores'), { ...formData, role: 'operator', createdAt: serverTimestamp() });
       }
       closeModal();
-      notify('success', 'Operador salvo', '');
+      notify('success', 'Operador salvo', editingOp ? 'Dados atualizados com sucesso.' : 'Novo operador cadastrado com sucesso.');
     } catch (err) {
       handleFirestoreError(err, OperationType.WRITE, 'operadores');
     }

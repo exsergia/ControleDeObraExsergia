@@ -24,26 +24,9 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useAuth } from '../App';
 import { Atividade, Checklist, Material } from '../types';
+import { parseDate } from '../lib/dateUtils';
 
 const DIAS_SEMANA = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
-
-function toDate(value: any): Date | null {
-  if (!value) return null;
-  if (value instanceof Date) return value;
-  if (typeof value === 'string') {
-    const parsed = new Date(value);
-    return Number.isNaN(parsed.getTime()) ? null : parsed;
-  }
-  if (typeof value === 'number') {
-    const parsed = new Date(value);
-    return Number.isNaN(parsed.getTime()) ? null : parsed;
-  }
-  if (typeof value === 'object') {
-    if ('seconds' in value) return new Date(value.seconds * 1000);
-    if ('_seconds' in value) return new Date(value._seconds * 1000);
-  }
-  return null;
-}
 
 function inicioDaSemanaAtual() {
   const hoje = new Date();
@@ -69,7 +52,7 @@ function formatNumber(value: number) {
 
 export default function Dashboard() {
   const { user, userProfile } = useAuth();
-  const [obrasSnap] = useCollection(collection(db, 'obras'));
+  const [obrasSnap, loading] = useCollection(collection(db, 'obras'));
   const [materiaisSnap] = useCollection(collection(db, 'materiais'));
   const [atividadesSnap] = useCollection(collection(db, 'atividades'));
   const [checklistsSnap] = useCollection(collection(db, 'checklists'));
@@ -90,7 +73,7 @@ export default function Dashboard() {
       DIAS_SEMANA.map((name) => ({ name, entregas: 0, progresso: null as number | null }));
 
     materiais.forEach((material) => {
-      const dataEntrega = toDate(material.dataEntrega);
+      const dataEntrega = parseDate(material.dataEntrega);
       if (!dataEntrega) return;
       const diaIndex = getDiaIndex(dataEntrega, inicioSemana);
       if (diaIndex < 0 || diaIndex >= DIAS_SEMANA.length) return;
@@ -99,7 +82,7 @@ export default function Dashboard() {
 
     const totalPrevisto = atividades.reduce((sum, a) => sum + Number(a.quantidadePrevista || 0), 0);
     const progressoChecklist = checklists.flatMap((checklist) => {
-      const dataChecklist = toDate(checklist.data);
+      const dataChecklist = parseDate(checklist.data);
       return (checklist.progresso || []).map((item) => ({ ...item, data: dataChecklist }));
     }).filter((item) => item.data && Number(item.qtdExecutadaNoDia || 0) > 0);
 
@@ -145,7 +128,7 @@ export default function Dashboard() {
           let earliest: number | null = null;
           for (const a of atividades) {
             if (!Number(a.quantidadeExecutada || 0)) continue;
-            const dt = toDate((a as any).updatedAt);
+            const dt = parseDate((a as any).updatedAt);
             if (!dt) continue;
             const idx = getDiaIndex(dt, inicioSemana);
             if (idx >= 0 && idx <= hojeIndex) {
@@ -209,7 +192,17 @@ export default function Dashboard() {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {stats.map((stat, i) => (
+        {loading ? (
+          Array(4).fill(0).map((_, i) => (
+            <div key={i} className="bg-white p-5 rounded-xl border border-zinc-200 shadow-sm flex items-start gap-4 animate-pulse">
+              <div className="w-12 h-12 rounded-lg bg-zinc-100" />
+              <div className="flex-1 space-y-2 pt-1">
+                <div className="h-3 bg-zinc-100 rounded w-3/4" />
+                <div className="h-6 bg-zinc-100 rounded w-1/2" />
+              </div>
+            </div>
+          ))
+        ) : stats.map((stat, i) => (
           <div key={i} className="bg-white p-5 rounded-xl border border-zinc-200 shadow-sm flex items-start gap-4 hover:shadow-md transition-shadow">
             <div className={`p-3 rounded-lg ${stat.color} border`}>
               <stat.icon className="w-6 h-6" />
