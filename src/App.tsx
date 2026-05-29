@@ -189,7 +189,24 @@ function App() {
       const opRef = doc(db, 'operadores', u.id);
       const opSnap = await withTimeout(getDoc(opRef), 8000, 'Consulta do operador no Supabase');
 
-      if (!opSnap.exists()) {
+      // Verifica se é encarregado pela tabela dedicada (tem prioridade sobre operadores)
+      const encSnap = await withTimeout(getDoc(doc(db, 'encarregados', u.id)), 8000, 'Encarregado');
+      const isEncarregadoByRegistry = !isAdminByRegistry && encSnap.exists() && encSnap.data()?.ativo !== false;
+
+      if (isEncarregadoByRegistry) {
+        const encData = encSnap.data();
+        setUserProfile({
+          id: u.id,
+          nome: encData.nome || String(meta.nome || u.email?.split('@')[0] || 'Encarregado'),
+          sobrenome: encData.sobrenome || String(meta.sobrenome || ''),
+          telefone: encData.telefone || String(meta.telefone || ''),
+          cpf: encData.cpf || cpfLimpo,
+          email: encData.email || emailLower,
+          funcao: encData.funcao || 'Encarregado de Obra',
+          role: 'encarregado',
+        });
+        setEncarregadoObraIds(encData.obraIds || []);
+      } else if (!opSnap.exists()) {
         const newProfile: Operator = {
           id: u.id,
           nome: String(meta.nome || meta.name || u.email?.split('@')[0] || 'Usuário'),
@@ -202,22 +219,16 @@ function App() {
         };
         await withTimeout(setDoc(opRef, newProfile), 8000, 'Criação do perfil no Supabase');
         setUserProfile(newProfile);
+        setEncarregadoObraIds([]);
       } else {
         const data = opSnap.data() as Operator;
-        const nextRole = isAdminByRegistry ? 'admin' : (data.role === 'encarregado' ? 'encarregado' : 'operator');
+        const nextRole = isAdminByRegistry ? 'admin' : 'operator';
         const nextProfile = { ...data, role: nextRole } as Operator;
         if (data.role !== nextRole) {
           await withTimeout(updateDoc(opRef, { role: nextRole }), 8000, 'Atualização do perfil no Supabase');
         }
         setUserProfile(nextProfile);
-
-        // Carrega obras do encarregado
-        if (nextRole === 'encarregado') {
-          const encSnap = await withTimeout(getDoc(doc(db, 'encarregados', u.id)), 8000, 'Encarregado');
-          setEncarregadoObraIds(encSnap.exists() ? (encSnap.data().obraIds || []) : []);
-        } else {
-          setEncarregadoObraIds([]);
-        }
+        setEncarregadoObraIds([]);
       }
     } catch (e) {
       console.error('Error fetching/registering user profile', e);

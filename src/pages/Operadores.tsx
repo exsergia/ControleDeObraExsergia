@@ -1,340 +1,403 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useCollection } from '../lib/supabaseHooks';
-import { collection, addDoc, updateDoc, deleteDoc, setDoc, doc, serverTimestamp } from '../lib/supabaseDb';
+import { collection, addDoc, updateDoc, deleteDoc, setDoc, doc, serverTimestamp, getDocs } from '../lib/supabaseDb';
 import { db, handleFirestoreError, OperationType } from '../lib/supabase';
 import { Operator, Obra } from '../types';
 import { useAuth } from '../App';
-import { 
-  Mail, 
-  UserCircle2, 
-  Briefcase, 
-  Plus, 
-  Search, 
-  Edit2, 
-  Trash2, 
+import {
+  Mail,
+  UserCircle2,
+  Briefcase,
+  Plus,
+  Search,
+  Edit2,
+  Trash2,
   X,
   UserPlus,
-  ArrowLeft,
   ShieldCheck,
-  User
+  User,
+  HardHat,
+  CheckSquare,
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 
-const DRAFT_KEY = 'operador-form-draft';
-const emptyForm = { nome: '', sobrenome: '', funcao: '', email: '', role: 'operator' as 'admin' | 'encarregado' | 'operator', obraIds: [] as string[] };
+// ─── Operadores ──────────────────────────────────────────────────────────────
 
-export default function Operadores() {
-  const { isAdmin } = useAuth();
+const OP_DRAFT = 'operador-form-draft';
+const emptyOp = { nome: '', sobrenome: '', funcao: '', email: '', role: 'operator' as 'admin' | 'operator' };
+
+function OperadoresTab({ isAdmin }: { isAdmin: boolean }) {
   const [operadoresSnap, loading] = useCollection(collection(db, 'operadores'));
-  const [obrasSnap] = useCollection(collection(db, 'obras'));
   const [encarregadosSnap] = useCollection(collection(db, 'encarregados'));
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingOperator, setEditingOperator] = useState<Operator | null>(null);
+  const [editingOp, setEditingOp] = useState<Operator | null>(null);
   const [search, setSearch] = useState('');
+  const [formData, setFormData] = useState(emptyOp);
+  const { notify } = useAuth();
 
-  const [formData, setFormData] = useState(emptyForm);
+  const encarregadoIds = new Set(
+    (encarregadosSnap?.docs.map(d => d.id) || [])
+  );
 
-  // Persiste rascunho enquanto o modal de novo operador está aberto
-  useEffect(() => {
-    if (isModalOpen && !editingOperator) {
-      localStorage.setItem(DRAFT_KEY, JSON.stringify(formData));
-    }
-  }, [formData, isModalOpen, editingOperator]);
+  // Operadores = registros em operadores que NÃO estão na tabela encarregados
+  const operators = (
+    operadoresSnap?.docs
+      .map(d => ({ id: d.id, ...d.data() })) as Operator[]
+  ).filter(op => !encarregadoIds.has(op.id) && op.role !== 'admin') || [];
 
-  const openNewModal = () => {
-    const saved = localStorage.getItem(DRAFT_KEY);
-    setFormData(saved ? JSON.parse(saved) : emptyForm);
-    setEditingOperator(null);
+  const filtered = operators.filter(op =>
+    (op.nome || '').toLowerCase().includes(search.toLowerCase()) ||
+    (op.sobrenome || '').toLowerCase().includes(search.toLowerCase()) ||
+    (op.email || '').toLowerCase().includes(search.toLowerCase()) ||
+    (op.funcao || '').toLowerCase().includes(search.toLowerCase())
+  );
+
+  const openNew = () => {
+    const saved = localStorage.getItem(OP_DRAFT);
+    setFormData(saved ? JSON.parse(saved) : emptyOp);
+    setEditingOp(null);
     setIsModalOpen(true);
   };
 
-  const operators = (operadoresSnap?.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Operator[]) || [];
-  const obras = (obrasSnap?.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Obra[]) || [];
-  const encarregados = (encarregadosSnap?.docs.map(doc => ({ id: doc.id, ...doc.data() })) as any[]) || [];
-
-  const filteredOperators = operators.filter(op => 
-    op.nome?.toLowerCase().includes(search.toLowerCase()) ||
-    op.sobrenome?.toLowerCase().includes(search.toLowerCase()) ||
-    op.email?.toLowerCase().includes(search.toLowerCase()) ||
-    op.funcao?.toLowerCase().includes(search.toLowerCase())
-  );
+  const handleEdit = (op: Operator) => {
+    setEditingOp(op);
+    setFormData({ nome: op.nome, sobrenome: op.sobrenome || '', funcao: op.funcao || '', email: op.email, role: 'operator' });
+    setIsModalOpen(true);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      let operadorId: string;
-      const { obraIds, ...opData } = formData;
-
-      if (editingOperator) {
-        await updateDoc(doc(db, 'operadores', editingOperator.id), { ...opData, updatedAt: serverTimestamp() });
-        operadorId = editingOperator.id;
+      if (editingOp) {
+        await updateDoc(doc(db, 'operadores', editingOp.id), { ...formData, updatedAt: serverTimestamp() });
       } else {
-        const result = await addDoc(collection(db, 'operadores'), { ...opData, createdAt: serverTimestamp() });
-        operadorId = result.id;
+        await addDoc(collection(db, 'operadores'), { ...formData, role: 'operator', createdAt: serverTimestamp() });
       }
-
-      // Sincroniza tabela encarregados
-      if (formData.role === 'encarregado') {
-        await setDoc(doc(db, 'encarregados', operadorId), {
-          id: operadorId,
-          operadorId,
-          nome: formData.nome,
-          sobrenome: formData.sobrenome,
-          obraIds,
-          ativo: true,
-          updatedAt: serverTimestamp()
-        });
-      }
-
-      handleCloseModal();
+      closeModal();
+      notify('success', 'Operador salvo', '');
     } catch (err) {
       handleFirestoreError(err, OperationType.WRITE, 'operadores');
     }
   };
 
-  const handleEdit = (op: Operator) => {
-    const enc = encarregados.find(e => e.id === op.id);
-    setEditingOperator(op);
-    setFormData({
-      nome: op.nome,
-      sobrenome: op.sobrenome || '',
-      funcao: op.funcao || '',
-      email: op.email,
-      role: op.role || 'operator',
-      obraIds: enc?.obraIds || []
-    });
-    setIsModalOpen(true);
-  };
-
   const handleDelete = async (id: string) => {
-    if (!isAdmin) return;
-    if (!confirm('Deseja realmente remover este operador?')) return;
-    try {
-      await deleteDoc(doc(db, 'operadores', id));
-    } catch (err) {
+    if (!confirm('Remover este operador?')) return;
+    try { await deleteDoc(doc(db, 'operadores', id)); } catch (err) {
       handleFirestoreError(err, OperationType.WRITE, 'operadores-delete');
     }
   };
 
-  const handleCloseModal = () => {
-    localStorage.removeItem(DRAFT_KEY);
+  const closeModal = () => {
+    localStorage.removeItem(OP_DRAFT);
     setIsModalOpen(false);
-    setEditingOperator(null);
-    setFormData(emptyForm);
+    setEditingOp(null);
+    setFormData(emptyOp);
   };
 
   return (
-    <div className="space-y-6 pb-20 animate-in fade-in duration-500">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight text-zinc-900">Gerenciar Operadores</h2>
-          <p className="text-zinc-500 text-sm">Controle sua equipe de campo e atribua funções.</p>
+    <div className="space-y-5">
+      <div className="flex items-center justify-between gap-4">
+        <div className="relative flex-1 max-w-sm">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
+          <input type="text" placeholder="Buscar operador..."
+            className="w-full pl-11 pr-4 py-3 bg-white border border-zinc-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900/10 shadow-sm"
+            value={search} onChange={e => setSearch(e.target.value)} />
         </div>
         {isAdmin && (
-          <button
-            onClick={openNewModal}
-            className="flex items-center justify-center gap-2 px-5 py-2.5 bg-zinc-900 text-white rounded-xl font-bold hover:bg-zinc-800 transition-all shadow-lg shadow-zinc-200 active:scale-95"
-          >
-            <UserPlus className="w-5 h-5" />
-            Adicionar Operador
+          <button onClick={openNew}
+            className="flex items-center gap-2 px-4 py-2.5 bg-zinc-900 text-white rounded-xl font-bold text-sm hover:bg-zinc-800 transition-all shadow-lg active:scale-95">
+            <UserPlus className="w-4 h-4" /> Novo Operador
           </button>
         )}
       </div>
 
-      <div className="relative bg-white p-4 rounded-2xl border border-zinc-200 shadow-sm">
-        <Search className="absolute left-7 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
-        <input 
-          type="text" 
-          placeholder="Buscar por nome, função ou email..." 
-          className="w-full pl-12 pr-4 py-3 bg-zinc-50 border border-zinc-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900/10 transition-all"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
-      </div>
-
-      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-        {loading ? (
-          Array(6).fill(0).map((_, i) => (
-            <div key={i} className="h-40 bg-white animate-pulse rounded-3xl border border-zinc-100 shadow-sm" />
-          ))
-        ) : filteredOperators.length > 0 ? (
-          filteredOperators.map(op => (
-            <div key={op.id} className="bg-white p-6 rounded-3xl border border-zinc-100 shadow-sm hover:shadow-xl hover:shadow-zinc-200 transition-all flex flex-col gap-6 group relative">
-              <div className="flex items-center gap-4">
-                <div className={cn(
-                  "w-16 h-16 rounded-2xl flex items-center justify-center font-bold text-xl transition-colors",
-                  "bg-zinc-50 text-zinc-400 group-hover:bg-zinc-900 group-hover:text-white"
-                )}>
-                  {op.nome[0]}{op.sobrenome?.[0] || ''}
-                </div>
-                  <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <h4 className="font-bold text-zinc-900 tracking-tight text-lg truncate">
-                      {op.nome} {op.sobrenome}
-                    </h4>
-                    {op.role === 'admin' ? (
-                      <ShieldCheck className="w-4 h-4 text-blue-500" />
-                    ) : op.role === 'encarregado' ? (
-                      <ShieldCheck className="w-4 h-4 text-amber-500" />
-                    ) : (
-                      <User className="w-4 h-4 text-zinc-400" />
-                    )}
-                  </div>
-                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-zinc-100 text-zinc-600 rounded-lg text-[10px] font-bold uppercase tracking-widest border border-zinc-200">
-                    <Briefcase className="w-3 h-3" />
-                    {op.funcao || 'Operador'}
-                  </span>
-                </div>
+      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {loading ? Array(3).fill(0).map((_, i) => (
+          <div key={i} className="h-36 bg-white animate-pulse rounded-2xl border border-zinc-100" />
+        )) : filtered.length > 0 ? filtered.map(op => (
+          <div key={op.id} className="bg-white p-5 rounded-2xl border border-zinc-100 shadow-sm hover:shadow-md transition-all flex flex-col gap-4 group">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-xl bg-zinc-50 group-hover:bg-zinc-900 group-hover:text-white flex items-center justify-center font-bold text-lg transition-colors text-zinc-400">
+                {op.nome[0]}{op.sobrenome?.[0] || ''}
               </div>
-
-              <div className="space-y-2">
-                <div className="flex items-center gap-2 text-xs text-zinc-500 font-medium">
-                  <Mail className="w-4 h-4 text-zinc-300" />
-                  <span className="truncate">{op.email}</span>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-1.5 mb-0.5">
+                  <p className="font-bold text-zinc-900 truncate">{op.nome} {op.sobrenome}</p>
+                  <User className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
                 </div>
+                <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest bg-zinc-100 px-2 py-0.5 rounded-md">
+                  {op.funcao || 'Operador'}
+                </span>
               </div>
-
-              {isAdmin && (
-                <div className="flex items-center gap-2 pt-2">
-                  <button 
-                    onClick={() => handleEdit(op)}
-                    className="flex-1 flex items-center justify-center gap-2 h-10 px-4 bg-zinc-50 hover:bg-zinc-100 text-zinc-600 rounded-xl text-xs font-bold uppercase tracking-widest transition-all"
-                  >
-                    <Edit2 className="w-3.5 h-3.5" />
-                    Editar
-                  </button>
-                  <button 
-                    onClick={() => handleDelete(op.id)}
-                    className="w-10 h-10 flex items-center justify-center bg-red-50 hover:bg-red-100 text-red-500 rounded-xl transition-all"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-              )}
             </div>
-          ))
-        ) : (
-          <div className="col-span-full py-20 text-center bg-white rounded-3xl border border-dashed border-zinc-200">
-             <UserCircle2 className="w-16 h-16 text-zinc-100 mx-auto mb-4" />
-             <p className="text-zinc-500 font-medium">Nenhum operador encontrado.</p>
+            <p className="text-xs text-zinc-500 truncate flex items-center gap-1.5">
+              <Mail className="w-3.5 h-3.5 text-zinc-300" />{op.email}
+            </p>
+            {isAdmin && (
+              <div className="flex gap-2">
+                <button onClick={() => handleEdit(op)}
+                  className="flex-1 flex items-center justify-center gap-1.5 h-9 bg-zinc-50 hover:bg-zinc-100 text-zinc-600 rounded-xl text-xs font-bold transition-all">
+                  <Edit2 className="w-3.5 h-3.5" /> Editar
+                </button>
+                <button onClick={() => handleDelete(op.id)}
+                  className="w-9 h-9 flex items-center justify-center bg-red-50 hover:bg-red-100 text-red-500 rounded-xl transition-all">
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+            )}
+          </div>
+        )) : (
+          <div className="col-span-full py-16 text-center bg-white rounded-2xl border border-dashed border-zinc-200">
+            <UserCircle2 className="w-12 h-12 text-zinc-100 mx-auto mb-3" />
+            <p className="text-zinc-500 text-sm font-medium">Nenhum operador encontrado.</p>
           </div>
         )}
       </div>
 
       {isModalOpen && (
         <div className="fixed inset-0 bg-zinc-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white w-full max-w-lg rounded-[2.5rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
-            <div className="p-8 space-y-8">
+          <div className="bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
+            <div className="p-7 space-y-6">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xl font-bold text-zinc-900">{editingOp ? 'Editar Operador' : 'Novo Operador'}</h3>
+                <button onClick={closeModal} className="p-2 hover:bg-zinc-100 rounded-full"><X className="w-5 h-5 text-zinc-400" /></button>
+              </div>
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="grid grid-cols-2 gap-3">
+                  <div><label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Nome</label>
+                    <input required className="w-full mt-1 px-3 py-2.5 bg-zinc-50 border border-zinc-200 rounded-xl text-sm focus:outline-none focus:border-zinc-900"
+                      value={formData.nome} onChange={e => setFormData({ ...formData, nome: e.target.value })} /></div>
+                  <div><label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Sobrenome</label>
+                    <input className="w-full mt-1 px-3 py-2.5 bg-zinc-50 border border-zinc-200 rounded-xl text-sm focus:outline-none focus:border-zinc-900"
+                      value={formData.sobrenome} onChange={e => setFormData({ ...formData, sobrenome: e.target.value })} /></div>
+                </div>
+                <div><label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Função</label>
+                  <input placeholder="Ex: Eletricista" className="w-full mt-1 px-3 py-2.5 bg-zinc-50 border border-zinc-200 rounded-xl text-sm focus:outline-none focus:border-zinc-900"
+                    value={formData.funcao} onChange={e => setFormData({ ...formData, funcao: e.target.value })} /></div>
+                <div><label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">E-mail</label>
+                  <input required type="email" className="w-full mt-1 px-3 py-2.5 bg-zinc-50 border border-zinc-200 rounded-xl text-sm focus:outline-none focus:border-zinc-900"
+                    value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} /></div>
+                <div className="flex gap-3 pt-2">
+                  <button type="button" onClick={closeModal} className="flex-1 py-3 bg-zinc-100 rounded-2xl font-bold text-sm">Cancelar</button>
+                  <button type="submit" className="flex-[2] py-3 bg-zinc-900 text-white rounded-2xl font-bold text-sm">{editingOp ? 'Salvar' : 'Cadastrar'}</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Encarregados ────────────────────────────────────────────────────────────
+
+const emptyEnc = { nome: '', sobrenome: '', funcao: 'Encarregado de Obra', email: '', obraIds: [] as string[] };
+
+function EncarregadosTab({ isAdmin }: { isAdmin: boolean }) {
+  const [encarregadosSnap, loading] = useCollection(collection(db, 'encarregados'));
+  const [obrasSnap] = useCollection(collection(db, 'obras'));
+  const [operadoresSnap] = useCollection(collection(db, 'operadores'));
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingEnc, setEditingEnc] = useState<any | null>(null);
+  const [search, setSearch] = useState('');
+  const [formData, setFormData] = useState(emptyEnc);
+  const { notify } = useAuth();
+
+  const encarregados = (encarregadosSnap?.docs.map(d => ({ id: d.id, ...d.data() })) as any[]) || [];
+  const obras = (obrasSnap?.docs.map(d => ({ id: d.id, ...d.data() })) as Obra[]) || [];
+  const operadores = (operadoresSnap?.docs.map(d => ({ id: d.id, ...d.data() })) as Operator[]) || [];
+
+  const filtered = encarregados.filter(e =>
+    (e.nome || '').toLowerCase().includes(search.toLowerCase()) ||
+    (e.email || '').toLowerCase().includes(search.toLowerCase())
+  );
+
+  const openNew = () => { setEditingEnc(null); setFormData(emptyEnc); setIsModalOpen(true); };
+
+  const handleEdit = (enc: any) => {
+    setEditingEnc(enc);
+    setFormData({ nome: enc.nome || '', sobrenome: enc.sobrenome || '', funcao: enc.funcao || 'Encarregado de Obra', email: enc.email || '', obraIds: enc.obraIds || [] });
+    setIsModalOpen(true);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      // Tenta vincular ao usuário existente pelo e-mail
+      let operadorId = editingEnc?.id || editingEnc?.operadorId || '';
+      if (!operadorId) {
+        const op = operadores.find(o => (o.email || '').toLowerCase() === formData.email.toLowerCase());
+        operadorId = op?.id || '';
+      }
+
+      const id = operadorId || `enc_${Date.now()}`;
+      await setDoc(doc(db, 'encarregados', id), {
+        id,
+        operadorId: id,
+        nome: formData.nome,
+        sobrenome: formData.sobrenome,
+        funcao: formData.funcao,
+        email: formData.email,
+        obraIds: formData.obraIds,
+        ativo: true,
+        updatedAt: serverTimestamp(),
+        ...(editingEnc ? {} : { createdAt: serverTimestamp() }),
+      });
+
+      closeModal();
+      notify('success', 'Encarregado salvo', 'As obras atribuídas foram atualizadas.');
+    } catch (err) {
+      handleFirestoreError(err, OperationType.WRITE, 'encarregados');
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm('Remover este encarregado?')) return;
+    try { await deleteDoc(doc(db, 'encarregados', id)); } catch (err) {
+      handleFirestoreError(err, OperationType.WRITE, 'encarregados-delete');
+    }
+  };
+
+  const closeModal = () => { setIsModalOpen(false); setEditingEnc(null); setFormData(emptyEnc); };
+
+  const toggleObra = (obraId: string) =>
+    setFormData(f => ({ ...f, obraIds: f.obraIds.includes(obraId) ? f.obraIds.filter(id => id !== obraId) : [...f.obraIds, obraId] }));
+
+  return (
+    <div className="space-y-5">
+      <div className="flex items-center justify-between gap-4">
+        <div className="relative flex-1 max-w-sm">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
+          <input type="text" placeholder="Buscar encarregado..."
+            className="w-full pl-11 pr-4 py-3 bg-white border border-zinc-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900/10 shadow-sm"
+            value={search} onChange={e => setSearch(e.target.value)} />
+        </div>
+        {isAdmin && (
+          <button onClick={openNew}
+            className="flex items-center gap-2 px-4 py-2.5 bg-amber-500 text-white rounded-xl font-bold text-sm hover:bg-amber-600 transition-all shadow-lg active:scale-95">
+            <UserPlus className="w-4 h-4" /> Novo Encarregado
+          </button>
+        )}
+      </div>
+
+      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {loading ? Array(2).fill(0).map((_, i) => (
+          <div key={i} className="h-44 bg-white animate-pulse rounded-2xl border border-zinc-100" />
+        )) : filtered.length > 0 ? filtered.map(enc => {
+          const encObras = obras.filter(o => (enc.obraIds || []).includes(o.id));
+          return (
+            <div key={enc.id} className="bg-white p-5 rounded-2xl border border-amber-100 shadow-sm hover:shadow-md transition-all flex flex-col gap-4 group">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-xl bg-amber-50 group-hover:bg-amber-500 group-hover:text-white flex items-center justify-center font-bold text-lg transition-colors text-amber-500">
+                  {(enc.nome || '?')[0]}{(enc.sobrenome || '')[0] || ''}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-1.5 mb-0.5">
+                    <p className="font-bold text-zinc-900 truncate">{enc.nome} {enc.sobrenome}</p>
+                    <ShieldCheck className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                  </div>
+                  <span className="text-[10px] font-bold text-amber-600 uppercase tracking-widest bg-amber-50 px-2 py-0.5 rounded-md">
+                    {enc.funcao || 'Encarregado'}
+                  </span>
+                </div>
+              </div>
+              <p className="text-xs text-zinc-500 truncate flex items-center gap-1.5">
+                <Mail className="w-3.5 h-3.5 text-zinc-300" />{enc.email || '—'}
+              </p>
+              {encObras.length > 0 && (
+                <div className="space-y-1">
+                  <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Obras</p>
+                  <div className="flex flex-wrap gap-1">
+                    {encObras.slice(0, 3).map(o => (
+                      <span key={o.id} className="text-[10px] font-bold bg-zinc-100 text-zinc-600 px-2 py-0.5 rounded-md flex items-center gap-1">
+                        <HardHat className="w-2.5 h-2.5" />{o.nome.length > 18 ? o.nome.substring(0, 18) + '…' : o.nome}
+                      </span>
+                    ))}
+                    {encObras.length > 3 && <span className="text-[10px] text-zinc-400">+{encObras.length - 3}</span>}
+                  </div>
+                </div>
+              )}
+              {isAdmin && (
+                <div className="flex gap-2">
+                  <button onClick={() => handleEdit(enc)}
+                    className="flex-1 flex items-center justify-center gap-1.5 h-9 bg-zinc-50 hover:bg-zinc-100 text-zinc-600 rounded-xl text-xs font-bold transition-all">
+                    <Edit2 className="w-3.5 h-3.5" /> Editar
+                  </button>
+                  <button onClick={() => handleDelete(enc.id)}
+                    className="w-9 h-9 flex items-center justify-center bg-red-50 hover:bg-red-100 text-red-500 rounded-xl transition-all">
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
+            </div>
+          );
+        }) : (
+          <div className="col-span-full py-16 text-center bg-white rounded-2xl border border-dashed border-amber-200">
+            <ShieldCheck className="w-12 h-12 text-amber-100 mx-auto mb-3" />
+            <p className="text-zinc-500 text-sm font-medium">Nenhum encarregado cadastrado.</p>
+            {isAdmin && <p className="text-xs text-zinc-400 mt-1">Clique em "Novo Encarregado" para adicionar.</p>}
+          </div>
+        )}
+      </div>
+
+      {isModalOpen && (
+        <div className="fixed inset-0 bg-zinc-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
+            <div className="p-7 space-y-5">
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="text-2xl font-bold text-zinc-900 tracking-tight">
-                    {editingOperator ? 'Editar Operador' : 'Novo Operador'}
-                  </h3>
-                  <p className="text-zinc-500 text-sm">Preencha os dados básicos do colaborador.</p>
+                  <h3 className="text-xl font-bold text-zinc-900">{editingEnc ? 'Editar Encarregado' : 'Novo Encarregado'}</h3>
+                  <p className="text-xs text-zinc-400 mt-0.5">Informe o e-mail de login para vincular o acesso.</p>
                 </div>
-                <button onClick={handleCloseModal} className="p-2 hover:bg-zinc-100 rounded-full transition-colors">
-                  <X className="w-6 h-6 text-zinc-400" />
-                </button>
+                <button onClick={closeModal} className="p-2 hover:bg-zinc-100 rounded-full"><X className="w-5 h-5 text-zinc-400" /></button>
               </div>
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="grid grid-cols-2 gap-3">
+                  <div><label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Nome</label>
+                    <input required className="w-full mt-1 px-3 py-2.5 bg-zinc-50 border border-zinc-200 rounded-xl text-sm focus:outline-none focus:border-zinc-900"
+                      value={formData.nome} onChange={e => setFormData({ ...formData, nome: e.target.value })} /></div>
+                  <div><label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Sobrenome</label>
+                    <input className="w-full mt-1 px-3 py-2.5 bg-zinc-50 border border-zinc-200 rounded-xl text-sm focus:outline-none focus:border-zinc-900"
+                      value={formData.sobrenome} onChange={e => setFormData({ ...formData, sobrenome: e.target.value })} /></div>
+                </div>
+                <div><label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Função</label>
+                  <input className="w-full mt-1 px-3 py-2.5 bg-zinc-50 border border-zinc-200 rounded-xl text-sm focus:outline-none focus:border-zinc-900"
+                    value={formData.funcao} onChange={e => setFormData({ ...formData, funcao: e.target.value })} /></div>
+                <div>
+                  <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">E-mail de Login</label>
+                  <input required type="email" placeholder="E-mail usado para entrar no sistema"
+                    className="w-full mt-1 px-3 py-2.5 bg-zinc-50 border border-zinc-200 rounded-xl text-sm focus:outline-none focus:border-zinc-900"
+                    value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} />
+                  <p className="text-[10px] text-zinc-400 mt-1">Deve ser o mesmo e-mail que o encarregado usa para entrar.</p>
+                </div>
 
-              <form onSubmit={handleSubmit} className="space-y-5">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-zinc-500 uppercase tracking-widest pl-1">Nome</label>
-                    <input 
-                      required
-                      className="w-full px-4 py-3 bg-zinc-50 border border-zinc-200 rounded-2xl text-sm focus:outline-none focus:border-zinc-900 transition-colors"
-                      value={formData.nome}
-                      onChange={(e) => setFormData({...formData, nome: e.target.value})}
-                    />
+                <div>
+                  <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-2 block">
+                    Obras Atribuídas <span className="text-zinc-300">({formData.obraIds.length} selecionadas)</span>
+                  </label>
+                  <div className="max-h-44 overflow-y-auto rounded-xl border border-zinc-200 bg-zinc-50 divide-y divide-zinc-100">
+                    {obras.length === 0 ? (
+                      <p className="text-xs text-zinc-400 p-3 text-center">Nenhuma obra cadastrada.</p>
+                    ) : obras.map(obra => (
+                      <label key={obra.id} className="flex items-center gap-3 px-4 py-2.5 cursor-pointer hover:bg-zinc-100 transition-colors">
+                        <input type="checkbox" className="w-4 h-4 accent-amber-500"
+                          checked={formData.obraIds.includes(obra.id)}
+                          onChange={() => toggleObra(obra.id)} />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold text-zinc-800 truncate">{obra.nome}</p>
+                          <p className="text-[10px] text-zinc-400">{(obra as any).status} · {(obra as any).centroCusto || 'Sem centro'}</p>
+                        </div>
+                        {formData.obraIds.includes(obra.id) && <CheckSquare className="w-4 h-4 text-amber-500 shrink-0" />}
+                      </label>
+                    ))}
                   </div>
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-zinc-500 uppercase tracking-widest pl-1">Sobrenome</label>
-                    <input 
-                      className="w-full px-4 py-3 bg-zinc-50 border border-zinc-200 rounded-2xl text-sm focus:outline-none focus:border-zinc-900 transition-colors"
-                      value={formData.sobrenome}
-                      onChange={(e) => setFormData({...formData, sobrenome: e.target.value})}
-                    />
-                  </div>
                 </div>
 
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-zinc-500 uppercase tracking-widest pl-1">Função</label>
-                  <input 
-                    placeholder="Ex: Eletricista, Encarregado..."
-                    className="w-full px-4 py-3 bg-zinc-50 border border-zinc-200 rounded-2xl text-sm focus:outline-none focus:border-zinc-900 transition-colors"
-                    value={formData.funcao}
-                    onChange={(e) => setFormData({...formData, funcao: e.target.value})}
-                  />
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-zinc-500 uppercase tracking-widest pl-1">Email</label>
-                  <input 
-                    required
-                    type="email"
-                    className="w-full px-4 py-3 bg-zinc-50 border border-zinc-200 rounded-2xl text-sm focus:outline-none focus:border-zinc-900 transition-colors"
-                    value={formData.email}
-                    onChange={(e) => setFormData({...formData, email: e.target.value})}
-                  />
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-zinc-500 uppercase tracking-widest pl-1">Tipo de Acesso (Role)</label>
-                  <select 
-                    className="w-full px-4 py-3 bg-zinc-50 border border-zinc-200 rounded-2xl text-sm focus:outline-none focus:border-zinc-900 transition-colors"
-                    value={formData.role}
-                    onChange={(e) => setFormData({...formData, role: e.target.value as any})}
-                  >
-                    <option value="operator">Operador (Acesso Limitado)</option>
-                    <option value="encarregado">Encarregado (Acesso Intermediário)</option>
-                    <option value="admin">Administrador (Acesso Total)</option>
-                  </select>
-                </div>
-
-                {formData.role === 'encarregado' && (
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-zinc-500 uppercase tracking-widest pl-1">Obras Gerenciadas</label>
-                    <div className="max-h-40 overflow-y-auto rounded-2xl border border-zinc-200 bg-zinc-50 divide-y divide-zinc-100">
-                      {obras.length === 0 ? (
-                        <p className="text-xs text-zinc-400 p-3 text-center">Nenhuma obra cadastrada.</p>
-                      ) : obras.map(obra => (
-                        <label key={obra.id} className="flex items-center gap-3 px-4 py-2.5 cursor-pointer hover:bg-zinc-100 transition-colors">
-                          <input
-                            type="checkbox"
-                            className="w-4 h-4 accent-zinc-900 rounded"
-                            checked={formData.obraIds.includes(obra.id)}
-                            onChange={e => setFormData({
-                              ...formData,
-                              obraIds: e.target.checked
-                                ? [...formData.obraIds, obra.id]
-                                : formData.obraIds.filter(id => id !== obra.id)
-                            })}
-                          />
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-semibold text-zinc-800 truncate">{obra.nome}</p>
-                            <p className="text-[10px] text-zinc-400">{(obra as any).status} · {(obra as any).centroCusto || 'Sem centro de custo'}</p>
-                          </div>
-                        </label>
-                      ))}
-                    </div>
-                    <p className="text-[10px] text-zinc-400 pl-1">{formData.obraIds.length} obra{formData.obraIds.length !== 1 ? 's' : ''} selecionada{formData.obraIds.length !== 1 ? 's' : ''}</p>
-                  </div>
-                )}
-
-                <div className="pt-4 flex gap-3">
-                  <button
-                    type="button"
-                    onClick={handleCloseModal}
-                    className="flex-1 py-4 bg-zinc-100 text-zinc-900 rounded-2xl font-bold uppercase tracking-widest hover:bg-zinc-200 transition-all"
-                  >
-                    Cancelar
-                  </button>
-                  <button 
-                    type="submit"
-                    className="flex-[2] py-4 bg-zinc-900 text-white rounded-2xl font-bold uppercase tracking-widest hover:bg-zinc-800 transition-all shadow-lg shadow-zinc-200"
-                  >
-                    {editingOperator ? 'Salvar Alterações' : 'Cadastrar'}
+                <div className="flex gap-3 pt-1">
+                  <button type="button" onClick={closeModal} className="flex-1 py-3 bg-zinc-100 rounded-2xl font-bold text-sm">Cancelar</button>
+                  <button type="submit" className="flex-[2] py-3 bg-amber-500 text-white rounded-2xl font-bold text-sm hover:bg-amber-600 transition-all">
+                    {editingEnc ? 'Salvar Alterações' : 'Cadastrar Encarregado'}
                   </button>
                 </div>
               </form>
@@ -342,6 +405,40 @@ export default function Operadores() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+// ─── Página principal ─────────────────────────────────────────────────────────
+
+export default function Operadores() {
+  const { isAdmin } = useAuth();
+  const [tab, setTab] = useState<'operadores' | 'encarregados'>('operadores');
+
+  return (
+    <div className="space-y-6 pb-20 animate-in fade-in duration-500">
+      <div>
+        <h2 className="text-2xl font-bold tracking-tight text-zinc-900">Gerenciar Equipe</h2>
+        <p className="text-zinc-500 text-sm">Operadores de campo e encarregados de obra — tabelas separadas.</p>
+      </div>
+
+      <div className="flex bg-white p-1 rounded-xl border border-zinc-200 w-fit shadow-sm">
+        {([
+          { id: 'operadores', label: 'Operadores', icon: User },
+          { id: 'encarregados', label: 'Encarregados', icon: ShieldCheck },
+        ] as const).map(t => (
+          <button key={t.id} onClick={() => setTab(t.id)}
+            className={cn(
+              'flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-bold transition-all',
+              tab === t.id ? 'bg-zinc-900 text-white shadow-md' : 'text-zinc-500 hover:bg-zinc-50'
+            )}>
+            <t.icon className="w-4 h-4" />
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {tab === 'operadores' ? <OperadoresTab isAdmin={isAdmin} /> : <EncarregadosTab isAdmin={isAdmin} />}
     </div>
   );
 }
