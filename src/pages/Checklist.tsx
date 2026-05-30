@@ -164,13 +164,13 @@ export default function ChecklistPage() {
   return (
     <div className="max-w-4xl mx-auto space-y-5 pb-24 animate-in fade-in duration-500">
       <div className="flex items-center justify-between border-b border-zinc-200 pb-4">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 min-w-0">
           <div className="w-9 h-9 sm:w-12 sm:h-12 bg-zinc-900 rounded-xl flex items-center justify-center text-white shadow-lg shrink-0">
             <ClipboardCheck className="w-4 h-4 sm:w-6 sm:h-6" />
           </div>
-          <div>
-            <h2 className="text-lg sm:text-2xl font-bold tracking-tight text-zinc-900">Checklist Diário</h2>
-            <p className="text-zinc-500 text-xs sm:text-sm">Registro de conferência e avanço de campo.</p>
+          <div className="min-w-0">
+            <h2 className="text-base sm:text-2xl font-bold tracking-tight text-zinc-900 truncate">Checklist Diário</h2>
+            <p className="text-zinc-500 text-xs truncate">Conferência e avanço de campo.</p>
           </div>
         </div>
         <div className="flex gap-1.5 sm:gap-2">
@@ -201,24 +201,22 @@ export default function ChecklistPage() {
                   key={obra.id}
                   onClick={() => setSelectedObraId(obra.id)}
                   className={cn(
-                    "p-3 sm:p-5 rounded-xl border text-left transition-all flex items-center justify-between",
+                    "w-full overflow-hidden p-3 sm:p-5 rounded-xl border text-left transition-all flex items-center gap-3",
                     selectedObraId === obra.id
                       ? "bg-zinc-900 border-zinc-900 text-white shadow-lg"
                       : "bg-zinc-50 border-zinc-200 hover:border-zinc-400 text-zinc-900"
                   )}
                 >
-                  <div className="flex items-center gap-3">
-                    <div className={cn("p-1.5 rounded-lg shrink-0", selectedObraId === obra.id ? "bg-zinc-800" : "bg-white border border-zinc-200")}>
-                      <MapPin className="w-4 h-4" />
-                    </div>
-                    <div className="min-w-0">
-                      <p className="font-bold tracking-tight text-sm truncate">{obra.nome}</p>
-                      <p className={cn("text-xs truncate", selectedObraId === obra.id ? "text-zinc-400" : "text-zinc-500")}>
-                        {obra.cliente} • CC: {obra.centroCusto}
-                      </p>
-                    </div>
+                  <div className={cn("p-1.5 rounded-lg shrink-0", selectedObraId === obra.id ? "bg-zinc-800" : "bg-white border border-zinc-200")}>
+                    <MapPin className="w-4 h-4" />
                   </div>
-                  {selectedObraId === obra.id && <CheckCircle2 className="w-4 h-4 text-white shrink-0 ml-2" />}
+                  <div className="flex-1 min-w-0">
+                    <p className="font-bold tracking-tight text-sm truncate">{obra.nome}</p>
+                    <p className={cn("text-xs truncate", selectedObraId === obra.id ? "text-zinc-400" : "text-zinc-500")}>
+                      {obra.cliente} • CC: {obra.centroCusto}
+                    </p>
+                  </div>
+                  {selectedObraId === obra.id && <CheckCircle2 className="w-4 h-4 text-white shrink-0" />}
                 </button>
               ))}
             </div>
