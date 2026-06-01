@@ -151,26 +151,26 @@ export default function Obras() {
           </div>
 
           {/* Filters */}
-          <div className="flex flex-col sm:flex-row gap-4 bg-white p-4 rounded-xl border border-zinc-200 shadow-sm">
-            <div className="relative flex-1">
+          <div className="flex flex-col gap-3 bg-white p-4 rounded-xl border border-zinc-200 shadow-sm">
+            <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
-              <input 
-                type="text" 
-                placeholder="Buscar por nome ou cliente..." 
+              <input
+                type="text"
+                placeholder="Buscar por nome ou cliente..."
                 className="w-full pl-10 pr-4 py-2 bg-zinc-50 border border-zinc-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900/10 transition-all"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
               />
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-wrap">
               {['Todas', 'Ativa', 'Concluída', 'Pausada'].map(status => (
                 <button
                   key={status}
                   onClick={() => setFilterStatus(status)}
                   className={cn(
-                    "px-4 py-2 rounded-lg text-sm font-medium transition-all border",
-                    filterStatus === status 
-                      ? "bg-zinc-900 text-white border-zinc-900" 
+                    "flex-1 min-w-fit px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-all border",
+                    filterStatus === status
+                      ? "bg-zinc-900 text-white border-zinc-900"
                       : "bg-white text-zinc-600 border-zinc-200 hover:bg-zinc-50"
                   )}
                 >
@@ -577,7 +577,7 @@ function ObraDetails({
   };
 
   return (
-    <div className="space-y-6 animate-in slide-in-from-right duration-300">
+    <div className="space-y-4 animate-in slide-in-from-right duration-300">
       <div className="bg-white p-4 sm:p-6 rounded-2xl border border-zinc-200 shadow-sm space-y-3">
         <div className="flex items-start gap-3">
           <button onClick={onBack} className="p-2 hover:bg-zinc-100 rounded-full text-zinc-500 shrink-0 mt-0.5">
@@ -654,22 +654,22 @@ function ObraDetails({
       </div>
 
       {activeTab === 'progresso' && (
-        <div className="space-y-6">
-          <div className="flex items-center justify-between px-2">
-            <div>
-              <h3 className="text-xl font-bold text-zinc-900">Mão de obra e progresso físico</h3>
-              <p className="text-zinc-500 text-sm">Prévia editável com linha de progressão por atividade executada.</p>
+        <div className="space-y-4">
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <h3 className="text-base sm:text-xl font-bold text-zinc-900 leading-tight">Mão de obra e progresso</h3>
+              <p className="text-zinc-500 text-xs sm:text-sm">Linha de progressão por atividade.</p>
             </div>
-            <button 
+            <button
               onClick={() => window.location.href = '/atividades'}
-              className="flex items-center gap-2 px-4 py-2 bg-white border border-zinc-200 rounded-xl text-xs font-bold text-zinc-900 hover:bg-zinc-50 transition-all shadow-sm"
+              className="shrink-0 flex items-center gap-1.5 px-3 py-2 bg-white border border-zinc-200 rounded-xl text-xs font-bold text-zinc-900 hover:bg-zinc-50 transition-all shadow-sm"
             >
-              <Plus className="w-4 h-4" />
-              Gerenciar Atividades
+              <Plus className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Gerenciar </span>Atividades
             </button>
           </div>
 
-          <div className="grid gap-6">
+          <div className="grid gap-4">
             {atividades.map(ativ => {
               const perc = Math.round(ativ.percentual);
               const status = perc < 50 ? 'Abaixo de 50%' : perc < 100 ? 'Entre 50% e 99%' : 'Concluído';
