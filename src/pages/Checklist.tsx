@@ -37,6 +37,7 @@ export default function ChecklistPage() {
   
   const [obrasSnap] = useCollection(collection(db, 'obras'));
   const [operadoresSnap] = useCollection(collection(db, 'operadores'));
+  const [adminAccessSnap] = useCollection(collection(db, 'admin_access'));
   const [materiaisSnap] = useCollection(
     selectedObraId 
       ? query(collection(db, 'materiais'), where('obraId', '==', selectedObraId), where('statusConferencia', '==', 'Pendente'))
@@ -64,11 +65,21 @@ export default function ChecklistPage() {
   const materiais = (materiaisSnap?.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Material[]) || [];
   const atividades = (atividadesSnap?.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Atividade[]) || [];
   const todosOperadores = (operadoresSnap?.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Operator[]) || [];
-  
+
+  const adminEmails = new Set(
+    (adminAccessSnap?.docs || [])
+      .map(d => d.id)
+      .filter(id => id.startsWith('email:'))
+      .map(id => id.replace('email:', '').toLowerCase())
+  );
+
+  const isAdminOp = (op: Operator) =>
+    op.role === 'admin' || adminEmails.has((op.email || '').toLowerCase());
+
   const selectedObra = obras.find(o => o.id === selectedObraId);
   const operadores = selectedObra?.operadoresIds?.length
-    ? todosOperadores.filter(op => selectedObra.operadoresIds?.includes(op.id) && op.role !== 'admin')
-    : todosOperadores.filter(op => op.role !== 'admin');
+    ? todosOperadores.filter(op => selectedObra.operadoresIds?.includes(op.id) && !isAdminOp(op))
+    : todosOperadores.filter(op => !isAdminOp(op));
 
   const handleFinish = async () => {
     if (!selectedObraId) return notify('warning', 'Atenção', 'Selecione uma obra antes de finalizar.');
