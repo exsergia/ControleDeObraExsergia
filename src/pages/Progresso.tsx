@@ -409,8 +409,10 @@ function ActivityCard({ ativ, obra, onUpdate, onDelete, readOnly = false }: {
       </div>
 
       {/* Barra de progresso */}
-      <div className="h-1.5 w-full bg-zinc-100">
-        <div className={cn('h-full transition-all duration-500', colorClass)} style={{ width: `${perc}%` }} />
+      <div className="px-4 sm:px-5 py-1">
+        <div className="h-1.5 w-full bg-zinc-100 rounded-full overflow-hidden">
+          <div className={cn('h-full transition-all duration-500 rounded-full', colorClass)} style={{ width: `${perc}%` }} />
+        </div>
       </div>
 
       {/* Valores + Input */}
