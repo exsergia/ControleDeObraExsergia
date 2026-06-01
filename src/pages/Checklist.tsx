@@ -66,9 +66,9 @@ export default function ChecklistPage() {
   const todosOperadores = (operadoresSnap?.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Operator[]) || [];
   
   const selectedObra = obras.find(o => o.id === selectedObraId);
-  const operadores = selectedObra?.operadoresIds?.length 
-    ? todosOperadores.filter(op => selectedObra.operadoresIds?.includes(op.id))
-    : todosOperadores;
+  const operadores = selectedObra?.operadoresIds?.length
+    ? todosOperadores.filter(op => selectedObra.operadoresIds?.includes(op.id) && op.role !== 'admin')
+    : todosOperadores.filter(op => op.role !== 'admin');
 
   const handleFinish = async () => {
     if (!selectedObraId) return notify('warning', 'Atenção', 'Selecione uma obra antes de finalizar.');
