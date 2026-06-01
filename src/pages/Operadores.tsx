@@ -162,7 +162,7 @@ function OperadoresTab({ isAdmin }: { isAdmin: boolean }) {
                 <button onClick={closeModal} className="p-2 hover:bg-zinc-100 rounded-full"><X className="w-5 h-5 text-zinc-400" /></button>
               </div>
               <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div><label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Nome</label>
                     <input required className="w-full mt-1 px-3 py-2.5 bg-zinc-50 border border-zinc-200 rounded-xl text-sm focus:outline-none focus:border-zinc-900"
                       value={formData.nome} onChange={e => setFormData({ ...formData, nome: e.target.value })} /></div>
@@ -373,7 +373,7 @@ function EncarregadosTab({ isAdmin }: { isAdmin: boolean }) {
                 <button onClick={closeModal} className="p-2 hover:bg-zinc-100 rounded-full"><X className="w-5 h-5 text-zinc-400" /></button>
               </div>
               <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div><label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Nome</label>
                     <input required className="w-full mt-1 px-3 py-2.5 bg-zinc-50 border border-zinc-200 rounded-xl text-sm focus:outline-none focus:border-zinc-900"
                       value={formData.nome} onChange={e => setFormData({ ...formData, nome: e.target.value })} /></div>
@@ -454,14 +454,14 @@ export default function Operadores() {
         <p className="text-zinc-500 text-sm">Operadores de campo e encarregados de obra — tabelas separadas.</p>
       </div>
 
-      <div className="flex bg-white p-1 rounded-xl border border-zinc-200 w-fit shadow-sm">
+      <div className="flex bg-white p-1 rounded-xl border border-zinc-200 w-full sm:w-fit shadow-sm">
         {([
           { id: 'operadores', label: 'Operadores', icon: User },
           { id: 'encarregados', label: 'Encarregados', icon: ShieldCheck },
         ] as const).map(t => (
           <button key={t.id} onClick={() => setTab(t.id)}
             className={cn(
-              'flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-bold transition-all',
+              'flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 sm:px-5 py-2 rounded-lg text-sm font-bold transition-all',
               tab === t.id ? 'bg-zinc-900 text-white shadow-md' : 'text-zinc-500 hover:bg-zinc-50'
             )}>
             <t.icon className="w-4 h-4" />

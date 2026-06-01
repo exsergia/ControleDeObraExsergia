@@ -127,7 +127,7 @@ export default function Materiais() {
       </div>
 
       {/* Search */}
-      <div className="relative max-w-md">
+      <div className="relative w-full sm:max-w-md">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
         <input
           type="text"
@@ -138,9 +138,55 @@ export default function Materiais() {
         />
       </div>
 
-      {/* Table */}
+      {/* Table / Cards */}
       <div className="bg-white rounded-xl border border-zinc-200 shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
+        {/* Mobile card list */}
+        <div className="sm:hidden divide-y divide-zinc-100">
+          {loading ? (
+            Array(4).fill(0).map((_, i) => (
+              <div key={i} className="p-4 animate-pulse"><div className="h-12 bg-zinc-100 rounded" /></div>
+            ))
+          ) : filtered.length > 0 ? filtered.map(mat => {
+            const dt = parseDate(mat.dataEntrega);
+            return (
+              <div key={mat.id} className="p-4 flex gap-3">
+                {mat.photoUrl ? (
+                  <img src={mat.photoUrl} alt="Material" className="w-12 h-12 rounded-lg object-cover shrink-0" />
+                ) : (
+                  <div className="w-12 h-12 rounded-lg bg-zinc-100 flex items-center justify-center shrink-0">
+                    <Package className="w-5 h-5 text-zinc-300" />
+                  </div>
+                )}
+                <div className="flex-1 min-w-0 space-y-1">
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="text-sm font-bold text-zinc-900 leading-tight">{mat.descricao}</p>
+                    <span className={cn(
+                      "px-2 py-0.5 rounded-full text-[9px] font-bold uppercase shrink-0 border",
+                      mat.statusConferencia === 'Conferido' ? "bg-green-50 text-green-600 border-green-200" :
+                      mat.statusConferencia === 'Divergente' ? "bg-red-50 text-red-600 border-red-200" :
+                      "bg-zinc-50 text-zinc-400 border-zinc-200"
+                    )}>{mat.statusConferencia}</span>
+                  </div>
+                  <p className="text-xs text-zinc-500">#{mat.codigoEntrega} · {mat.categoria}</p>
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-xs text-zinc-400 truncate">{mat.fornecedor || '---'} · {mat.quantidade} un</p>
+                    {canEdit && (
+                      <p className="text-xs font-bold font-mono text-zinc-900 shrink-0">
+                        {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(mat.valorTotal || 0)}
+                      </p>
+                    )}
+                  </div>
+                  <p className="text-[10px] text-zinc-400">{dt ? format(dt, 'dd/MM/yy HH:mm') : '---'}</p>
+                </div>
+              </div>
+            );
+          }) : (
+            <div className="p-12 text-center text-zinc-400 italic">Nenhum registro encontrado.</div>
+          )}
+        </div>
+
+        {/* Desktop table */}
+        <div className="hidden sm:block overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-zinc-50/50 border-b border-zinc-100">
@@ -230,8 +276,8 @@ export default function Materiais() {
 
       {/* Modal Registration */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 z-[60] flex items-end sm:items-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm">
+          <div className="bg-white w-full sm:max-w-2xl rounded-t-2xl sm:rounded-2xl shadow-2xl overflow-hidden animate-in slide-in-from-bottom-4 sm:zoom-in-95 duration-200">
             <div className="p-6 border-b border-zinc-100 flex items-center justify-between bg-zinc-50">
               <h3 className="text-lg font-bold text-zinc-900 uppercase tracking-widest">Lançar Material</h3>
               <button onClick={() => setIsModalOpen(false)} className="p-2 hover:bg-zinc-200 rounded-full transition-colors">

@@ -185,7 +185,7 @@ export default function Ferramentas() {
               <History className="w-4 h-4 text-zinc-400" />
               <span className="text-xs font-bold text-zinc-600">Logs de Movimentação</span>
             </div>
-            <div className="divide-y divide-zinc-100 max-h-[600px] overflow-y-auto">
+            <div className="divide-y divide-zinc-100 max-h-[40vh] sm:max-h-[600px] overflow-y-auto">
               {logs.length === 0 ? (
                 <div className="p-8 text-center text-zinc-400 text-xs font-bold uppercase tracking-widest">
                   Nenhuma movimentação recente
@@ -328,12 +328,12 @@ function ScannerModal({ onSuccess, onClose }: { onSuccess: (text: string) => voi
   }, [onSuccess, notify]);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-900/60 backdrop-blur-sm">
-      <motion.div 
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center p-0 sm:p-4 bg-zinc-900/60 backdrop-blur-sm">
+      <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.95 }}
-        className="bg-white w-full max-w-2xl rounded-3xl overflow-hidden shadow-2xl"
+        className="bg-white w-full sm:max-w-2xl rounded-t-3xl sm:rounded-3xl overflow-hidden shadow-2xl max-h-[90dvh] overflow-y-auto"
       >
         <div className="p-6 border-b border-zinc-100 flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -610,12 +610,12 @@ function ToolHistoryModal({ tool, obras, onClose }: { tool: Tool, obras: Obra[],
   const history = historySnap?.docs.map(doc => ({ id: doc.id, ...doc.data() })) as ToolLog[] || [];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-900/60 backdrop-blur-sm">
-      <motion.div 
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center p-0 sm:p-4 bg-zinc-900/60 backdrop-blur-sm">
+      <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.95 }}
-        className="bg-white w-full max-w-2xl rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[85vh]"
+        className="bg-white w-full sm:max-w-2xl rounded-t-3xl sm:rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[85dvh]"
       >
         <div className="p-6 bg-zinc-900 text-white flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -817,12 +817,12 @@ function AddToolModal({ tool, onClose }: { tool?: Tool, onClose: () => void }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-900/60 backdrop-blur-sm">
-      <motion.div 
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center p-0 sm:p-4 bg-zinc-900/60 backdrop-blur-sm">
+      <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.95 }}
-        className="bg-white w-full max-w-2xl rounded-3xl overflow-hidden shadow-2xl"
+        className="bg-white w-full sm:max-w-2xl rounded-t-3xl sm:rounded-3xl overflow-hidden shadow-2xl max-h-[90dvh] overflow-y-auto"
       >
         <div className="p-6 border-b border-zinc-100 flex items-center justify-between">
           <h3 className="text-lg font-bold">{tool ? 'Editar Ferramenta' : 'Cadastrar Ferramenta'}</h3>
@@ -1004,12 +1004,12 @@ function CheckOutModal({ tool, obras, onClose }: { tool: Tool, obras: Obra[], on
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-900/60 backdrop-blur-sm">
-      <motion.div 
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center p-0 sm:p-4 bg-zinc-900/60 backdrop-blur-sm">
+      <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.95 }}
-        className="bg-white w-full max-w-2xl rounded-3xl overflow-hidden shadow-2xl"
+        className="bg-white w-full sm:max-w-2xl rounded-t-3xl sm:rounded-3xl overflow-hidden shadow-2xl max-h-[90dvh] overflow-y-auto"
       >
         <div className="p-6 bg-zinc-900 text-white flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -1358,12 +1358,12 @@ function CheckInModal({ log, tool, onClose }: { log: ToolLog, tool: Tool, onClos
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-900/60 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center p-0 sm:p-4 bg-zinc-900/60 backdrop-blur-sm">
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.95 }}
-        className="bg-white w-full max-w-2xl rounded-3xl overflow-hidden shadow-2xl"
+        className="bg-white w-full sm:max-w-2xl rounded-t-3xl sm:rounded-3xl overflow-hidden shadow-2xl max-h-[90dvh] overflow-y-auto"
       >
         <div className="p-6 bg-zinc-900 text-white flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -1423,11 +1423,11 @@ function CheckInModal({ log, tool, onClose }: { log: ToolLog, tool: Tool, onClos
             ) : (
               /* ── Seleção inicial ── */
               <div className="space-y-2">
-                <div className={cn('grid grid-cols-2 gap-3', loading && 'opacity-50 pointer-events-none')}>
+                <div className={cn('grid grid-cols-1 sm:grid-cols-2 gap-3', loading && 'opacity-50 pointer-events-none')}>
                   {/* Câmera in-browser via getUserMedia — não sai do app, zero reload */}
                   <button type="button" onClick={() => setShowCamera(true)} disabled={loading}
                     className={cn(
-                      'flex flex-col items-center justify-center gap-3 py-8 rounded-2xl border-2 border-dashed transition-all group',
+                      'flex flex-col items-center justify-center gap-3 py-5 sm:py-8 rounded-2xl border-2 border-dashed transition-all group',
                       error ? 'border-red-200 bg-red-50/40' : 'border-zinc-200 bg-zinc-50 hover:bg-zinc-100 hover:border-zinc-400'
                     )}
                   >

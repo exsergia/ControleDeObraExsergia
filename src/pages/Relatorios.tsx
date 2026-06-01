@@ -279,24 +279,25 @@ export default function Relatorios() {
       </div>
 
       {/* Tabs */}
-      <div className="flex bg-white p-1 rounded-xl border border-zinc-200 w-fit shadow-sm">
+      <div className="flex bg-white p-1 rounded-xl border border-zinc-200 w-full sm:w-fit shadow-sm">
         {([
-          { id: 'diarios', label: 'Relatórios Diários', icon: FileText },
-          { id: 'ferramentas', label: 'Ferramentas', icon: Hammer },
-          { id: 'bi', label: 'Dashboard BI', icon: TrendingUp },
+          { id: 'diarios', label: 'Relatórios Diários', labelMobile: 'Diários', icon: FileText },
+          { id: 'ferramentas', label: 'Ferramentas', labelMobile: 'Ferramentas', icon: Hammer },
+          { id: 'bi', label: 'Dashboard BI', labelMobile: 'BI', icon: TrendingUp },
         ] as const).map(tab => (
           <button
             key={tab.id}
             onClick={() => { setActiveTab(tab.id); setSearch(''); setSelectedDate(''); setSelectedChecklist(null); }}
             className={cn(
-              'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all',
+              'flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-2 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-bold transition-all',
               activeTab === tab.id
                 ? 'bg-zinc-900 text-white shadow-md'
                 : 'text-zinc-500 hover:bg-zinc-50'
             )}
           >
-            <tab.icon className="w-4 h-4" />
-            {tab.label}
+            <tab.icon className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+            <span className="sm:hidden truncate">{tab.labelMobile}</span>
+            <span className="hidden sm:inline">{tab.label}</span>
           </button>
         ))}
       </div>
@@ -327,11 +328,11 @@ export default function Relatorios() {
           />
         </div>
         <div className="flex items-center gap-2">
-          <div className="relative">
+          <div className="relative flex-1 sm:flex-none">
             <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400 pointer-events-none" />
             <input
               type="date"
-              className="pl-9 pr-3 py-3 bg-white border border-zinc-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900/10 shadow-sm transition-all cursor-pointer"
+              className="w-full sm:w-auto pl-9 pr-3 py-3 bg-white border border-zinc-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900/10 shadow-sm transition-all cursor-pointer"
               value={selectedDate}
               max={format(new Date(), 'yyyy-MM-dd')}
               onChange={(e) => setSelectedDate(e.target.value)}
@@ -352,7 +353,56 @@ export default function Relatorios() {
       {/* ── FERRAMENTAS TAB ── */}
       {activeTab !== 'bi' && activeTab === 'ferramentas' && (
         <div className="bg-white rounded-2xl border border-zinc-200 shadow-sm overflow-hidden">
-          <div className="overflow-x-auto">
+          {/* Mobile cards */}
+          <div className="sm:hidden divide-y divide-zinc-100">
+            {loadingLogs ? (
+              Array(4).fill(0).map((_, i) => (
+                <div key={i} className="p-4 animate-pulse"><div className="h-12 bg-zinc-100 rounded" /></div>
+              ))
+            ) : filteredToolLogs.length === 0 ? (
+              <div className="p-12 text-center">
+                <Hammer className="w-10 h-10 text-zinc-200 mx-auto mb-3" />
+                <p className="text-zinc-400 text-sm font-medium">Nenhuma movimentação encontrada.</p>
+              </div>
+            ) : filteredToolLogs.map(log => {
+              const tool = tools.find(t => t.id === log.toolId);
+              const obra = obras.find(o => o.id === log.obraId);
+              const saida = parseDate(log.dataSaida);
+              const devolucao = log.dataDevolucao ? parseDate(log.dataDevolucao) : null;
+              const isPending = log.statusLog === 'Aberta';
+              return (
+                <div key={log.id} className="p-4 space-y-2">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-bold text-zinc-900">{tool?.nome || 'Ferramenta removida'}</p>
+                      {tool?.codigo && <p className="text-xs text-zinc-400">#{tool.codigo}</p>}
+                    </div>
+                    <span className={cn(
+                      'inline-flex items-center gap-1 px-2 py-1 rounded-full text-[9px] font-bold uppercase shrink-0',
+                      isPending ? 'bg-orange-100 text-orange-700' : 'bg-green-100 text-green-700'
+                    )}>
+                      {isPending ? <Clock className="w-2.5 h-2.5" /> : <CheckCircle2 className="w-2.5 h-2.5" />}
+                      {isPending ? 'Em Uso' : 'Devolvida'}
+                    </span>
+                  </div>
+                  <p className="text-xs text-zinc-600"><span className="font-bold">Resp:</span> {log.responsavelNome}</p>
+                  <p className="text-xs text-zinc-500 truncate"><span className="font-bold">Obra:</span> {obra?.nome || '---'}</p>
+                  <div className="flex items-center gap-4 text-xs text-zinc-400">
+                    <span className="flex items-center gap-1"><ArrowUpRight className="w-3 h-3 text-orange-500" />{format(saida, 'dd/MM/yy HH:mm')}</span>
+                    {devolucao && <span className="flex items-center gap-1"><ArrowDownLeft className="w-3 h-3 text-green-500" />{format(devolucao, 'dd/MM/yy HH:mm')}</span>}
+                  </div>
+                  {log.fotoDevolucaoUrl && (
+                    <a href={log.fotoDevolucaoUrl} target="_blank" rel="noopener noreferrer">
+                      <img src={log.fotoDevolucaoUrl} alt="Foto devolução" className="w-16 h-16 object-cover rounded-lg border border-zinc-200" />
+                    </a>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Desktop table */}
+          <div className="hidden sm:block overflow-x-auto">
             <table className="w-full text-left">
               <thead>
                 <tr className="bg-zinc-50 border-b border-zinc-100">
@@ -422,18 +472,8 @@ export default function Relatorios() {
                       </td>
                       <td className="px-5 py-4 text-center">
                         {log.fotoDevolucaoUrl ? (
-                          <a
-                            href={log.fotoDevolucaoUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-block"
-                            title="Ver foto da devolução"
-                          >
-                            <img
-                              src={log.fotoDevolucaoUrl}
-                              alt="Foto devolução"
-                              className="w-12 h-12 object-cover rounded-lg border border-zinc-200 hover:opacity-80 transition-opacity mx-auto"
-                            />
+                          <a href={log.fotoDevolucaoUrl} target="_blank" rel="noopener noreferrer" className="inline-block" title="Ver foto da devolução">
+                            <img src={log.fotoDevolucaoUrl} alt="Foto devolução" className="w-12 h-12 object-cover rounded-lg border border-zinc-200 hover:opacity-80 transition-opacity mx-auto" />
                           </a>
                         ) : (
                           <span className="text-[10px] text-zinc-300 font-bold uppercase">—</span>
@@ -442,9 +482,7 @@ export default function Relatorios() {
                       <td className="px-5 py-4 text-center">
                         <span className={cn(
                           'inline-flex items-center gap-1 px-2 py-1 rounded-full text-[9px] font-bold uppercase tracking-wide',
-                          isPending
-                            ? 'bg-orange-100 text-orange-700'
-                            : 'bg-green-100 text-green-700'
+                          isPending ? 'bg-orange-100 text-orange-700' : 'bg-green-100 text-green-700'
                         )}>
                           {isPending ? <Clock className="w-2.5 h-2.5" /> : <CheckCircle2 className="w-2.5 h-2.5" />}
                           {isPending ? 'Em Uso' : 'Devolvida'}
@@ -461,7 +499,7 @@ export default function Relatorios() {
 
       {/* ── DIÁRIOS TAB ── */}
       {activeTab === 'diarios' && <div className="grid lg:grid-cols-2 gap-6">
-        <div className="space-y-4">
+        <div className={cn("space-y-4", selectedChecklist && "hidden lg:block")}>
           <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-widest pl-1">Relatórios Recentes</h3>
           {loading ? (
             Array(4).fill(0).map((_, i) => (
@@ -485,8 +523,18 @@ export default function Relatorios() {
           )}
         </div>
 
-        <div className="sticky top-6">
-          <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-widest pl-1 mb-4">Detalhes do Relatório</h3>
+        <div className="lg:sticky lg:top-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-widest pl-1">Detalhes do Relatório</h3>
+            {selectedChecklist && (
+              <button
+                onClick={() => setSelectedChecklist(null)}
+                className="lg:hidden flex items-center gap-1 text-xs font-bold text-zinc-500 hover:text-zinc-900"
+              >
+                <ChevronRight className="w-4 h-4 rotate-180" /> Voltar
+              </button>
+            )}
+          </div>
           {selectedChecklist ? (
             <div className="space-y-4">
               <ReportDetails 
@@ -742,16 +790,16 @@ function ReportDetails({ report, obra, materiais, atividades, operadores }: {
 
   return (
     <div className="bg-white rounded-3xl border border-zinc-200 shadow-xl overflow-hidden animate-in zoom-in-95 duration-300">
-      <div className="p-8 bg-zinc-900 text-white">
-        <div className="flex items-start justify-between mb-6">
-          <div className="space-y-1">
+      <div className="p-4 sm:p-8 bg-zinc-900 text-white">
+        <div className="flex items-start justify-between mb-4 sm:mb-6">
+          <div className="space-y-1 min-w-0 flex-1">
             <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">RELATÓRIO DIÁRIO</span>
-            <h3 className="text-2xl font-bold tracking-tight">{obra?.nome}</h3>
+            <h3 className="text-lg sm:text-2xl font-bold tracking-tight truncate">{obra?.nome}</h3>
           </div>
-          <FileText className="w-10 h-10 text-zinc-700" />
+          <FileText className="w-8 h-8 sm:w-10 sm:h-10 text-zinc-700 shrink-0 ml-3" />
         </div>
 
-        <div className="grid grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-6">
           <div className="space-y-1">
             <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">DATA E HORA</p>
             <p className="text-sm font-medium">{format(date, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}</p>
@@ -763,7 +811,7 @@ function ReportDetails({ report, obra, materiais, atividades, operadores }: {
         </div>
       </div>
 
-      <div className="p-8 space-y-8 max-h-[600px] overflow-y-auto">
+      <div className="p-4 sm:p-8 space-y-6 sm:space-y-8 max-h-[55vh] sm:max-h-[600px] overflow-y-auto">
         {/* Equipe */}
         <div className="space-y-4">
           <h4 className="text-xs font-bold text-zinc-400 uppercase tracking-widest flex items-center gap-2">

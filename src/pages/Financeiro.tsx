@@ -354,13 +354,13 @@ export default function Financeiro() {
 
       {/* Finance Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-white p-8 rounded-2xl border border-zinc-200 shadow-sm flex items-center gap-6">
-           <div className="w-14 h-14 bg-zinc-900 rounded-2xl flex items-center justify-center text-white shadow-lg">
-             <DollarSign className="w-7 h-7" />
+        <div className="bg-white p-4 sm:p-8 rounded-2xl border border-zinc-200 shadow-sm flex items-center gap-4 sm:gap-6">
+           <div className="w-12 h-12 sm:w-14 sm:h-14 bg-zinc-900 rounded-2xl flex items-center justify-center text-white shadow-lg shrink-0">
+             <DollarSign className="w-6 h-6 sm:w-7 sm:h-7" />
            </div>
-           <div>
+           <div className="min-w-0">
               <p className="text-xs font-bold text-zinc-400 uppercase tracking-widest leading-none mb-1">Custo Total Executado</p>
-              <p className="text-3xl font-black text-zinc-900 tracking-tighter">
+              <p className="text-lg sm:text-3xl font-black text-zinc-900 tracking-tighter truncate">
                 {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(stats.totalGeral)}
               </p>
            </div>
@@ -372,11 +372,11 @@ export default function Financeiro() {
            </div>
            <div className="flex items-end justify-between">
               <div className="space-y-1">
-                 <p className="text-2xl font-bold text-zinc-800">{stats.conferidos}</p>
+                 <p className="text-xl sm:text-2xl font-bold text-zinc-800">{stats.conferidos}</p>
                  <p className="text-[10px] font-bold text-green-600 uppercase tracking-widest bg-green-50 px-2 py-0.5 rounded inline-block">Conferidos</p>
               </div>
               <div className="space-y-1 text-right">
-                 <p className="text-2xl font-bold text-zinc-800">{stats.pendentes}</p>
+                 <p className="text-xl sm:text-2xl font-bold text-zinc-800">{stats.pendentes}</p>
                  <p className="text-[10px] font-bold text-amber-600 uppercase tracking-widest bg-amber-50 px-2 py-0.5 rounded inline-block">Pendentes</p>
               </div>
            </div>
@@ -388,30 +388,31 @@ export default function Financeiro() {
         <div className="bg-zinc-900 p-6 rounded-2xl text-white flex flex-col justify-between shadow-2xl relative overflow-hidden">
            <TrendingUp className="absolute -right-4 -bottom-4 w-24 h-24 text-zinc-800 opacity-50" />
            <p className="text-xs font-bold text-zinc-400 uppercase tracking-widest relative z-10">Total de Entregas</p>
-           <p className="text-4xl font-black tracking-tighter relative z-10">{stats.count}</p>
+           <p className="text-2xl sm:text-4xl font-black tracking-tighter relative z-10">{stats.count}</p>
            <div className="text-[10px] font-bold text-zinc-500 bg-zinc-800 px-2 py-1 rounded inline-block self-start mt-2 border border-zinc-700 relative z-10">
               SISTEMA INTEGRADO
            </div>
         </div>
       </div>
 
-      <div className="flex bg-white p-1 rounded-xl border border-zinc-200 w-fit">
+      <div className="flex bg-white p-1 rounded-xl border border-zinc-200 w-full sm:w-fit">
         {[
-          { id: 'materiais', label: 'Insumos / Materiais', icon: Package },
-          { id: 'atividades', label: 'Atividades (Mão de Obra)', icon: Activity }
+          { id: 'materiais', label: 'Insumos / Materiais', labelMobile: 'Materiais', icon: Package },
+          { id: 'atividades', label: 'Atividades (Mão de Obra)', labelMobile: 'Atividades', icon: Activity }
         ].map(tab => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id as any)}
             className={cn(
-              "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all",
-              activeTab === tab.id 
-                ? "bg-zinc-900 text-white shadow-md border-zinc-900" 
+              "flex-1 sm:flex-none flex items-center justify-center gap-2 px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-bold transition-all",
+              activeTab === tab.id
+                ? "bg-zinc-900 text-white shadow-md border-zinc-900"
                 : "text-zinc-500 hover:bg-zinc-50 border-transparent"
             )}
           >
-            <tab.icon className="w-4 h-4" />
-            {tab.label}
+            <tab.icon className="w-4 h-4 shrink-0" />
+            <span className="sm:hidden truncate">{tab.labelMobile}</span>
+            <span className="hidden sm:inline">{tab.label}</span>
           </button>
         ))}
       </div>
@@ -441,9 +442,59 @@ export default function Financeiro() {
         </div>
       </div>
 
-      {/* Consolidation Table */}
+      {/* Consolidation Table / Cards */}
       <div className="bg-white rounded-2xl border border-zinc-200 shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
+        {/* Mobile cards */}
+        <div className="sm:hidden divide-y divide-zinc-100">
+          {activeTab === 'materiais' ? filteredMateriais.map(mat => (
+            <div key={mat.id} className="p-4 space-y-2">
+              <div className="flex items-start justify-between gap-2">
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-bold text-zinc-800 leading-tight">{mat.descricao}</p>
+                  <p className="text-xs text-zinc-400 uppercase mt-0.5">{obras.find(o => o.id === mat.obraId)?.nome || '---'}</p>
+                </div>
+                <span className={cn(
+                  "px-2 py-0.5 rounded text-[9px] font-black uppercase border shrink-0",
+                  mat.statusConferencia === 'Conferido' ? "bg-green-50 text-green-700 border-green-200" :
+                  mat.statusConferencia === 'Pendente' ? "bg-amber-50 text-amber-700 border-amber-200" :
+                  "bg-red-50 text-red-700 border-red-200"
+                )}>{mat.statusConferencia}</span>
+              </div>
+              <p className="text-xs text-zinc-500">{mat.codigoEntrega}</p>
+              <div className="flex items-center justify-between">
+                <p className="text-xs text-zinc-400">Un: {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(mat.precoUnitario)}</p>
+                <p className="text-sm font-bold font-mono text-zinc-900">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(mat.valorTotal)}</p>
+              </div>
+            </div>
+          )) : filteredAtividades.map(ativ => {
+            const orçado = ativ.quantidadePrevista * (ativ.valorUnitario || 0);
+            const executado = ativ.quantidadeExecutada * (ativ.valorUnitario || 0);
+            return (
+              <div key={ativ.id} className="p-4 space-y-2">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-bold text-zinc-800 leading-tight">{ativ.descricao}</p>
+                    <p className="text-xs text-zinc-400 uppercase mt-0.5">{obras.find(o => o.id === ativ.obraId)?.nome || '---'}</p>
+                  </div>
+                  <span className="text-sm font-black text-zinc-400 shrink-0">{ativ.percentual.toFixed(0)}%</span>
+                </div>
+                <div className="h-1.5 w-full bg-zinc-100 rounded-full">
+                  <div className="bg-zinc-900 h-full rounded-full" style={{ width: `${ativ.percentual}%` }} />
+                </div>
+                <div className="flex items-center justify-between text-xs">
+                  <p className="text-zinc-400">{ativ.quantidadeExecutada}/{ativ.quantidadePrevista} {ativ.unidade}</p>
+                  <p className="font-bold font-mono text-zinc-900">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(executado)}</p>
+                </div>
+              </div>
+            );
+          })}
+          {(activeTab === 'materiais' ? filteredMateriais : filteredAtividades).length === 0 && (
+            <div className="p-12 text-center text-zinc-400 italic">Nenhum lançamento encontrado.</div>
+          )}
+        </div>
+
+        {/* Desktop table */}
+        <div className="hidden sm:block overflow-x-auto">
            {activeTab === 'materiais' ? (
              <table className="w-full text-left">
                 <thead>
