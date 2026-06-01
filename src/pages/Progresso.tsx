@@ -3,12 +3,11 @@ import { useCollection } from '../lib/supabaseHooks';
 import { collection, query, where, addDoc, updateDoc, setDoc, doc, serverTimestamp, deleteDoc } from '../lib/supabaseDb';
 import { db, handleFirestoreError, OperationType } from '../lib/supabase';
 import { Obra, Atividade, Operator } from '../types';
-import { 
-  Activity, 
-  Plus, 
-  Download,
-  Search, 
-  ChevronRight, 
+import {
+  Activity,
+  Plus,
+  Search,
+  ChevronRight,
   MoreVertical,
   CheckCircle2,
   Clock,
@@ -22,8 +21,6 @@ import {
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 
-import { utils, writeFile } from 'xlsx';
-import { format } from 'date-fns';
 import { useAuth } from '../App';
 import { useAutoSaveForm } from '../hooks/useAutoSaveForm';
 
@@ -56,31 +53,6 @@ export default function ProgressoFisico() {
   );
   const totalPages = Math.max(1, Math.ceil(filteredAtividades.length / PAGE_SIZE));
   const pagedAtividades = filteredAtividades.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
-
-  const handleExportBI = () => {
-    const workbook = utils.book_new();
-    const data = atividades.map(a => {
-      const obra = obras.find(o => o.id === a.obraId);
-      return {
-        ID: a.id,
-        Obra: obra?.nome || 'N/A',
-        Atividade: a.descricao,
-        Unidade: a.unidade,
-        Previsto: a.quantidadePrevista,
-        Executado: a.quantidadeExecutada,
-        Percentual: a.percentual.toFixed(2) + '%',
-        'Valor Unitário': a.valorUnitario || 0,
-        'Valor Total Orçado': a.quantidadePrevista * (a.valorUnitario || 0),
-        'Valor Total Executado': a.quantidadeExecutada * (a.valorUnitario || 0),
-        'Equipe Responsável': a.equipeResponsavel || 'N/A'
-      };
-    });
-
-    const ws = utils.json_to_sheet(data);
-    utils.book_append_sheet(workbook, ws, "PROGRESSO_FISICO_BI");
-    writeFile(workbook, `BI_Progresso_${format(new Date(), 'yyyy-MM-dd')}.xlsx`);
-    notify('success', 'Relatório de Progresso', 'Dados consolidados para Power BI exportados com sucesso!');
-  };
 
   const [formData, setFormData, limparRascunhoProgresso] = useAutoSaveForm('rascunho-progresso-fisico', {
     obraId: '',
@@ -158,13 +130,6 @@ export default function ProgressoFisico() {
           <p className="text-zinc-500 text-sm">Controle de execução e produtividade em tempo real.</p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          <button 
-            onClick={handleExportBI}
-            className="flex items-center justify-center gap-2 px-5 py-3 bg-white border border-zinc-200 text-zinc-600 rounded-2xl font-bold hover:bg-zinc-50 transition-all shadow-sm active:scale-95"
-          >
-            <Download className="w-5 h-5" />
-            Exportar BI
-          </button>
           {(isAdmin || isEncarregado) && (
             <button
               onClick={() => setIsModalOpen(true)}

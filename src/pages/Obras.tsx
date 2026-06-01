@@ -727,11 +727,11 @@ function ObraDetails({
               <p className="text-zinc-500 text-xs sm:text-sm">Linha de progressão por atividade.</p>
             </div>
             <button
-              onClick={() => window.location.href = '/atividades'}
+              onClick={() => navigate('/progresso')}
               className="shrink-0 flex items-center gap-1.5 px-3 py-2 bg-white border border-zinc-200 rounded-xl text-xs font-bold text-zinc-900 hover:bg-zinc-50 transition-all shadow-sm"
             >
               <Plus className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Gerenciar </span>Atividades
+              <span className="hidden sm:inline">+ </span>Atividade
             </button>
           </div>
 
@@ -748,8 +748,8 @@ function ObraDetails({
               <div className="py-20 text-center bg-white rounded-3xl border border-dashed border-zinc-200">
                 <Activity className="w-12 h-12 text-zinc-200 mx-auto mb-4" />
                 <p className="text-zinc-500 font-medium">Nenhuma atividade de mão de obra cadastrada para esta obra.</p>
-                <button 
-                  onClick={() => window.location.href = '/atividades'}
+                <button
+                  onClick={() => navigate('/progresso')}
                   className="mt-4 text-zinc-900 font-bold underline"
                 >
                   Cadastrar atividades agora
