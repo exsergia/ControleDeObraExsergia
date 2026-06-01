@@ -465,27 +465,69 @@ function ObraCard({
   );
 }
 
-function AtividadeInput({ value, onSave }: { value: number; onSave: (v: number) => void }) {
-  const [local, setLocal] = useState(value === 0 ? '' : String(value));
+function AtividadeCard({ ativ, onSave }: { key?: string; ativ: Atividade; onSave: (id: string, val: number) => void | Promise<void> }) {
+  const [localExec, setLocalExec] = useState(ativ.quantidadeExecutada ?? 0);
 
   useEffect(() => {
-    setLocal(value === 0 ? '' : String(value));
-  }, [value]);
+    setLocalExec(ativ.quantidadeExecutada ?? 0);
+  }, [ativ.quantidadeExecutada]);
+
+  const perc = ativ.quantidadePrevista > 0
+    ? Math.min(100, Math.round((localExec / ativ.quantidadePrevista) * 100))
+    : 0;
+  const status = perc < 50 ? 'Abaixo de 50%' : perc < 100 ? 'Entre 50% e 99%' : 'Concluído';
+  const colorClass = perc < 50 ? 'bg-red-500' : perc < 100 ? 'bg-amber-500' : 'bg-green-500';
+  const badgeClass = perc < 50 ? 'bg-red-50 text-red-600 border-red-100' : perc < 100 ? 'bg-amber-50 text-amber-600 border-amber-100' : 'bg-green-50 text-green-600 border-green-100';
 
   return (
-    <input
-      type="number"
-      className="w-16 sm:w-24 py-2 sm:py-3 bg-white border-2 border-zinc-100 rounded-2xl text-sm sm:text-lg font-bold text-zinc-900 focus:outline-none focus:border-zinc-900 transition-colors text-center shadow-inner"
-      value={local}
-      min="0"
-      onKeyDown={(e) => ['-', '+', 'e', 'E'].includes(e.key) && e.preventDefault()}
-      onChange={(e) => setLocal(e.target.value)}
-      onBlur={() => {
-        const val = Math.max(0, parseFloat(local) || 0);
-        setLocal(val === 0 ? '' : String(val));
-        onSave(val);
-      }}
-    />
+    <div className="bg-white p-4 sm:p-6 rounded-3xl border border-zinc-100 shadow-sm hover:shadow-md transition-all flex flex-col gap-4">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex-1 min-w-0 space-y-1">
+          <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-[0.2em]">ATIVIDADE</span>
+          <h4 className="text-base sm:text-xl font-bold text-zinc-900 leading-tight">{ativ.descricao}</h4>
+          <p className="text-xs text-zinc-500 font-medium">
+            Unidade: <span className="font-bold text-zinc-700">{ativ.unidade}</span> •
+            Previsto: <span className="font-bold text-zinc-700">{ativ.quantidadePrevista} {ativ.unidade}</span>
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2 shrink-0">
+          <div className="text-center space-y-1">
+            <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest block">Total ({ativ.unidade})</span>
+            <div className="w-16 sm:w-20 py-2 sm:py-3 bg-zinc-50 border border-zinc-100 rounded-2xl text-sm sm:text-lg font-bold text-zinc-900 text-center">
+              {ativ.quantidadePrevista}
+            </div>
+          </div>
+          <div className="text-center space-y-1">
+            <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest block">Executado ({ativ.unidade})</span>
+            <input
+              type="number"
+              className="w-16 sm:w-24 py-2 sm:py-3 bg-white border-2 border-zinc-100 rounded-2xl text-sm sm:text-lg font-bold text-zinc-900 focus:outline-none focus:border-zinc-900 transition-colors text-center shadow-inner"
+              value={localExec === 0 ? '' : localExec}
+              min="0"
+              onKeyDown={(e) => ['-', '+', 'e', 'E'].includes(e.key) && e.preventDefault()}
+              onChange={(e) => setLocalExec(Math.max(0, parseFloat(e.target.value) || 0))}
+              onBlur={() => onSave(ativ.id, localExec)}
+            />
+          </div>
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <span className={cn("px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border", badgeClass)}>
+            {status}
+          </span>
+          <span className="text-xs font-bold text-zinc-400">{perc}%</span>
+        </div>
+        <div className="h-2.5 w-full bg-zinc-100 rounded-full overflow-hidden">
+          <div
+            className={cn("h-full transition-all duration-300", colorClass)}
+            style={{ width: `${perc}%` }}
+          />
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -694,58 +736,13 @@ function ObraDetails({
           </div>
 
           <div className="grid gap-4">
-            {atividades.map(ativ => {
-              const perc = Math.round(ativ.percentual);
-              const status = perc < 50 ? 'Abaixo de 50%' : perc < 100 ? 'Entre 50% e 99%' : 'Concluído';
-              const colorClass = perc < 50 ? 'bg-red-500' : perc < 100 ? 'bg-amber-500' : 'bg-green-500';
-              const badgeClass = perc < 50 ? 'bg-red-50 text-red-600 border-red-100' : perc < 100 ? 'bg-amber-50 text-amber-600 border-amber-100' : 'bg-green-50 text-green-600 border-green-100';
-
-              return (
-                <div key={ativ.id} className="bg-white p-4 sm:p-6 rounded-3xl border border-zinc-100 shadow-sm hover:shadow-md transition-all flex flex-col gap-4">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex-1 min-w-0 space-y-1">
-                      <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-[0.2em]">ATIVIDADE</span>
-                      <h4 className="text-base sm:text-xl font-bold text-zinc-900 leading-tight">{ativ.descricao}</h4>
-                      <p className="text-xs text-zinc-500 font-medium">
-                        Unidade: <span className="font-bold text-zinc-700">{ativ.unidade}</span> •
-                        Previsto: <span className="font-bold text-zinc-700">{ativ.quantidadePrevista} {ativ.unidade}</span>
-                      </p>
-                    </div>
-
-                    <div className="flex items-center gap-2 shrink-0">
-                      <div className="text-center space-y-1">
-                        <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest block">Total ({ativ.unidade})</span>
-                        <div className="w-16 sm:w-20 py-2 sm:py-3 bg-zinc-50 border border-zinc-100 rounded-2xl text-sm sm:text-lg font-bold text-zinc-900 text-center">
-                          {ativ.quantidadePrevista}
-                        </div>
-                      </div>
-                      <div className="text-center space-y-1">
-                        <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest block">Executado ({ativ.unidade})</span>
-                        <AtividadeInput
-                          value={ativ.quantidadeExecutada ?? 0}
-                          onSave={(val) => handleUpdateAtividade(ativ.id, val)}
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className={cn("px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border", badgeClass)}>
-                        {status}
-                      </span>
-                      <span className="text-xs font-bold text-zinc-400">{perc}%</span>
-                    </div>
-                    <div className="h-2.5 w-full bg-zinc-100 rounded-full overflow-hidden">
-                      <div
-                        className={cn("h-full transition-all duration-1000", colorClass)}
-                        style={{ width: `${perc}%` }}
-                      />
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
+            {atividades.map(ativ => (
+              <AtividadeCard
+                key={ativ.id}
+                ativ={ativ}
+                onSave={handleUpdateAtividade}
+              />
+            ))}
 
             {atividades.length === 0 && (
               <div className="py-20 text-center bg-white rounded-3xl border border-dashed border-zinc-200">
