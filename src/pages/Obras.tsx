@@ -601,7 +601,7 @@ function ObraDetails({
             </p>
           </div>
         </div>
-        <div className="flex gap-2 pl-9">
+        <div className="flex gap-2">
           <button
             onClick={handleStartChecklist}
             className="flex-1 px-3 py-2 bg-zinc-900 text-white rounded-lg text-xs font-bold uppercase tracking-widest hover:bg-zinc-700 transition-all flex items-center justify-center gap-1.5"
