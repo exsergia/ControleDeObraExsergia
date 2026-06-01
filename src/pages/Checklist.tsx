@@ -30,7 +30,7 @@ import { useAutoSaveForm } from '../hooks/useAutoSaveForm';
 import { usePhotoCapture } from '../hooks/usePhotoCapture';
 
 export default function ChecklistPage() {
-  const { notify, isAdmin } = useAuth();
+  const { notify, isAdmin, userProfile } = useAuth();
   const navigate = useNavigate();
   const [activeStep, setActiveStep, limparRascunhoEtapa] = useAutoSaveForm('rascunho-checklist-etapa', 1);
   const [selectedObraId, setSelectedObraId, limparRascunhoObraChecklist] = useAutoSaveForm('rascunho-checklist-obra', '');
@@ -38,6 +38,7 @@ export default function ChecklistPage() {
   const [obrasSnap] = useCollection(collection(db, 'obras'));
   const [operadoresSnap] = useCollection(collection(db, 'operadores'));
   const [adminAccessSnap] = useCollection(collection(db, 'admin_access'));
+  const [encarregadosSnap] = useCollection(collection(db, 'encarregados'));
   const [materiaisSnap] = useCollection(
     selectedObraId 
       ? query(collection(db, 'materiais'), where('obraId', '==', selectedObraId), where('statusConferencia', '==', 'Pendente'))
@@ -65,6 +66,7 @@ export default function ChecklistPage() {
   const materiais = (materiaisSnap?.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Material[]) || [];
   const atividades = (atividadesSnap?.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Atividade[]) || [];
   const todosOperadores = (operadoresSnap?.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Operator[]) || [];
+  const encarregados = (encarregadosSnap?.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Operator[]) || [];
 
   const adminEmails = new Set(
     (adminAccessSnap?.docs || [])
@@ -73,13 +75,32 @@ export default function ChecklistPage() {
       .map(id => id.replace('email:', '').toLowerCase())
   );
 
+  const encarregadoIds = new Set(encarregados.map(e => e.id));
+  const currentUserEmail = auth.currentUser?.email?.toLowerCase() || '';
+
   const isAdminOp = (op: Operator) =>
     op.role === 'admin' || adminEmails.has((op.email || '').toLowerCase());
 
+  const isCurrentUser = (op: Operator) =>
+    (!!userProfile?.id && op.id === userProfile.id) ||
+    (!!currentUserEmail && (op.email || '').toLowerCase() === currentUserEmail);
+
+  // Operadores puros: não são encarregados, não são admins, não são o usuário logado
+  const pureOperators = todosOperadores.filter(op =>
+    !encarregadoIds.has(op.id) && !isAdminOp(op) && !isCurrentUser(op)
+  );
+
+  // Encarregados: não são admins, não são o usuário logado
+  const filteredEncarregados = encarregados.filter(enc =>
+    !isAdminOp(enc) && !isCurrentUser(enc)
+  );
+
+  const todosParaEquipe: Operator[] = [...pureOperators, ...filteredEncarregados];
+
   const selectedObra = obras.find(o => o.id === selectedObraId);
   const operadores = selectedObra?.operadoresIds?.length
-    ? todosOperadores.filter(op => selectedObra.operadoresIds?.includes(op.id) && !isAdminOp(op))
-    : todosOperadores.filter(op => !isAdminOp(op));
+    ? todosParaEquipe.filter(op => selectedObra.operadoresIds?.includes(op.id))
+    : todosParaEquipe;
 
   const handleFinish = async () => {
     if (!selectedObraId) return notify('warning', 'Atenção', 'Selecione uma obra antes de finalizar.');
