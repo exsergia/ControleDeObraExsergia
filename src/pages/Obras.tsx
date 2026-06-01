@@ -465,6 +465,30 @@ function ObraCard({
   );
 }
 
+function AtividadeInput({ value, onSave }: { value: number; onSave: (v: number) => void }) {
+  const [local, setLocal] = useState(value === 0 ? '' : String(value));
+
+  useEffect(() => {
+    setLocal(value === 0 ? '' : String(value));
+  }, [value]);
+
+  return (
+    <input
+      type="number"
+      className="w-16 sm:w-24 py-2 sm:py-3 bg-white border-2 border-zinc-100 rounded-2xl text-sm sm:text-lg font-bold text-zinc-900 focus:outline-none focus:border-zinc-900 transition-colors text-center shadow-inner"
+      value={local}
+      min="0"
+      onKeyDown={(e) => ['-', '+', 'e', 'E'].includes(e.key) && e.preventDefault()}
+      onChange={(e) => setLocal(e.target.value)}
+      onBlur={() => {
+        const val = Math.max(0, parseFloat(local) || 0);
+        setLocal(val === 0 ? '' : String(val));
+        onSave(val);
+      }}
+    />
+  );
+}
+
 function ObraDetails({
   obra,
   onBack,
@@ -697,13 +721,9 @@ function ObraDetails({
                       </div>
                       <div className="text-center space-y-1">
                         <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest block">Executado ({ativ.unidade})</span>
-                        <input
-                          type="number"
-                          className="w-16 sm:w-24 py-2 sm:py-3 bg-white border-2 border-zinc-100 rounded-2xl text-sm sm:text-lg font-bold text-zinc-900 focus:outline-none focus:border-zinc-900 transition-colors text-center shadow-inner"
-                          value={!ativ.quantidadeExecutada ? '' : ativ.quantidadeExecutada}
-                          min="0"
-                          onKeyDown={(e) => ['-', '+', 'e', 'E'].includes(e.key) && e.preventDefault()}
-                          onChange={(e) => handleUpdateAtividade(ativ.id, Math.max(0, parseFloat(e.target.value) || 0))}
+                        <AtividadeInput
+                          value={ativ.quantidadeExecutada ?? 0}
+                          onSave={(val) => handleUpdateAtividade(ativ.id, val)}
                         />
                       </div>
                     </div>
