@@ -578,74 +578,77 @@ function ObraDetails({
 
   return (
     <div className="space-y-6 animate-in slide-in-from-right duration-300">
-      <div className="flex items-center gap-4 bg-white p-6 rounded-2xl border border-zinc-200 shadow-sm">
-        <button onClick={onBack} className="p-2 hover:bg-zinc-100 rounded-full text-zinc-500">
-          <ChevronDown className="w-6 h-6 rotate-90" />
-        </button>
-        <div className="flex-1">
-          <div className="flex items-center gap-3 mb-1">
-            <h2 className="text-xl font-bold text-zinc-900 leading-tight">{obra.nome}</h2>
-            <span className={cn(
-               "px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-widest border",
-               obra.status === 'Ativa' ? "bg-green-50 text-green-600 border-green-200" :
-               obra.status === 'Concluída' ? "bg-blue-50 text-blue-600 border-blue-200" :
-               "bg-amber-50 text-amber-600 border-amber-200"
-            )}>
-              {obra.status}
-            </span>
+      <div className="bg-white p-4 sm:p-6 rounded-2xl border border-zinc-200 shadow-sm space-y-3">
+        <div className="flex items-start gap-3">
+          <button onClick={onBack} className="p-2 hover:bg-zinc-100 rounded-full text-zinc-500 shrink-0 mt-0.5">
+            <ChevronDown className="w-5 h-5 rotate-90" />
+          </button>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap mb-1">
+              <h2 className="text-base sm:text-xl font-bold text-zinc-900 leading-tight truncate">{obra.nome}</h2>
+              <span className={cn(
+                "px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-widest border shrink-0",
+                obra.status === 'Ativa' ? "bg-green-50 text-green-600 border-green-200" :
+                obra.status === 'Concluída' ? "bg-blue-50 text-blue-600 border-blue-200" :
+                "bg-amber-50 text-amber-600 border-amber-200"
+              )}>
+                {obra.status}
+              </span>
+            </div>
+            <p className="text-xs font-medium text-zinc-500 flex items-center gap-1.5 truncate">
+              <Briefcase className="w-3.5 h-3.5 shrink-0" />
+              {obra.cliente} • CC: {obra.centroCusto}
+            </p>
           </div>
-          <p className="text-sm font-medium text-zinc-500 flex items-center gap-2">
-            <Briefcase className="w-4 h-4" />
-            {obra.cliente} • CC: {obra.centroCusto}
-          </p>
         </div>
-        <div className="flex gap-2 flex-wrap">
+        <div className="flex gap-2 pl-9">
           <button
             onClick={handleStartChecklist}
-            className="px-4 py-2 bg-zinc-900 text-white rounded-lg text-xs font-bold uppercase tracking-widest hover:bg-zinc-700 transition-all flex items-center gap-2"
+            className="flex-1 px-3 py-2 bg-zinc-900 text-white rounded-lg text-xs font-bold uppercase tracking-widest hover:bg-zinc-700 transition-all flex items-center justify-center gap-1.5"
           >
-            <ClipboardCheck className="w-4 h-4" />
-            Fazer Checklist
+            <ClipboardCheck className="w-3.5 h-3.5 shrink-0" />
+            <span className="truncate">Fazer Checklist</span>
           </button>
           {obra.status !== 'Concluída' && (
             <button
               onClick={() => onUpdateStatus(obra.id, 'Concluída')}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg text-xs font-bold uppercase tracking-widest hover:bg-blue-700 transition-all flex items-center gap-2"
+              className="flex-1 px-3 py-2 bg-blue-600 text-white rounded-lg text-xs font-bold uppercase tracking-widest hover:bg-blue-700 transition-all flex items-center justify-center gap-1.5"
             >
-              <CheckCircle2 className="w-4 h-4" />
-              Concluir Obra
+              <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+              <span className="truncate">Concluir Obra</span>
             </button>
           )}
           {obra.status === 'Concluída' && (
             <button
               onClick={() => onUpdateStatus(obra.id, 'Ativa')}
-              className="px-4 py-2 bg-green-600 text-white rounded-lg text-xs font-bold uppercase tracking-widest hover:bg-green-700 transition-all flex items-center gap-2"
+              className="flex-1 px-3 py-2 bg-green-600 text-white rounded-lg text-xs font-bold uppercase tracking-widest hover:bg-green-700 transition-all flex items-center justify-center gap-1.5"
             >
-              <Activity className="w-4 h-4" />
-              Reabrir Obra
+              <Activity className="w-3.5 h-3.5 shrink-0" />
+              <span className="truncate">Reabrir Obra</span>
             </button>
           )}
         </div>
       </div>
 
-      <div className="flex bg-white p-1 rounded-xl border border-zinc-200 w-fit">
+      <div className="flex bg-white p-1 rounded-xl border border-zinc-200 w-full">
         {[
-          { id: 'progresso', label: 'Mão de Obra', icon: Activity },
-          { id: 'equipe', label: 'Equipe Atribuída', icon: Users },
-          { id: 'informacoes', label: 'Informações', icon: Settings2 }
+          { id: 'progresso', label: 'Mão de Obra', labelMobile: 'Progresso', icon: Activity },
+          { id: 'equipe', label: 'Equipe Atribuída', labelMobile: 'Equipe', icon: Users },
+          { id: 'informacoes', label: 'Informações', labelMobile: 'Info', icon: Settings2 }
         ].map(tab => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id as any)}
             className={cn(
-              "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all",
-              activeTab === tab.id 
-                ? "bg-zinc-900 text-white shadow-md" 
+              "flex-1 flex items-center justify-center gap-1.5 px-2 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-bold transition-all",
+              activeTab === tab.id
+                ? "bg-zinc-900 text-white shadow-md"
                 : "text-zinc-500 hover:bg-zinc-50"
             )}
           >
-            <tab.icon className="w-4 h-4" />
-            {tab.label}
+            <tab.icon className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+            <span className="sm:hidden truncate">{tab.labelMobile}</span>
+            <span className="hidden sm:inline truncate">{tab.label}</span>
           </button>
         ))}
       </div>
@@ -674,53 +677,47 @@ function ObraDetails({
               const badgeClass = perc < 50 ? 'bg-red-50 text-red-600 border-red-100' : perc < 100 ? 'bg-amber-50 text-amber-600 border-amber-100' : 'bg-green-50 text-green-600 border-green-100';
 
               return (
-                <div key={ativ.id} className="bg-white p-6 rounded-3xl border border-zinc-100 shadow-sm hover:shadow-md transition-all flex flex-col gap-6 relative overflow-hidden group">
-                  <div className="flex items-start justify-between gap-6">
-                    <div className="flex-1 space-y-2">
+                <div key={ativ.id} className="bg-white p-4 sm:p-6 rounded-3xl border border-zinc-100 shadow-sm hover:shadow-md transition-all flex flex-col gap-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex-1 min-w-0 space-y-1">
                       <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-[0.2em]">ATIVIDADE</span>
-                      <h4 className="text-xl font-bold text-zinc-900 leading-tight pr-4">{ativ.descricao}</h4>
-                      <p className="text-sm text-zinc-500 font-medium leading-relaxed">
-                        Unidade: <span className="font-bold text-zinc-700">{ativ.unidade}</span> • 
+                      <h4 className="text-base sm:text-xl font-bold text-zinc-900 leading-tight">{ativ.descricao}</h4>
+                      <p className="text-xs text-zinc-500 font-medium">
+                        Unidade: <span className="font-bold text-zinc-700">{ativ.unidade}</span> •
                         Previsto: <span className="font-bold text-zinc-700">{ativ.quantidadePrevista} {ativ.unidade}</span>
                       </p>
                     </div>
 
-                    <div className="flex items-center gap-3">
-                      <div className="text-center space-y-2">
-                         <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block">Total ({ativ.unidade})</span>
-                         <div className="w-20 py-3 bg-zinc-50 border border-zinc-100 rounded-2xl text-lg font-bold text-zinc-900">
-                           {ativ.quantidadePrevista}
-                         </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <div className="text-center space-y-1">
+                        <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest block">Total ({ativ.unidade})</span>
+                        <div className="w-16 sm:w-20 py-2 sm:py-3 bg-zinc-50 border border-zinc-100 rounded-2xl text-sm sm:text-lg font-bold text-zinc-900 text-center">
+                          {ativ.quantidadePrevista}
+                        </div>
                       </div>
-                      <div className="text-center space-y-2">
-                         <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block">Executado ({ativ.unidade})</span>
-                         <input 
-                           type="number"
-                           className="w-24 py-3 bg-white border-2 border-zinc-100 rounded-2xl text-lg font-bold text-zinc-900 focus:outline-none focus:border-zinc-900 transition-colors text-center shadow-inner"
-                           value={!ativ.quantidadeExecutada ? '' : ativ.quantidadeExecutada}
-                           min="0"
-                           onKeyDown={(e) => ['-', '+', 'e', 'E'].includes(e.key) && e.preventDefault()}
-                           onChange={(e) => handleUpdateAtividade(ativ.id, Math.max(0, parseFloat(e.target.value) || 0))}
-                         />
-                      </div>
-                      <div className="text-center space-y-2 hidden sm:block">
-                         <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block">Resumo</span>
-                         <div className="px-4 py-3 bg-zinc-50 border border-zinc-100 rounded-2xl text-xs font-bold text-zinc-500">
-                           {ativ.quantidadeExecutada} / {ativ.quantidadePrevista} <br/> {ativ.unidade}
-                         </div>
+                      <div className="text-center space-y-1">
+                        <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest block">Executado ({ativ.unidade})</span>
+                        <input
+                          type="number"
+                          className="w-16 sm:w-24 py-2 sm:py-3 bg-white border-2 border-zinc-100 rounded-2xl text-sm sm:text-lg font-bold text-zinc-900 focus:outline-none focus:border-zinc-900 transition-colors text-center shadow-inner"
+                          value={!ativ.quantidadeExecutada ? '' : ativ.quantidadeExecutada}
+                          min="0"
+                          onKeyDown={(e) => ['-', '+', 'e', 'E'].includes(e.key) && e.preventDefault()}
+                          onChange={(e) => handleUpdateAtividade(ativ.id, Math.max(0, parseFloat(e.target.value) || 0))}
+                        />
                       </div>
                     </div>
                   </div>
 
-                  <div className="space-y-4">
+                  <div className="space-y-2">
                     <div className="flex items-center justify-between">
-                      <span className={cn("px-4 py-1.5 rounded-full text-[11px] font-bold uppercase tracking-wider border", badgeClass)}>
+                      <span className={cn("px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border", badgeClass)}>
                         {status}
                       </span>
                       <span className="text-xs font-bold text-zinc-400">{perc}%</span>
                     </div>
-                    <div className="h-3 w-full bg-zinc-100 rounded-full overflow-hidden">
-                      <div 
+                    <div className="h-2.5 w-full bg-zinc-100 rounded-full overflow-hidden">
+                      <div
                         className={cn("h-full transition-all duration-1000", colorClass)}
                         style={{ width: `${perc}%` }}
                       />
