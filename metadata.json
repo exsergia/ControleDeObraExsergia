@@ -1,5 +1,5 @@
 {
-  "name": "Exsergia - Controle de Obra",
+  "name": "Exsergia Hub",
   "description": "Sistema completo para controle de materiais, conferência de campo, avanço de mão de obra e integração financeira.",
   "requestFramePermissions": ["camera"],
   "majorCapabilities": []

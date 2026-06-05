@@ -611,7 +611,7 @@ function LoginView() {
         </div>
         <div>
           <h1 className="text-5xl font-black tracking-tighter mb-6">
-            CONTROLE DE OBRA <br /> DE ALTA PRECISÃO.
+            EXSERGIA HUB
           </h1>
           <p className="text-slate-400 max-w-md text-lg leading-relaxed font-medium">
             Centralize materiais, conferência de campo, avanço de mão de obra e integração financeira em um único lugar.
@@ -967,7 +967,7 @@ function Layout({ children }: { children: React.ReactNode }) {
             <div className="w-6 h-6 bg-blue-600 rounded flex items-center justify-center">
               <HardHat className="text-white w-3.5 h-3.5" />
             </div>
-            EXSERGIA
+            EXSERGIA HUB
           </div>
         </div>
 

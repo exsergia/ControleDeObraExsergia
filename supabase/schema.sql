@@ -1,4 +1,4 @@
--- EXSERGIA CONTROLE DE OBRA - SUPABASE LIMPO
+-- EXSERGIA HUB - SUPABASE LIMPO
 -- Rode este arquivo no SQL Editor do Supabase.
 -- Ele cria a estrutura zerada, sem obras/materiais/checklists fictícios.
 -- Mantém somente os administradores iniciais em admin_access.
