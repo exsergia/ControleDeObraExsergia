@@ -462,7 +462,7 @@ function ObraCard({
   );
 }
 
-function AtividadeCard({ ativ, onSave }: { key?: string; ativ: Atividade; onSave: (id: string, val: number) => void | Promise<void> }) {
+function AtividadeCard({ ativ, onSave, readOnly = false }: { key?: string; ativ: Atividade; onSave: (id: string, val: number) => void | Promise<void>; readOnly?: boolean }) {
   const [localExec, setLocalExec] = useState(ativ.quantidadeExecutada ?? 0);
 
   useEffect(() => {
@@ -499,12 +499,16 @@ function AtividadeCard({ ativ, onSave }: { key?: string; ativ: Atividade; onSave
             <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest block">Executado ({ativ.unidade})</span>
             <input
               type="number"
-              className="w-16 sm:w-24 py-2 sm:py-3 bg-white border-2 border-zinc-100 rounded-2xl text-sm sm:text-lg font-bold text-zinc-900 focus:outline-none focus:border-zinc-900 transition-colors text-center shadow-inner"
+              className={cn(
+                "w-16 sm:w-24 py-2 sm:py-3 border-2 rounded-2xl text-sm sm:text-lg font-bold text-zinc-900 focus:outline-none transition-colors text-center shadow-inner",
+                readOnly ? "bg-zinc-50 border-zinc-100 cursor-not-allowed" : "bg-white border-zinc-100 focus:border-zinc-900"
+              )}
               value={localExec === 0 ? '' : localExec}
               min="0"
+              readOnly={readOnly}
               onKeyDown={(e) => ['-', '+', 'e', 'E'].includes(e.key) && e.preventDefault()}
-              onChange={(e) => setLocalExec(Math.max(0, parseFloat(e.target.value) || 0))}
-              onBlur={() => onSave(ativ.id, localExec)}
+              onChange={(e) => !readOnly && setLocalExec(Math.max(0, parseFloat(e.target.value) || 0))}
+              onBlur={() => !readOnly && onSave(ativ.id, localExec)}
             />
           </div>
         </div>
@@ -537,7 +541,7 @@ function ObraDetails({
   onBack: () => void,
   onUpdateStatus: (obraId: string, status: ObraStatus) => void
 }) {
-  const { isAdmin, notify } = useAuth();
+  const { isAdmin, isEncarregado, notify } = useAuth();
   const navigate = useNavigate();
   const [atividadesSnap] = useCollection(query(collection(db, 'atividades'), where('obraId', '==', obra.id)));
   const [operadoresSnap] = useCollection(collection(db, 'operadores'));
@@ -738,6 +742,7 @@ function ObraDetails({
                 key={ativ.id}
                 ativ={ativ}
                 onSave={handleUpdateAtividade}
+                readOnly={!isAdmin && !isEncarregado}
               />
             ))}
 
