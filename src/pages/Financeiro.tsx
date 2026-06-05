@@ -4,13 +4,12 @@ import { useCollection } from '../lib/supabaseHooks';
 import { collection, query, orderBy } from '../lib/supabaseDb';
 import { db } from '../lib/supabase';
 import { Obra, Material, Atividade } from '../types';
-import { 
-  FileText, 
-  Download, 
-  TrendingUp, 
-  DollarSign, 
-  PieChart, 
-  CheckCircle2, 
+import {
+  FileText,
+  TrendingUp,
+  DollarSign,
+  PieChart,
+  CheckCircle2,
   Search,
   Filter,
   ArrowRight,
@@ -20,8 +19,6 @@ import {
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 
-import { utils, writeFile } from 'xlsx';
-import { format } from 'date-fns';
 import { useAuth } from '../App';
 import { parseDate } from '../lib/dateUtils';
 
@@ -38,257 +35,6 @@ export default function Financeiro() {
   const obras = (obrasSnap?.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Obra[]) || [];
   const materiais = (materiaisSnap?.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Material[]) || [];
   const atividades = (atividadesSnap?.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Atividade[]) || [];
-
-  const handleExport = () => {
-    const wb = utils.book_new();
-    const BRL_FMT = '"R$"\\ #,##0.00';
-
-    const applyFmt = (ws: any, cols: string[], rowCount: number, fmt: string) => {
-      for (let r = 2; r <= rowCount + 1; r++) {
-        cols.forEach(c => {
-          const ref = `${c}${r}`;
-          if (ws[ref]) ws[ref].z = fmt;
-        });
-      }
-    };
-
-    // 1. Current View Tab
-    const currentData = activeTab === 'materiais'
-      ? filteredMateriais.map(m => ({
-          Obra: obras.find(o => o.id === m.obraId)?.nome || '---',
-          Material: m.descricao,
-          Entrega: m.codigoEntrega,
-          Fornecedor: m.fornecedor || '---',
-          Quantidade: m.quantidade,
-          Unidade: m.unidade,
-          'Preço Unitário': m.precoUnitario,
-          'Valor Total': m.valorTotal,
-          Status: m.statusConferencia,
-          Data: (() => { const dt = parseDate(m.dataEntrega); return dt ? format(dt, 'dd/MM/yyyy') : '---'; })()
-        }))
-      : filteredAtividades.map(a => ({
-          Obra: obras.find(o => o.id === a.obraId)?.nome || '---',
-          Atividade: a.descricao,
-          Unidade: a.unidade,
-          Prevista: a.quantidadePrevista,
-          Executada: a.quantidadeExecutada,
-          Percentual: `${a.percentual.toFixed(2)}%`,
-          'Preço Unitário': a.valorUnitario || 0,
-          'Valor Orçado': a.quantidadePrevista * (a.valorUnitario || 0),
-          'Valor Executado': a.quantidadeExecutada * (a.valorUnitario || 0)
-        }));
-
-    const ws = utils.json_to_sheet(currentData);
-
-    if (activeTab === 'materiais') {
-      ws['!cols'] = [
-        { wch: 22 }, { wch: 32 }, { wch: 16 }, { wch: 22 },
-        { wch: 11 }, { wch: 9 }, { wch: 17 }, { wch: 17 }, { wch: 13 }, { wch: 13 }
-      ];
-      applyFmt(ws, ['G', 'H'], currentData.length, BRL_FMT);
-    } else {
-      ws['!cols'] = [
-        { wch: 22 }, { wch: 32 }, { wch: 9 }, { wch: 11 },
-        { wch: 11 }, { wch: 11 }, { wch: 17 }, { wch: 17 }, { wch: 17 }
-      ];
-      applyFmt(ws, ['G', 'H', 'I'], currentData.length, BRL_FMT);
-    }
-
-    utils.book_append_sheet(wb, ws, activeTab === 'materiais' ? "Relatórios Materiais" : "Progresso Financeiro");
-
-    // 2. BI CONSOLIDATED DATA (Flat Table for Power BI)
-    const biData = [
-      ...materiais.map(m => ({
-        CATEGORIA: 'MATERIAL',
-        OBRA: obras.find(o => o.id === m.obraId)?.nome || 'N/A',
-        ITEM: m.descricao,
-        DATA: (() => { const dt = parseDate(m.dataEntrega); return dt ? format(dt, 'yyyy-MM-dd') : 'N/A'; })(),
-        VALOR_UN: m.precoUnitario,
-        QUANTIDADE: m.quantidade,
-        TOTAL: m.valorTotal,
-        STATUS: m.statusConferencia,
-        UNIDADE: m.unidade
-      })),
-      ...atividades.map(a => ({
-        CATEGORIA: 'ATIVIDADE',
-        OBRA: obras.find(o => o.id === a.obraId)?.nome || 'N/A',
-        ITEM: a.descricao,
-        DATA: 'ORÇADO',
-        VALOR_UN: a.valorUnitario || 0,
-        QUANTIDADE: a.quantidadeExecutada,
-        TOTAL: a.quantidadeExecutada * (a.valorUnitario || 0),
-        STATUS: 'PROCESSO',
-        UNIDADE: a.unidade
-      }))
-    ];
-
-    const biWs = utils.json_to_sheet(biData);
-    biWs['!cols'] = [
-      { wch: 13 }, { wch: 26 }, { wch: 36 }, { wch: 13 },
-      { wch: 17 }, { wch: 13 }, { wch: 17 }, { wch: 13 }, { wch: 11 }
-    ];
-    applyFmt(biWs, ['E', 'G'], biData.length, BRL_FMT);
-
-    utils.book_append_sheet(wb, biWs, "DADOS_BI_POWER_BI");
-
-    writeFile(wb, `Financeiro_BI_${format(new Date(), 'yyyy-MM-dd')}.xlsx`);
-    notify('success', 'Relatório Exportado', 'A base financeira para Power BI foi gerada com sucesso.');
-  };
-
-  const handleExportBoletim = () => {
-    const wb = utils.book_new();
-    const BRL_FMT = '"R$"\\ #,##0.00';
-    const PCT_FMT = '0.00%';
-    const QTY_FMT = '#,##0.00';
-
-    const obrasToProcess = selectedObraId === 'Todas'
-      ? obras
-      : obras.filter(o => o.id === selectedObraId);
-
-    let hasData = false;
-
-    for (const obra of obrasToProcess) {
-      const obraAtividades = atividades.filter(a => a.obraId === obra.id);
-      if (obraAtividades.length === 0) continue;
-      hasData = true;
-
-      const hoje = new Date();
-      const periodoInicio = format(new Date(hoje.getFullYear(), hoje.getMonth(), 1), 'dd/MM/yyyy');
-      const periodoFim = format(hoje, 'dd/MM/yyyy');
-
-      const aoa: any[][] = [];
-
-      // Row 0: Título
-      aoa.push([
-        'Boletim de Medição Mensal - Detalhado',
-        '', '', '', '', '', '', '', '', '', '',
-        'Data de início de Contrato:', '',
-        'Data de término de Contrato:', '',
-        'Data:', format(hoje, 'dd/MM/yy'), 'Revisão:', 1
-      ]);
-
-      // Row 1: Dados do contrato
-      aoa.push([
-        'Contrato N.°', '', obra.centroCusto || '0', '',
-        'Contratada:', '', 'EXSERGIA LTDA', '',
-        'Objeto:', '', obra.nome || '---',
-        'Período:', `${periodoInicio} a ${periodoFim}`, '',
-        'Medição:', 'BM-XXXX-YYYY-01',
-        '', '', ''
-      ]);
-
-      // Row 2: Cabeçalho de grupos (mesclados)
-      aoa.push([
-        'CC / PEP', 'CLASS. CONT.', 'ITEM', 'DESCRIÇÃO', 'UNID.',
-        'REAIS', '',
-        'QUANTIDADES', '', '',
-        'VALORES EM REAIS', '', '', '', '',
-        'EXEC. %'
-      ]);
-
-      // Row 3: Sub-cabeçalhos
-      aoa.push([
-        '', '', '', '', '',
-        'PREÇO UNITÁRIO', 'TOTAL PREVISTO',
-        'ACUMULADO ANTERIOR', 'DO MÊS', 'TOTAL ACUMULADO',
-        'ACUMULADO ANTERIOR', 'DO MÊS', 'TOTAL ACUMULADO', 'PREVISTO CONTRATO', 'SALDO',
-        ''
-      ]);
-
-      // Row 4: Cabeçalho da obra (seção)
-      aoa.push([
-        obra.centroCusto || '', '', '',
-        obra.nome.toUpperCase(),
-        '', '', '', '', '', '', '', '', '', '', '', ''
-      ]);
-
-      // Linhas de atividades
-      obraAtividades.forEach((ativ, idx) => {
-        const precoUnit = ativ.valorUnitario || 0;
-        const prevContrato = ativ.quantidadePrevista * precoUnit;
-        const doMesQty = ativ.quantidadeExecutada;
-        const doMesValor = doMesQty * precoUnit;
-        const saldo = prevContrato - doMesValor;
-        const execPct = ativ.percentual / 100;
-
-        aoa.push([
-          obra.centroCusto || '',
-          '',
-          String(idx + 1),
-          ativ.descricao,
-          ativ.unidade,
-          precoUnit,
-          ativ.quantidadePrevista,
-          0,
-          doMesQty,
-          doMesQty,
-          0,
-          doMesValor,
-          doMesValor,
-          prevContrato,
-          saldo,
-          execPct
-        ]);
-      });
-
-      // Linha de totais
-      const totPrevContrato = obraAtividades.reduce((acc, a) => acc + a.quantidadePrevista * (a.valorUnitario || 0), 0);
-      const totExecutado = obraAtividades.reduce((acc, a) => acc + a.quantidadeExecutada * (a.valorUnitario || 0), 0);
-      const totPct = totPrevContrato > 0 ? totExecutado / totPrevContrato : 0;
-      aoa.push([
-        '', '', '', 'TOTAL GERAL', '',
-        '', '', '', '', '',
-        0, totExecutado, totExecutado, totPrevContrato, totPrevContrato - totExecutado, totPct
-      ]);
-
-      const ws = utils.aoa_to_sheet(aoa);
-
-      ws['!cols'] = [
-        { wch: 12 }, { wch: 13 }, { wch: 10 }, { wch: 52 }, { wch: 8 },
-        { wch: 17 }, { wch: 15 }, { wch: 19 }, { wch: 12 }, { wch: 19 },
-        { wch: 19 }, { wch: 17 }, { wch: 19 }, { wch: 19 }, { wch: 17 }, { wch: 10 }
-      ];
-
-      ws['!merges'] = [
-        { s: { r: 0, c: 0 }, e: { r: 0, c: 10 } },   // Título
-        { s: { r: 2, c: 0 }, e: { r: 3, c: 0 } },    // CC/PEP
-        { s: { r: 2, c: 1 }, e: { r: 3, c: 1 } },    // CLASS. CONT.
-        { s: { r: 2, c: 2 }, e: { r: 3, c: 2 } },    // ITEM
-        { s: { r: 2, c: 3 }, e: { r: 3, c: 3 } },    // DESCRIÇÃO
-        { s: { r: 2, c: 4 }, e: { r: 3, c: 4 } },    // UNID.
-        { s: { r: 2, c: 5 }, e: { r: 2, c: 6 } },    // REAIS
-        { s: { r: 2, c: 7 }, e: { r: 2, c: 9 } },    // QUANTIDADES
-        { s: { r: 2, c: 10 }, e: { r: 2, c: 14 } },  // VALORES EM REAIS
-        { s: { r: 2, c: 15 }, e: { r: 3, c: 15 } },  // EXEC. %
-        { s: { r: 4, c: 3 }, e: { r: 4, c: 15 } },   // Nome da obra
-      ];
-
-      // Aplicar formatos numéricos a partir da linha 6 (Excel) = índice 5 (0-based)
-      for (let excelRow = 6; excelRow <= aoa.length; excelRow++) {
-        ['F', 'K', 'L', 'M', 'N', 'O'].forEach(col => {
-          const ref = `${col}${excelRow}`;
-          if (ws[ref] && typeof ws[ref].v === 'number') ws[ref].z = BRL_FMT;
-        });
-        const pctRef = `P${excelRow}`;
-        if (ws[pctRef] && typeof ws[pctRef].v === 'number') ws[pctRef].z = PCT_FMT;
-        ['G', 'H', 'I', 'J'].forEach(col => {
-          const ref = `${col}${excelRow}`;
-          if (ws[ref] && typeof ws[ref].v === 'number') ws[ref].z = QTY_FMT;
-        });
-      }
-
-      const safeSheetName = obra.nome.replace(/[/\\*?:[\]]/g, '-').slice(0, 31);
-      utils.book_append_sheet(wb, ws, safeSheetName);
-    }
-
-    if (!hasData) {
-      notify('error', 'Sem dados', 'Nenhuma atividade encontrada para gerar o boletim.');
-      return;
-    }
-
-    writeFile(wb, `Boletim_Medicao_${format(new Date(), 'yyyy-MM-dd')}.xlsx`);
-    notify('success', 'Boletim Exportado', 'O Boletim de Medição Mensal foi gerado com sucesso.');
-  };
 
   const stats = useMemo(() => {
     const filterMat = materiais.filter(m => selectedObraId === 'Todas' || m.obraId === selectedObraId);
@@ -332,24 +78,6 @@ export default function Financeiro() {
           <h2 className="text-2xl font-bold tracking-tight text-zinc-900 uppercase tracking-widest">Painel Financeiro</h2>
           <p className="text-zinc-500 text-sm font-medium">Consolidação de custos e auditoria de entregas.</p>
         </div>
-        {isAdmin && (
-          <div className="flex flex-wrap gap-3">
-            <button
-              onClick={handleExport}
-              className="flex items-center justify-center gap-2 px-5 py-3 bg-zinc-900 text-white rounded-xl font-bold hover:bg-zinc-800 transition-all shadow-xl shadow-zinc-200 active:scale-95"
-            >
-              <Download className="w-4 h-4" />
-              Exportar Excel
-            </button>
-            <button
-              onClick={handleExportBoletim}
-              className="flex items-center justify-center gap-2 px-5 py-3 bg-zinc-700 text-white rounded-xl font-bold hover:bg-zinc-600 transition-all shadow-xl shadow-zinc-200 active:scale-95"
-            >
-              <FileText className="w-4 h-4" />
-              Boletim de Medição
-            </button>
-          </div>
-        )}
       </div>
 
       {/* Finance Stats */}
