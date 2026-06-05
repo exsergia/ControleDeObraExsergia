@@ -276,8 +276,8 @@ export default function Materiais() {
 
       {/* Modal Registration */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-[60] flex items-end sm:items-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm">
-          <div className="bg-white w-full sm:max-w-2xl rounded-t-2xl sm:rounded-2xl shadow-2xl overflow-hidden animate-in slide-in-from-bottom-4 sm:zoom-in-95 duration-200">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
             <div className="p-6 border-b border-zinc-100 flex items-center justify-between bg-zinc-50">
               <h3 className="text-lg font-bold text-zinc-900 uppercase tracking-widest">Lançar Material</h3>
               <button onClick={() => setIsModalOpen(false)} className="p-2 hover:bg-zinc-200 rounded-full transition-colors">
