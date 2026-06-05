@@ -90,10 +90,7 @@ export default function Obras() {
   };
 
   const todasObras = (obrasSnap?.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Obra[]) || [];
-  // Encarregado só vê as obras que estão sob sua responsabilidade
-  const obras = isEncarregado && encarregadoObraIds.length > 0
-    ? todasObras.filter(o => encarregadoObraIds.includes(o.id))
-    : isEncarregado ? [] : todasObras;
+  const obras = todasObras;
 
   const filteredObras = obras.filter(o =>
     (o.nome.toLowerCase().includes(search.toLowerCase()) || o.cliente?.toLowerCase().includes(search.toLowerCase())) &&

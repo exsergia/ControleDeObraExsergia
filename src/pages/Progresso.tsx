@@ -41,10 +41,7 @@ export default function ProgressoFisico() {
     
   const [atividadesSnap, loading] = useCollection(actividadesQuery);
 
-  const todasObras = (obrasSnap?.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Obra[]) || [];
-  const obras = isEncarregado && encarregadoObraIds.length > 0
-    ? todasObras.filter(o => encarregadoObraIds.includes(o.id))
-    : isEncarregado ? [] : todasObras;
+  const obras = (obrasSnap?.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Obra[]) || [];
   const atividades = (atividadesSnap?.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Atividade[]) || [];
   const operadores = (operadoresSnap?.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Operator[]) || [];
 
