@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useCollection } from '../lib/supabaseHooks';
-import { collection, addDoc, serverTimestamp, query, where, updateDoc, doc, writeBatch } from '../lib/supabaseDb';
+import { collection, addDoc, serverTimestamp, query, where, updateDoc, doc, writeBatch, setDoc, getDocs } from '../lib/supabaseDb';
 import { db, handleFirestoreError, OperationType, auth } from '../lib/supabase';
 import { Attachment, Obra, Material, Atividade, Checklist, Operator } from '../types';
 import { useNavigate } from 'react-router-dom';
@@ -123,13 +123,14 @@ export default function ChecklistPage() {
         observacoes: obs,
         photoUrl: photoUrl || '',
         equipeIds: selectedEquipeIds,
-        materiais: Object.entries(conferencias).map(([id, qty]) => ({ 
-          materialId: id, 
-          qtdConferida: Number(qty) || 0 
+        attachments: [],
+        materiais: Object.entries(conferencias).map(([id, qty]) => ({
+          materialId: id,
+          qtdConferida: Number(qty) || 0
         })),
-        progresso: Object.entries(avancos).map(([id, qty]) => ({ 
-          atividadeId: id, 
-          qtdExecutadaNoDia: Number(qty) || 0 
+        progresso: Object.entries(avancos).map(([id, qty]) => ({
+          atividadeId: id,
+          qtdExecutadaNoDia: Number(qty) || 0
         }))
       };
 
@@ -163,6 +164,36 @@ export default function ChecklistPage() {
       });
 
       await batch.commit();
+
+      // Atualiza snapshot de progresso diário com os novos totais globais
+      try {
+        const allAtivSnap = await getDocs(collection(db, 'atividades'));
+        const allAtiv = allAtivSnap.docs.map(d => ({ id: d.id, ...d.data() })) as Atividade[];
+
+        // Aplica os avanços do checklist de hoje ao snapshot em memória
+        const updatedExec: Record<string, number> = {};
+        Object.entries(avancos).forEach(([id, qty]) => {
+          const ativ = allAtiv.find(a => a.id === id);
+          if (ativ) updatedExec[id] = (ativ.quantidadeExecutada || 0) + Number(qty);
+        });
+
+        const totalPrevisto = allAtiv.reduce((s, a) => s + Number(a.quantidadePrevista || 0), 0);
+        const totalExecutado = allAtiv.reduce((s, a) =>
+          s + (updatedExec[a.id] !== undefined ? updatedExec[a.id] : Number(a.quantidadeExecutada || 0)), 0);
+        const newPerc = totalPrevisto > 0 ? Math.min(100, (totalExecutado / totalPrevisto) * 100) : 0;
+        const today = new Date().toISOString().split('T')[0];
+
+        await setDoc(doc(db, 'progresso_diario', today), {
+          id: today,
+          data: today,
+          percentual: Number(newPerc.toFixed(4)),
+          totalPrevisto,
+          totalExecutado,
+          updatedAt: serverTimestamp()
+        });
+      } catch (_) {
+        // Não-crítico: não falha o checklist se o snapshot falhar
+      }
 
       sendBrowserNotification('Checklist Enviado!', `Relatório da obra ${todasObras.find(o => o.id === selectedObraId)?.nome} finalizado.`);
 
