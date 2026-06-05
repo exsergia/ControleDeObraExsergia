@@ -2,23 +2,16 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from './supabase';
 import { CollectionRef, getDocs } from './supabaseDb';
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Flag de visibilidade — nível de módulo (singleton).
-//
-// Quando o app vai para background (troca de app, bloqueio de tela, etc.),
-// wasHiddenSinceLastLoad é setado para true.
-// Enquanto true, NENHUMA atualização automática (Realtime) é processada.
-// Só é zerada quando o usuário NAVEGA para outra página — o que remonta os
-// componentes e dispara a carga inicial normalmente.
-//
-// Resultado: trocar de app nunca atualiza nada. Só navegar dentro do app
-// busca dados novos. Funciona em web, Android e iOS.
-// ─────────────────────────────────────────────────────────────────────────────
 let wasHiddenSinceLastLoad = false;
 
 if (typeof document !== 'undefined') {
   document.addEventListener('visibilitychange', () => {
-    if (document.hidden) wasHiddenSinceLastLoad = true;
+    if (document.hidden) {
+      wasHiddenSinceLastLoad = true;
+    } else {
+      // Voltou ao primeiro plano: libera Realtime imediatamente
+      wasHiddenSinceLastLoad = false;
+    }
   });
 }
 
@@ -108,11 +101,18 @@ export function useCollection(
     };
   }, [loadData]);
 
+  // ── Recarrega ao voltar do background ────────────────────────────────────
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (!document.hidden && !pausedRef.current) {
+        loadData(false);
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => document.removeEventListener('visibilitychange', handleVisibility);
+  }, [loadData]);
+
   // ── Realtime ──────────────────────────────────────────────────────────────
-  // Processa mudanças do banco APENAS quando:
-  //   1. A página está visível (não em background)
-  //   2. A página NÃO foi para background desde o último carregamento
-  //   3. Nenhum modal crítico está aberto (paused=false)
   useEffect(() => {
     if (!ref?.table) return;
 
@@ -125,7 +125,6 @@ export function useCollection(
         { event: '*', schema: 'public', table: ref.table },
         () => {
           if (document.hidden || wasHiddenSinceLastLoad) return;
-          // Modal aberto: marca evento como pendente para recarregar ao fechar
           if (pausedRef.current) { pendingRefreshRef.current = true; return; }
 
           if (refreshTimer.current) clearTimeout(refreshTimer.current);
