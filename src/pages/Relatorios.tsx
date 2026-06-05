@@ -242,26 +242,26 @@ export default function Relatorios() {
   return (
     <div className="space-y-6 pb-20 animate-in fade-in duration-500">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight text-zinc-900">Relatórios</h2>
-          <p className="text-zinc-500">Checklists diários e movimentação de ferramentas.</p>
+          <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-zinc-900">Relatórios</h2>
+          <p className="text-zinc-500 text-sm">Checklists diários e movimentação de ferramentas.</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2">
           {activeTab === 'diarios' && isAdmin && (
             <>
               <button
                 onClick={handleExportBI}
-                className="flex items-center gap-2 px-4 py-2.5 bg-white border border-zinc-200 text-zinc-600 rounded-xl text-sm font-bold hover:bg-zinc-50 transition-all shadow-sm"
+                className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2.5 bg-white border border-zinc-200 text-zinc-600 rounded-xl text-xs sm:text-sm font-bold hover:bg-zinc-50 transition-all shadow-sm"
               >
-                <FileDown className="w-4 h-4" />
+                <FileDown className="w-4 h-4 shrink-0" />
                 Exportar Excel
               </button>
               <button
                 onClick={() => navigate('/checklist')}
-                className="flex items-center gap-2 px-5 py-2.5 bg-zinc-900 text-white rounded-xl text-sm font-bold hover:bg-zinc-800 transition-all shadow-lg active:scale-95"
+                className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 sm:px-5 py-2.5 bg-zinc-900 text-white rounded-xl text-xs sm:text-sm font-bold hover:bg-zinc-800 transition-all shadow-lg active:scale-95"
               >
-                <Plus className="w-4 h-4" />
+                <Plus className="w-4 h-4 shrink-0" />
                 Novo Registro
               </button>
             </>
@@ -269,9 +269,9 @@ export default function Relatorios() {
           {activeTab === 'ferramentas' && isAdmin && (
             <button
               onClick={handleExportFerramentas}
-              className="flex items-center gap-2 px-4 py-2.5 bg-white border border-zinc-200 text-zinc-600 rounded-xl text-sm font-bold hover:bg-zinc-50 transition-all shadow-sm"
+              className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2.5 bg-white border border-zinc-200 text-zinc-600 rounded-xl text-xs sm:text-sm font-bold hover:bg-zinc-50 transition-all shadow-sm"
             >
-              <FileDown className="w-4 h-4" />
+              <FileDown className="w-4 h-4 shrink-0" />
               Exportar Excel
             </button>
           )}
@@ -498,8 +498,8 @@ export default function Relatorios() {
       )}
 
       {/* ── DIÁRIOS TAB ── */}
-      {activeTab === 'diarios' && <div className="grid lg:grid-cols-2 gap-6">
-        <div className={cn("space-y-4", selectedChecklist && "hidden lg:block")}>
+      {activeTab === 'diarios' && <div className="grid md:grid-cols-2 gap-6">
+        <div className={cn("space-y-4", selectedChecklist && "hidden md:block")}>
           <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-widest pl-1">Relatórios Recentes</h3>
           {loading ? (
             Array(4).fill(0).map((_, i) => (
@@ -523,13 +523,13 @@ export default function Relatorios() {
           )}
         </div>
 
-        <div className="lg:sticky lg:top-6">
+        <div className="md:sticky md:top-6">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-widest pl-1">Detalhes do Relatório</h3>
             {selectedChecklist && (
               <button
                 onClick={() => setSelectedChecklist(null)}
-                className="lg:hidden flex items-center gap-1 text-xs font-bold text-zinc-500 hover:text-zinc-900"
+                className="md:hidden flex items-center gap-1 text-xs font-bold text-zinc-500 hover:text-zinc-900"
               >
                 <ChevronRight className="w-4 h-4 rotate-180" /> Voltar
               </button>
@@ -555,7 +555,7 @@ export default function Relatorios() {
               )}
             </div>
           ) : (
-            <div className="h-[500px] flex flex-col items-center justify-center bg-zinc-50 rounded-3xl border border-dashed border-zinc-200 text-center px-8">
+            <div className="h-48 md:h-[500px] flex flex-col items-center justify-center bg-zinc-50 rounded-3xl border border-dashed border-zinc-200 text-center px-8">
               <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center shadow-sm mb-4">
                 <ChevronRight className="w-8 h-8 text-zinc-300" />
               </div>
@@ -984,10 +984,10 @@ function KPICard({ label, value, sub, color }: {
     red:    'border-red-100    text-red-700    bg-red-50',
   };
   return (
-    <div className={cn('p-5 rounded-xl border shadow-sm', styles[color])}>
-      <p className="text-[10px] font-bold uppercase tracking-widest mb-2 opacity-60">{label}</p>
-      <p className="text-2xl font-black mb-0.5">{value}</p>
-      <p className="text-[10px] opacity-50 font-medium">{sub}</p>
+    <div className={cn('p-3 sm:p-5 rounded-xl border shadow-sm', styles[color])}>
+      <p className="text-[9px] sm:text-[10px] font-bold uppercase tracking-widest mb-1 sm:mb-2 opacity-60">{label}</p>
+      <p className="text-lg sm:text-2xl font-black mb-0.5 truncate">{value}</p>
+      <p className="text-[9px] sm:text-[10px] opacity-50 font-medium truncate">{sub}</p>
     </div>
   );
 }
