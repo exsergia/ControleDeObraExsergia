@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { usePersistedTab } from '../hooks/usePersistedTab';
 import { useCollection } from '../lib/supabaseHooks';
 import { collection, addDoc, serverTimestamp, updateDoc, doc, deleteDoc, query, where } from '../lib/supabaseDb';
@@ -463,11 +463,30 @@ function ObraCard({
 }
 
 function AtividadeCard({ ativ, onSave, readOnly = false }: { key?: string; ativ: Atividade; onSave: (id: string, val: number) => void | Promise<void>; readOnly?: boolean }) {
-  const [localExec, setLocalExec] = useState(ativ.quantidadeExecutada ?? 0);
+  const [localExec, setLocalExecState] = useState(ativ.quantidadeExecutada ?? 0);
+  const localExecRef = useRef(ativ.quantidadeExecutada ?? 0);
+  const isDirty = useRef(false);
+
+  const setLocalExec = (val: number) => {
+    localExecRef.current = val;
+    setLocalExecState(val);
+    isDirty.current = true;
+  };
 
   useEffect(() => {
-    setLocalExec(ativ.quantidadeExecutada ?? 0);
+    setLocalExecState(ativ.quantidadeExecutada ?? 0);
+    localExecRef.current = ativ.quantidadeExecutada ?? 0;
+    isDirty.current = false;
   }, [ativ.quantidadeExecutada]);
+
+  // Salva ao sair da página se houver valor pendente
+  useEffect(() => {
+    return () => {
+      if (isDirty.current && !readOnly) {
+        onSave(ativ.id, localExecRef.current);
+      }
+    };
+  }, []);
 
   const perc = ativ.quantidadePrevista > 0
     ? Math.min(100, Math.round((localExec / ativ.quantidadePrevista) * 100))
@@ -506,9 +525,12 @@ function AtividadeCard({ ativ, onSave, readOnly = false }: { key?: string; ativ:
               value={localExec === 0 ? '' : localExec}
               min="0"
               readOnly={readOnly}
-              onKeyDown={(e) => ['-', '+', 'e', 'E'].includes(e.key) && e.preventDefault()}
+              onKeyDown={(e) => {
+                if (['-', '+', 'e', 'E'].includes(e.key)) { e.preventDefault(); return; }
+                if (e.key === 'Enter' && !readOnly) (e.target as HTMLInputElement).blur();
+              }}
               onChange={(e) => !readOnly && setLocalExec(Math.max(0, parseFloat(e.target.value) || 0))}
-              onBlur={() => !readOnly && onSave(ativ.id, localExec)}
+              onBlur={() => { if (!readOnly) { onSave(ativ.id, localExecRef.current); isDirty.current = false; } }}
             />
           </div>
         </div>

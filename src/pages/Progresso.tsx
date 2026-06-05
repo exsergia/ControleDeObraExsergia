@@ -335,12 +335,29 @@ function ActivityCard({ ativ, obra, onUpdate, onDelete, readOnly = false }: {
 }) {
   const [localValue, setLocalValue] = useState<string>(String(ativ.quantidadeExecutada ?? 0));
   const hasFocus = useRef(false);
+  const localValueRef = useRef(localValue);
+  const isDirty = useRef(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState(false);
 
   useEffect(() => {
-    if (!hasFocus.current) setLocalValue(String(ativ.quantidadeExecutada ?? 0));
+    if (!hasFocus.current) {
+      const v = String(ativ.quantidadeExecutada ?? 0);
+      setLocalValue(v);
+      localValueRef.current = v;
+      isDirty.current = false;
+    }
   }, [ativ.quantidadeExecutada]);
+
+  // Salva ao sair da página se houver valor pendente
+  useEffect(() => {
+    return () => {
+      if (isDirty.current && !readOnly) {
+        const parsed = Math.max(0, parseFloat(localValueRef.current) || 0);
+        onUpdate(ativ.id, parsed, ativ.quantidadePrevista);
+      }
+    };
+  }, []);
 
   const handleFocus = (e: React.FocusEvent<HTMLInputElement>) => {
     hasFocus.current = true;
@@ -350,14 +367,18 @@ function ActivityCard({ ativ, obra, onUpdate, onDelete, readOnly = false }: {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (readOnly) return;
+    localValueRef.current = e.target.value;
+    isDirty.current = true;
     setLocalValue(e.target.value);
   };
 
   const commit = () => {
     hasFocus.current = false;
     if (readOnly) return;
-    const parsed = Math.max(0, parseFloat(localValue) || 0);
+    const parsed = Math.max(0, parseFloat(localValueRef.current) || 0);
     setLocalValue(String(parsed));
+    localValueRef.current = String(parsed);
+    isDirty.current = false;
     setSaving(true);
     setSaveError(false);
     Promise.resolve(onUpdate(ativ.id, parsed, ativ.quantidadePrevista))
