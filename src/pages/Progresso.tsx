@@ -214,8 +214,8 @@ export default function ProgressoFisico() {
       )}
 
       {isModalOpen && (
-        <div className="fixed inset-0 bg-zinc-900/50 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center sm:p-4">
-          <div className="bg-white w-full sm:max-w-lg rounded-t-[2rem] sm:rounded-[2rem] shadow-2xl animate-in slide-in-from-bottom-4 sm:zoom-in-95 duration-300 max-h-[92dvh] overflow-y-auto">
+        <div className="fixed inset-0 bg-zinc-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white w-full sm:max-w-lg rounded-[2rem] shadow-2xl animate-in zoom-in-95 duration-300 max-h-[92dvh] overflow-y-auto">
             <div className="sticky top-0 bg-white z-10 px-6 pt-6 pb-4 border-b border-zinc-100 rounded-t-[2rem]">
               <div className="flex items-center justify-between">
                 <div>

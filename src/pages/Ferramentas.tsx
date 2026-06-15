@@ -328,12 +328,12 @@ function ScannerModal({ onSuccess, onClose }: { onSuccess: (text: string) => voi
   }, [onSuccess, notify]);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center p-0 sm:p-4 bg-zinc-900/60 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-900/60 backdrop-blur-sm">
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.95 }}
-        className="bg-white w-full sm:max-w-2xl rounded-t-3xl sm:rounded-3xl overflow-hidden shadow-2xl max-h-[90dvh] overflow-y-auto"
+        className="bg-white w-full sm:max-w-2xl rounded-3xl overflow-hidden shadow-2xl max-h-[90dvh] overflow-y-auto"
       >
         <div className="p-6 border-b border-zinc-100 flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -610,12 +610,12 @@ function ToolHistoryModal({ tool, obras, onClose }: { tool: Tool, obras: Obra[],
   const history = historySnap?.docs.map(doc => ({ id: doc.id, ...doc.data() })) as ToolLog[] || [];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center p-0 sm:p-4 bg-zinc-900/60 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-900/60 backdrop-blur-sm">
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.95 }}
-        className="bg-white w-full sm:max-w-2xl rounded-t-3xl sm:rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[85dvh]"
+        className="bg-white w-full sm:max-w-2xl rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[85dvh]"
       >
         <div className="p-6 bg-zinc-900 text-white flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -712,6 +712,7 @@ function AddToolModal({ tool, onClose }: { tool?: Tool, onClose: () => void }) {
   const [modelo, setModelo] = useState(tool?.modelo || '');
   const [valor, setValor] = useState(formatBRLFromNumber(tool?.valor));
   const [dataCompra, setDataCompra] = useState(tool?.dataCompra || '');
+  const [descricao, setDescricao] = useState(tool?.descricao || '');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showScanner, setShowScanner] = useState(false);
@@ -729,6 +730,7 @@ function AddToolModal({ tool, onClose }: { tool?: Tool, onClose: () => void }) {
       if (typeof draft.modelo === 'string') setModelo(draft.modelo);
       if (typeof draft.valor === 'string') setValor(draft.valor);
       if (typeof draft.dataCompra === 'string') setDataCompra(draft.dataCompra);
+      if (typeof draft.descricao === 'string') setDescricao(draft.descricao);
       draftLoadedRef.current = true;
     } catch {
       draftLoadedRef.current = true;
@@ -740,11 +742,11 @@ function AddToolModal({ tool, onClose }: { tool?: Tool, onClose: () => void }) {
     if (tool || !draftLoadedRef.current) return;
     if (skipFirstSaveRef.current) { skipFirstSaveRef.current = false; return; }
     try {
-      localStorage.setItem('rascunho-nova-ferramenta', JSON.stringify({ nome, codigo, modelo, valor, dataCompra }));
+      localStorage.setItem('rascunho-nova-ferramenta', JSON.stringify({ nome, codigo, modelo, valor, dataCompra, descricao }));
     } catch {
       // Ignora bloqueio de localStorage.
     }
-  }, [tool, nome, codigo, modelo, valor, dataCompra]);
+  }, [tool, nome, codigo, modelo, valor, dataCompra, descricao]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -782,6 +784,8 @@ function AddToolModal({ tool, onClose }: { tool?: Tool, onClose: () => void }) {
         }
       }
 
+      const trimmedDescricao = descricao.trim();
+
       if (tool) {
         await updateDoc(doc(db, 'tools', tool.id), {
           nome: trimmedNome,
@@ -789,6 +793,7 @@ function AddToolModal({ tool, onClose }: { tool?: Tool, onClose: () => void }) {
           modelo: trimmedModelo,
           valor: parsedValor,
           dataCompra,
+          descricao: trimmedDescricao,
           updatedAt: serverTimestamp()
         });
       } else {
@@ -798,6 +803,7 @@ function AddToolModal({ tool, onClose }: { tool?: Tool, onClose: () => void }) {
           modelo: trimmedModelo,
           valor: parsedValor,
           dataCompra,
+          descricao: trimmedDescricao,
           status: 'Disponível',
           createdAt: serverTimestamp()
         });
@@ -817,12 +823,12 @@ function AddToolModal({ tool, onClose }: { tool?: Tool, onClose: () => void }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center p-0 sm:p-4 bg-zinc-900/60 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-900/60 backdrop-blur-sm">
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.95 }}
-        className="bg-white w-full sm:max-w-2xl rounded-t-3xl sm:rounded-3xl overflow-hidden shadow-2xl max-h-[90dvh] overflow-y-auto"
+        className="bg-white w-full sm:max-w-2xl rounded-3xl overflow-hidden shadow-2xl max-h-[90dvh] overflow-y-auto"
       >
         <div className="p-6 border-b border-zinc-100 flex items-center justify-between">
           <h3 className="text-lg font-bold">{tool ? 'Editar Ferramenta' : 'Cadastrar Ferramenta'}</h3>
@@ -876,6 +882,18 @@ function AddToolModal({ tool, onClose }: { tool?: Tool, onClose: () => void }) {
               placeholder="Ex: DHP482Z 18V"
               value={modelo}
               onChange={e => setModelo(e.target.value)}
+            />
+          </div>
+          <div className="space-y-2">
+            <label className="text-xs font-bold text-zinc-500 uppercase tracking-widest">
+              Descrição <span className="font-normal normal-case text-zinc-400">(opcional)</span>
+            </label>
+            <textarea
+              rows={3}
+              className="w-full px-4 py-3 bg-zinc-50 border border-zinc-200 rounded-xl focus:ring-2 focus:ring-zinc-900/10 outline-none resize-none"
+              placeholder="Ex: Furadeira de impacto para concreto, possui 2 baterias."
+              value={descricao}
+              onChange={e => setDescricao(e.target.value)}
             />
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -1004,12 +1022,12 @@ function CheckOutModal({ tool, obras, onClose }: { tool: Tool, obras: Obra[], on
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center p-0 sm:p-4 bg-zinc-900/60 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-900/60 backdrop-blur-sm">
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.95 }}
-        className="bg-white w-full sm:max-w-2xl rounded-t-3xl sm:rounded-3xl overflow-hidden shadow-2xl max-h-[90dvh] overflow-y-auto"
+        className="bg-white w-full sm:max-w-2xl rounded-3xl overflow-hidden shadow-2xl max-h-[90dvh] overflow-y-auto"
       >
         <div className="p-6 bg-zinc-900 text-white flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -1337,12 +1355,12 @@ function CheckInModal({ log, tool, onClose }: { log: ToolLog, tool: Tool, onClos
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center p-0 sm:p-4 bg-zinc-900/60 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-900/60 backdrop-blur-sm">
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.95 }}
-        className="bg-white w-full sm:max-w-2xl rounded-t-3xl sm:rounded-3xl overflow-hidden shadow-2xl max-h-[90dvh] overflow-y-auto"
+        className="bg-white w-full sm:max-w-2xl rounded-3xl overflow-hidden shadow-2xl max-h-[90dvh] overflow-y-auto"
       >
         <div className="p-6 bg-zinc-900 text-white flex items-center justify-between">
           <div className="flex items-center gap-3">
