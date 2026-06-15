@@ -1291,27 +1291,12 @@ function CheckInModal({ log, tool, onClose }: { log: ToolLog, tool: Tool, onClos
     setLoading(true);
     setUploadProgress(0);
 
-    console.group('[DEVOLUCAO_FERRAMENTA] Iniciando devolução');
-    console.log('Ferramenta:', { id: tool.id, nome: tool.nome, status: tool.status });
-    console.log('Log:', { id: log.id, toolId: log.toolId, statusLog: log.statusLog });
-    console.log('Arquivo selecionado:', {
-      name: photoFile.name,
-      type: photoFile.type,
-      size: photoFile.size,
-      lastModified: photoFile.lastModified,
-    });
-
     try {
-      console.log('Enviando imagem para Supabase Storage...');
       const photoUrl = await uploadPhoto(
         photoFile,
         `tools/${tool.id}/returns`,
-        (progress) => {
-          console.log('Progresso upload devolução:', progress);
-          setUploadProgress(progress);
-        }
+        (progress) => setUploadProgress(progress)
       );
-      console.log('URL pública retornada:', photoUrl);
 
       const devolucaoEm = serverTimestamp();
       const activityId = log.activityId || createMovementActivityId('tool_activity');
@@ -1325,7 +1310,6 @@ function CheckInModal({ log, tool, onClose }: { log: ToolLog, tool: Tool, onClos
         'Concluída'
       ]);
 
-      console.log('Atualizando log de devolução no banco...', { logId: log.id, activityId, movementHash });
       await updateDoc(doc(db, 'toolLogs', log.id), {
         activityId,
         movementHash,
@@ -1333,26 +1317,21 @@ function CheckInModal({ log, tool, onClose }: { log: ToolLog, tool: Tool, onClos
         fotoDevolucaoUrl: photoUrl,
         statusLog: 'Concluída'
       });
-      console.log('Log de devolução atualizado com sucesso.');
 
-      console.log('Atualizando status da ferramenta...', { toolId: tool.id });
       await updateDoc(doc(db, 'tools', tool.id), {
         status: 'Disponível',
         lastLogId: null,
         updatedAt: devolucaoEm
       });
-      console.log('Ferramenta atualizada com sucesso.');
 
       notify('success', 'Devolução Concluída', 'Material entregue e já está disponível para retirada.');
       clearPhoto();
       onClose();
     } catch (err: any) {
-      console.error('[DEVOLUCAO_FERRAMENTA] Erro completo:', err);
       const errorMsg = err?.message || err?.error_description || 'Falha ao processar devolução.';
       setError(errorMsg);
       handleFirestoreError(err, OperationType.WRITE, 'tool-checkin');
     } finally {
-      console.groupEnd();
       setLoading(false);
     }
   };

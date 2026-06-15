@@ -165,21 +165,13 @@ export default function ChecklistPage() {
 
       await batch.commit();
 
-      // Atualiza snapshot de progresso diário com os novos totais globais
+      // Atualiza snapshot de progresso diário com os totais já salvos no banco
       try {
         const allAtivSnap = await getDocs(collection(db, 'atividades'));
         const allAtiv = allAtivSnap.docs.map(d => ({ id: d.id, ...d.data() })) as Atividade[];
 
-        // Aplica os avanços do checklist de hoje ao snapshot em memória
-        const updatedExec: Record<string, number> = {};
-        Object.entries(avancos).forEach(([id, qty]) => {
-          const ativ = allAtiv.find(a => a.id === id);
-          if (ativ) updatedExec[id] = (ativ.quantidadeExecutada || 0) + Number(qty);
-        });
-
         const totalPrevisto = allAtiv.reduce((s, a) => s + Number(a.quantidadePrevista || 0), 0);
-        const totalExecutado = allAtiv.reduce((s, a) =>
-          s + (updatedExec[a.id] !== undefined ? updatedExec[a.id] : Number(a.quantidadeExecutada || 0)), 0);
+        const totalExecutado = allAtiv.reduce((s, a) => s + Number(a.quantidadeExecutada || 0), 0);
         const newPerc = totalPrevisto > 0 ? Math.min(100, (totalExecutado / totalPrevisto) * 100) : 0;
         const today = new Date().toISOString().split('T')[0];
 
@@ -491,7 +483,7 @@ export default function ChecklistPage() {
                  <div className="p-12 text-center flex flex-col items-center gap-4">
                   <AlertCircle className="w-8 h-8 text-zinc-300" />
                   <p className="text-zinc-500 font-medium">Nenhuma atividade cadastrada para esta obra.</p>
-                  <a href="/atividades" className="text-sm font-bold text-zinc-900 underline active:opacity-50">Cadastrar Atividades</a>
+                  <button onClick={() => navigate('/progresso')} className="text-sm font-bold text-zinc-900 underline active:opacity-50">Cadastrar Atividades</button>
                 </div>
               )}
             </div>
