@@ -21,7 +21,6 @@ import {
   QrCode,
   Edit2,
   Trash2,
-  Images
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { format } from 'date-fns';
@@ -1252,7 +1251,6 @@ function CameraCapture({ onCapture, onClose }: { onCapture: (file: File) => void
 
 function CheckInModal({ log, tool, onClose }: { log: ToolLog, tool: Tool, onClose: () => void }) {
   const { notify } = useAuth();
-  const galleryInputRef = useRef<HTMLInputElement | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
@@ -1265,20 +1263,6 @@ function CheckInModal({ log, tool, onClose }: { log: ToolLog, tool: Tool, onClos
       if (photoPreview) URL.revokeObjectURL(photoPreview);
     };
   }, [photoPreview]);
-
-  const handlePhotoChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    if (!file.type.startsWith('image/')) {
-      setError('Selecione uma imagem válida para a devolução.');
-      event.target.value = '';
-      return;
-    }
-    if (photoPreview) URL.revokeObjectURL(photoPreview);
-    setPhotoFile(file);
-    setPhotoPreview(URL.createObjectURL(file));
-    setError(null);
-  };
 
   const handleCameraCapture = (file: File) => {
     if (photoPreview) URL.revokeObjectURL(photoPreview);
@@ -1293,7 +1277,6 @@ function CheckInModal({ log, tool, onClose }: { log: ToolLog, tool: Tool, onClos
     setPhotoPreview(null);
     setPhotoFile(null);
     setError(null);
-    if (galleryInputRef.current) galleryInputRef.current.value = '';
   };
 
   const handleCheckIn = async (event?: React.MouseEvent<HTMLButtonElement>) => {
@@ -1392,9 +1375,6 @@ function CheckInModal({ log, tool, onClose }: { log: ToolLog, tool: Tool, onClos
               Foto do Estado do Material (Obrigatório)
             </span>
 
-            {/* Input galeria (sem capture para não navegar fora do app) */}
-            <input id="photo-galeria" ref={galleryInputRef} type="file" accept="image/*" className="sr-only" disabled={loading} onChange={handlePhotoChange} />
-
             {photoPreview ? (
               /* ── Preview da foto selecionada ── */
               <div className="space-y-3">
@@ -1409,10 +1389,6 @@ function CheckInModal({ log, tool, onClose }: { log: ToolLog, tool: Tool, onClos
                     className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl border border-zinc-200 bg-zinc-50 text-xs font-bold text-zinc-600 hover:bg-zinc-100 transition-all disabled:opacity-50">
                     <Camera className="w-4 h-4" /> Nova foto
                   </button>
-                  <label htmlFor="photo-galeria"
-                    className={cn('flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl border border-zinc-200 bg-zinc-50 text-xs font-bold text-zinc-600 cursor-pointer hover:bg-zinc-100 transition-all', loading && 'opacity-50 pointer-events-none')}>
-                    <Images className="w-4 h-4" /> Da galeria
-                  </label>
                   <button type="button" onClick={clearPhoto} disabled={loading}
                     className="px-3 py-2.5 rounded-xl border border-red-100 bg-red-50 text-red-600 hover:bg-red-100 transition-all disabled:opacity-50">
                     <X className="w-4 h-4" />
@@ -1422,11 +1398,10 @@ function CheckInModal({ log, tool, onClose }: { log: ToolLog, tool: Tool, onClos
             ) : (
               /* ── Seleção inicial ── */
               <div className="space-y-2">
-                <div className={cn('grid grid-cols-1 sm:grid-cols-2 gap-3', loading && 'opacity-50 pointer-events-none')}>
-                  {/* Câmera in-browser via getUserMedia — não sai do app, zero reload */}
+                <div className={cn(loading && 'opacity-50 pointer-events-none')}>
                   <button type="button" onClick={() => setShowCamera(true)} disabled={loading}
                     className={cn(
-                      'flex flex-col items-center justify-center gap-3 py-5 sm:py-8 rounded-2xl border-2 border-dashed transition-all group',
+                      'w-full flex flex-col items-center justify-center gap-3 py-8 rounded-2xl border-2 border-dashed transition-all group',
                       error ? 'border-red-200 bg-red-50/40' : 'border-zinc-200 bg-zinc-50 hover:bg-zinc-100 hover:border-zinc-400'
                     )}
                   >
@@ -1438,22 +1413,6 @@ function CheckInModal({ log, tool, onClose }: { log: ToolLog, tool: Tool, onClos
                       <p className="text-[10px] text-zinc-400 mt-0.5">Câmera no app</p>
                     </div>
                   </button>
-
-                  {/* Galeria — picker nativo sem capture */}
-                  <label htmlFor="photo-galeria"
-                    className={cn(
-                      'flex flex-col items-center justify-center gap-3 py-8 rounded-2xl border-2 border-dashed cursor-pointer transition-all group',
-                      error ? 'border-red-200 bg-red-50/40' : 'border-zinc-200 bg-zinc-50 hover:bg-zinc-100 hover:border-zinc-400'
-                    )}
-                  >
-                    <div className={cn('w-12 h-12 rounded-2xl flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform', error ? 'bg-red-100' : 'bg-white')}>
-                      <Images className={cn('w-6 h-6', error ? 'text-red-400' : 'text-zinc-500')} />
-                    </div>
-                    <div className="text-center">
-                      <p className={cn('text-xs font-bold', error ? 'text-red-500' : 'text-zinc-700')}>Da Galeria</p>
-                      <p className="text-[10px] text-zinc-400 mt-0.5">Foto já tirada</p>
-                    </div>
-                  </label>
                 </div>
                 {error && <p className="text-[10px] font-bold text-red-500 text-center">{error}</p>}
               </div>
