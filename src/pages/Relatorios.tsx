@@ -386,7 +386,7 @@ export default function Relatorios() {
                     </span>
                   </div>
                   <p className="text-xs text-zinc-600"><span className="font-bold">Resp:</span> {log.responsavelNome}</p>
-                  <p className="text-xs text-zinc-500 truncate"><span className="font-bold">Obra:</span> {obra?.nome || '---'}</p>
+                  <p className="text-xs text-zinc-500 break-words"><span className="font-bold">Obra:</span> {obra?.nome || '---'}</p>
                   <div className="flex items-center gap-4 text-xs text-zinc-400">
                     <span className="flex items-center gap-1"><ArrowUpRight className="w-3 h-3 text-orange-500" />{format(saida, 'dd/MM/yy HH:mm')}</span>
                     {devolucao && <span className="flex items-center gap-1"><ArrowDownLeft className="w-3 h-3 text-green-500" />{format(devolucao, 'dd/MM/yy HH:mm')}</span>}
@@ -596,7 +596,7 @@ function ReportCard({ report, obra, isSelected, onClick }: {
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-center justify-between gap-2 mb-1">
-          <h4 className="font-bold truncate text-sm">
+          <h4 className="font-bold break-words text-sm">
             {obra?.nome || 'Obra Removida'}
           </h4>
           <span className={cn("text-[10px] font-bold uppercase", isSelected ? "text-zinc-400" : "text-zinc-400")}>
@@ -609,7 +609,7 @@ function ReportCard({ report, obra, isSelected, onClick }: {
         <div className="flex items-center gap-4">
            <div className="flex items-center gap-1.5">
              <User className="w-3 h-3" />
-             <span className="text-[10px] font-bold truncate">{report.nomeResponsavel}</span>
+             <span className="text-[10px] font-bold break-words">{report.nomeResponsavel}</span>
            </div>
            <div className="flex items-center gap-1.5">
              <Box className="w-3 h-3" />
@@ -794,7 +794,7 @@ function ReportDetails({ report, obra, materiais, atividades, operadores }: {
         <div className="flex items-start justify-between mb-4 sm:mb-6">
           <div className="space-y-1 min-w-0 flex-1">
             <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">RELATÓRIO DIÁRIO</span>
-            <h3 className="text-lg sm:text-2xl font-bold tracking-tight truncate">{obra?.nome}</h3>
+            <h3 className="text-lg sm:text-2xl font-bold tracking-tight break-words">{obra?.nome}</h3>
           </div>
           <FileText className="w-8 h-8 sm:w-10 sm:h-10 text-zinc-700 shrink-0 ml-3" />
         </div>
@@ -911,7 +911,7 @@ function ReportDetails({ report, obra, materiais, atividades, operadores }: {
                     <FileText className="w-4 h-4 text-zinc-400" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-bold text-zinc-800 truncate">{file.name}</p>
+                    <p className="text-sm font-bold text-zinc-800 break-all">{file.name}</p>
                     <p className="text-[10px] font-bold text-zinc-400 uppercase">{(file.size / 1024).toFixed(1)} KB</p>
                   </div>
                 </a>
@@ -1230,10 +1230,10 @@ function BIDashboard({ obras, materiais, atividades, checklists, tools, toolLogs
                 return (
                   <div key={a.id}>
                     <div className="flex items-center justify-between mb-0.5">
-                      <p className="text-xs font-bold text-zinc-800 truncate flex-1 pr-2">{a.descricao}</p>
+                      <p className="text-xs font-bold text-zinc-800 break-words flex-1 pr-2">{a.descricao}</p>
                       <span className="text-[11px] font-black text-red-500 shrink-0">{perc.toFixed(0)}%</span>
                     </div>
-                    <p className="text-[10px] text-zinc-400 mb-1.5 truncate">{a.obraNome}</p>
+                    <p className="text-[10px] text-zinc-400 mb-1.5 break-words">{a.obraNome}</p>
                     <div className="h-2 bg-zinc-100 rounded-full overflow-hidden">
                       <div className="h-full bg-red-500 rounded-full" style={{ width: `${perc}%` }} />
                     </div>

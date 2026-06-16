@@ -387,7 +387,7 @@ function ObraCard({
         <div className="space-y-2 pt-2 cursor-pointer" onClick={onViewDetails}>
           <div className="flex items-center gap-2 text-xs text-zinc-500">
             <MapPin className="w-3.5 h-3.5" />
-            <span className="truncate">{obra.endereco || 'A definir'}</span>
+            <span className="break-words">{obra.endereco || 'A definir'}</span>
           </div>
           <div className="flex items-center gap-2 text-xs text-zinc-500">
             <Settings2 className="w-3.5 h-3.5" />
@@ -674,7 +674,7 @@ function ObraDetails({
           </button>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap mb-1">
-              <h2 className="text-base sm:text-xl font-bold text-zinc-900 leading-tight truncate">{obra.nome}</h2>
+              <h2 className="text-base sm:text-xl font-bold text-zinc-900 leading-tight break-words">{obra.nome}</h2>
               <span className={cn(
                 "px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-widest border shrink-0",
                 obra.status === 'Ativa' ? "bg-green-50 text-green-600 border-green-200" :
@@ -684,8 +684,8 @@ function ObraDetails({
                 {obra.status}
               </span>
             </div>
-            <p className="text-xs font-medium text-zinc-500 flex items-center gap-1.5 truncate">
-              <Briefcase className="w-3.5 h-3.5 shrink-0" />
+            <p className="text-xs font-medium text-zinc-500 flex items-start gap-1.5 break-words">
+              <Briefcase className="w-3.5 h-3.5 shrink-0 mt-0.5" />
               {obra.cliente} • CC: {obra.centroCusto}
             </p>
           </div>
@@ -821,7 +821,7 @@ function ObraDetails({
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5 mb-0.5">
-                      <p className="font-bold truncate text-sm">{op.nome} {op.sobrenome}</p>
+                      <p className="font-bold break-words text-sm">{op.nome} {op.sobrenome}</p>
                       {isAdmin_op && <ShieldCheck className={cn("w-3.5 h-3.5 shrink-0", isAssigned ? "text-blue-300" : "text-blue-500")} />}
                     </div>
                     {isAssigned && equipeEntry ? (

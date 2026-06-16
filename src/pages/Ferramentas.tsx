@@ -456,7 +456,7 @@ function ToolCard({ tool, onCheckOut, activeLog, onCheckIn, onEdit, onViewHistor
       </div>
       
       <div className="space-y-1 mb-6 overflow-hidden">
-        <h4 className="font-bold text-zinc-900 truncate">{tool.nome}</h4>
+        <h4 className="font-bold text-zinc-900 break-words">{tool.nome}</h4>
         {tool.codigo && (
           <p
             className="text-[10px] text-zinc-400 font-mono bg-zinc-50 border border-zinc-100 rounded-md px-2 py-0.5 truncate"
@@ -466,7 +466,7 @@ function ToolCard({ tool, onCheckOut, activeLog, onCheckIn, onEdit, onViewHistor
           </p>
         )}
         <div className="mt-3 grid grid-cols-1 gap-1 text-xs text-zinc-600">
-          {tool.modelo && <p className="truncate"><span className="font-bold text-zinc-700">Modelo:</span> {tool.modelo}</p>}
+          {tool.modelo && <p className="break-words"><span className="font-bold text-zinc-700">Modelo:</span> {tool.modelo}</p>}
           <p><span className="font-bold text-zinc-700">Valor:</span> {typeof tool.valor === 'number' ? tool.valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : 'Não informado'}</p>
           <p><span className="font-bold text-zinc-700">Compra:</span> {tool.dataCompra ? new Date(`${tool.dataCompra}T00:00:00`).toLocaleDateString('pt-BR') : 'Não informado'}</p>
         </div>
@@ -520,72 +520,61 @@ function LogItem({ log, tool, obra, showToolInfo = true }: { key?: string | numb
   return (
     <div className="p-5 hover:bg-zinc-50 transition-colors border-b border-zinc-100 last:border-0">
       <div className="flex flex-col gap-3">
-        <div className="flex items-start justify-between gap-4">
-          <div className="flex-1 min-w-0">
-            {showToolInfo && (
-              <div className="flex items-center gap-2 mb-2 min-w-0">
-                <div className={cn("w-2 h-2 rounded-full shrink-0", isPending ? "bg-orange-500 animate-pulse" : "bg-green-500")} />
-                <span className="text-sm font-bold text-zinc-900 truncate">{tool?.nome || 'Ferramenta Removida'}</span>
-                {tool?.codigo && (
-                  <span
-                    className="text-[10px] text-zinc-400 font-mono bg-zinc-100 rounded px-1.5 py-0.5 truncate max-w-[80px] shrink-0"
-                    title={tool.codigo}
-                  >
-                    #{tool.codigo.length > 10 ? tool.codigo.slice(0, 10) + '…' : tool.codigo}
-                  </span>
-                )}
-              </div>
+        {showToolInfo && (
+          <div className="flex items-center gap-2 flex-wrap">
+            <div className={cn("w-2 h-2 rounded-full shrink-0", isPending ? "bg-orange-500 animate-pulse" : "bg-green-500")} />
+            <span className="text-sm font-bold text-zinc-900 break-words">{tool?.nome || 'Ferramenta Removida'}</span>
+            {tool?.codigo && (
+              <span className="text-[10px] text-zinc-400 font-mono bg-zinc-100 rounded px-1.5 py-0.5 shrink-0" title={tool.codigo}>
+                #{tool.codigo.length > 10 ? tool.codigo.slice(0, 10) + '…' : tool.codigo}
+              </span>
             )}
-            
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-2 gap-x-4">
-              <div className="flex items-center gap-2">
-                <div className="w-7 h-7 rounded-lg bg-zinc-100 flex items-center justify-center shrink-0">
-                  <User className="w-3.5 h-3.5 text-zinc-500" />
-                </div>
-                <div>
-                  <p className="text-[9px] text-zinc-400 font-bold uppercase tracking-tight">Responsável</p>
-                  <p className="text-xs font-bold text-zinc-900 truncate">{log.responsavelNome}</p>
-                </div>
-              </div>
+          </div>
+        )}
 
-              <div className="flex items-center gap-2">
-                <div className="w-7 h-7 rounded-lg bg-zinc-100 flex items-center justify-center shrink-0">
-                  <Building2 className="w-3.5 h-3.5 text-zinc-500" />
-                </div>
-                <div>
-                  <p className="text-[9px] text-zinc-400 font-bold uppercase tracking-tight">Obra / Local</p>
-                  <p className="text-xs font-bold text-zinc-900 truncate">{obra?.nome || 'Obra Removida'}</p>
-                </div>
-              </div>
+        <div className="grid grid-cols-1 gap-2">
+          <div className="flex items-start gap-2">
+            <div className="w-7 h-7 rounded-lg bg-zinc-100 flex items-center justify-center shrink-0 mt-0.5">
+              <User className="w-3.5 h-3.5 text-zinc-500" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-[9px] text-zinc-400 font-bold uppercase tracking-tight">Responsável</p>
+              <p className="text-xs font-bold text-zinc-900 break-words">{log.responsavelNome}</p>
             </div>
           </div>
 
-          <div className="text-right shrink-0">
-            <div className="text-[10px] font-bold text-zinc-400 uppercase tracking-tighter">Saída em</div>
-            <div className="text-xs font-bold text-zinc-900">{format(outDate, "dd/MM/yyyy")}</div>
-            <div className="text-[10px] text-zinc-500 font-medium">{format(outDate, "HH:mm")}</div>
+          <div className="flex items-start gap-2">
+            <div className="w-7 h-7 rounded-lg bg-zinc-100 flex items-center justify-center shrink-0 mt-0.5">
+              <Building2 className="w-3.5 h-3.5 text-zinc-500" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-[9px] text-zinc-400 font-bold uppercase tracking-tight">Obra / Local</p>
+              <p className="text-xs font-bold text-zinc-900 break-words">{obra?.nome || 'Obra Removida'}</p>
+            </div>
+          </div>
+
+          <div className="flex items-start gap-2">
+            <div className="w-7 h-7 rounded-lg bg-zinc-100 flex items-center justify-center shrink-0 mt-0.5">
+              <Calendar className="w-3.5 h-3.5 text-zinc-500" />
+            </div>
+            <div>
+              <p className="text-[9px] text-zinc-400 font-bold uppercase tracking-tight">Saída em</p>
+              <p className="text-xs font-bold text-zinc-900">{format(outDate, "dd/MM/yyyy")} às {format(outDate, "HH:mm")}</p>
+            </div>
           </div>
         </div>
 
-        <div className="flex items-center justify-between pt-1">
-          <div className="flex items-center gap-2">
-            <span className={cn(
-              "text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-tight flex items-center gap-1",
-              isPending ? "bg-orange-100 text-orange-700" : "bg-green-100 text-green-700"
-            )}>
-              {isPending ? (
-                <>
-                  <Clock className="w-2.5 h-2.5" />
-                  Pendente
-                </>
-              ) : (
-                <>
-                  <CheckCircle2 className="w-2.5 h-2.5" />
-                  Concluído
-                </>
-              )}
-            </span>
-          </div>
+        <div className="flex items-center justify-between flex-wrap gap-2 pt-1">
+          <span className={cn(
+            "text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-tight flex items-center gap-1",
+            isPending ? "bg-orange-100 text-orange-700" : "bg-green-100 text-green-700"
+          )}>
+            {isPending ? (
+              <><Clock className="w-2.5 h-2.5" />Pendente</>
+            ) : (
+              <><CheckCircle2 className="w-2.5 h-2.5" />Concluído</>
+            )}
+          </span>
 
           {!isPending && inDate && (
             <div className="flex items-center gap-1.5 px-3 py-1.5 bg-green-50 rounded-xl border border-green-100">

@@ -121,7 +121,7 @@ function OperadoresTab({ isAdmin }: { isAdmin: boolean }) {
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-1.5 mb-0.5">
-                  <p className="font-bold text-zinc-900 truncate">{op.nome} {op.sobrenome}</p>
+                  <p className="font-bold text-zinc-900 break-words">{op.nome} {op.sobrenome}</p>
                   <User className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
                 </div>
                 <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest bg-zinc-100 px-2 py-0.5 rounded-md">
@@ -129,8 +129,8 @@ function OperadoresTab({ isAdmin }: { isAdmin: boolean }) {
                 </span>
               </div>
             </div>
-            <p className="text-xs text-zinc-500 truncate flex items-center gap-1.5">
-              <Mail className="w-3.5 h-3.5 text-zinc-300" />{op.email}
+            <p className="text-xs text-zinc-500 break-all flex items-center gap-1.5 flex-wrap">
+              <Mail className="w-3.5 h-3.5 text-zinc-300 shrink-0" />{op.email}
             </p>
             {isAdmin && (
               <div className="flex gap-2">
@@ -314,7 +314,7 @@ function EncarregadosTab({ isAdmin }: { isAdmin: boolean }) {
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1.5 mb-0.5">
-                    <p className="font-bold text-zinc-900 truncate">{enc.nome} {enc.sobrenome}</p>
+                    <p className="font-bold text-zinc-900 break-words">{enc.nome} {enc.sobrenome}</p>
                     <ShieldCheck className="w-3.5 h-3.5 text-amber-500 shrink-0" />
                   </div>
                   <span className="text-[10px] font-bold text-amber-600 uppercase tracking-widest bg-amber-50 px-2 py-0.5 rounded-md">
@@ -322,8 +322,8 @@ function EncarregadosTab({ isAdmin }: { isAdmin: boolean }) {
                   </span>
                 </div>
               </div>
-              <p className="text-xs text-zinc-500 truncate flex items-center gap-1.5">
-                <Mail className="w-3.5 h-3.5 text-zinc-300" />{enc.email || '—'}
+              <p className="text-xs text-zinc-500 break-all flex items-center gap-1.5 flex-wrap">
+                <Mail className="w-3.5 h-3.5 text-zinc-300 shrink-0" />{enc.email || '—'}
               </p>
               {encObras.length > 0 && (
                 <div className="space-y-1">
@@ -405,7 +405,7 @@ function EncarregadosTab({ isAdmin }: { isAdmin: boolean }) {
                           checked={formData.obraIds.includes(obra.id)}
                           onChange={() => toggleObra(obra.id)} />
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-semibold text-zinc-800 truncate">{obra.nome}</p>
+                          <p className="text-sm font-semibold text-zinc-800 break-words">{obra.nome}</p>
                           <p className="text-[10px] text-zinc-400">{(obra as any).status} · {(obra as any).centroCusto || 'Sem centro'}</p>
                         </div>
                         {formData.obraIds.includes(obra.id) && <CheckSquare className="w-4 h-4 text-amber-500 shrink-0" />}

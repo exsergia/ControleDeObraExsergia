@@ -266,8 +266,8 @@ export default function ChecklistPage() {
                     <MapPin className="w-4 h-4" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="font-bold tracking-tight text-sm truncate">{obra.nome}</p>
-                    <p className={cn("text-xs truncate", selectedObraId === obra.id ? "text-zinc-400" : "text-zinc-500")}>
+                    <p className="font-bold tracking-tight text-sm break-words">{obra.nome}</p>
+                    <p className={cn("text-xs break-words", selectedObraId === obra.id ? "text-zinc-400" : "text-zinc-500")}>
                       {obra.cliente} • CC: {obra.centroCusto}
                     </p>
                   </div>
@@ -306,7 +306,7 @@ export default function ChecklistPage() {
                       <span className="text-[9px] font-bold uppercase tracking-widest text-zinc-400 bg-zinc-100 px-1.5 py-0.5 rounded">#{mat.codigoEntrega}</span>
                       <span className="text-[9px] font-bold uppercase tracking-widest text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-100">{mat.categoria}</span>
                     </div>
-                    <p className="text-sm font-bold text-zinc-900 truncate">{mat.descricao}</p>
+                    <p className="text-sm font-bold text-zinc-900 break-words">{mat.descricao}</p>
                     <p className="text-xs text-zinc-500">Esperado: <b>{mat.quantidade} {mat.unidade}</b></p>
                   </div>
                   <div className="flex items-center gap-1.5 bg-zinc-50 p-1.5 rounded-xl border border-zinc-200 shrink-0">
@@ -403,7 +403,7 @@ export default function ChecklistPage() {
                     {op.nome?.[0] || '?'}{op.sobrenome?.[0] || ''}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="font-bold truncate text-sm">{op.nome} {op.sobrenome}</p>
+                    <p className="font-bold break-words text-sm">{op.nome} {op.sobrenome}</p>
                     <p className={cn("text-[10px] uppercase tracking-widest font-bold", isSelected ? "text-zinc-400" : "text-zinc-500")}>
                       {op.funcao || 'Operador'}
                     </p>
@@ -447,7 +447,7 @@ export default function ChecklistPage() {
               {atividades.length > 0 ? atividades.map(ativ => (
                 <div key={ativ.id} className="p-3 sm:p-4 flex items-center gap-3">
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-bold text-zinc-900 truncate">{ativ.descricao}</p>
+                    <p className="text-sm font-bold text-zinc-900 break-words">{ativ.descricao}</p>
                     <div className="flex items-center gap-2 mt-1">
                       <div className="flex-1 bg-zinc-100 h-1.5 rounded-full overflow-hidden">
                         <div
@@ -550,7 +550,7 @@ export default function ChecklistPage() {
               </div>
               <div className="min-w-0">
                 <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Assinado por:</p>
-                <p className="text-sm font-bold truncate">{(auth.currentUser?.user_metadata?.name || auth.currentUser?.email)}</p>
+                <p className="text-sm font-bold break-all">{(auth.currentUser?.user_metadata?.name || auth.currentUser?.email)}</p>
               </div>
             </div>
 

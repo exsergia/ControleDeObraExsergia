@@ -169,7 +169,7 @@ export default function Materiais() {
                   </div>
                   <p className="text-xs text-zinc-500">#{mat.codigoEntrega} · {mat.categoria}</p>
                   <div className="flex items-center justify-between gap-2">
-                    <p className="text-xs text-zinc-400 truncate">{mat.fornecedor || '---'} · {mat.quantidade} un</p>
+                    <p className="text-xs text-zinc-400 break-words">{mat.fornecedor || '---'} · {mat.quantidade} un</p>
                     {canEdit && (
                       <p className="text-xs font-bold font-mono text-zinc-900 shrink-0">
                         {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(mat.valorTotal || 0)}
