@@ -74,6 +74,16 @@ export default function Relatorios() {
   const toolLogs = (toolLogsSnap?.docs.map(doc => ({ id: doc.id, ...doc.data() })) as ToolLog[]) || [];
   const progressoDiario = (progressoDiarioSnap?.docs.map(doc => ({ id: doc.id, ...doc.data() }))) || [];
 
+  const filteredTools = tools.filter(t => {
+    if (!search) return true;
+    const q = search.toLowerCase();
+    return (
+      (t.nome || '').toLowerCase().includes(q) ||
+      (t.codigo || '').toLowerCase().includes(q) ||
+      (t.modelo || '').toLowerCase().includes(q)
+    );
+  });
+
   const filteredToolLogs = toolLogs.filter(l => {
     if (search) {
       const q = search.toLowerCase();
@@ -351,7 +361,119 @@ export default function Relatorios() {
       </div>}
 
       {/* ── FERRAMENTAS TAB ── */}
-      {activeTab !== 'bi' && activeTab === 'ferramentas' && (
+      {activeTab === 'ferramentas' && (
+        <div className="space-y-3">
+          <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-widest pl-1">
+            Inventário de Ferramentas ({filteredTools.length})
+          </h3>
+          <div className="bg-white rounded-2xl border border-zinc-200 shadow-sm overflow-hidden">
+            {/* Mobile */}
+            <div className="sm:hidden divide-y divide-zinc-100">
+              {filteredTools.length === 0 ? (
+                <div className="p-12 text-center">
+                  <Hammer className="w-10 h-10 text-zinc-200 mx-auto mb-3" />
+                  <p className="text-zinc-400 text-sm font-medium">Nenhuma ferramenta cadastrada.</p>
+                </div>
+              ) : filteredTools.map(tool => (
+                <div key={tool.id} className="p-4 flex items-start gap-3">
+                  <div className="w-12 h-12 rounded-xl bg-zinc-100 overflow-hidden shrink-0 flex items-center justify-center">
+                    {tool.fotoModelo
+                      ? <img src={tool.fotoModelo} className="w-full h-full object-cover" alt={tool.nome} />
+                      : <Hammer className="w-5 h-5 text-zinc-400" />}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-start justify-between gap-2">
+                      <p className="text-sm font-bold text-zinc-900 break-words">{tool.nome}</p>
+                      <span className={cn(
+                        'shrink-0 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wide',
+                        tool.status === 'Disponível' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'
+                      )}>{tool.status}</span>
+                    </div>
+                    {tool.codigo && <p className="text-[10px] font-mono text-zinc-400 mt-0.5">#{tool.codigo}</p>}
+                    {tool.modelo && <p className="text-xs text-zinc-500 mt-0.5"><span className="font-bold">Modelo:</span> {tool.modelo}</p>}
+                    {typeof tool.valor === 'number' && (
+                      <p className="text-xs text-zinc-500"><span className="font-bold">Valor:</span> {tool.valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
+                    )}
+                    {tool.descricao && <p className="text-xs text-zinc-400 mt-1 break-words">{tool.descricao}</p>}
+                  </div>
+                </div>
+              ))}
+            </div>
+            {/* Desktop */}
+            <div className="hidden sm:block overflow-x-auto">
+              <table className="w-full text-left">
+                <thead>
+                  <tr className="bg-zinc-50 border-b border-zinc-100">
+                    <th className="px-5 py-4 text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Ferramenta</th>
+                    <th className="px-5 py-4 text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Código</th>
+                    <th className="px-5 py-4 text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Modelo</th>
+                    <th className="px-5 py-4 text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Valor</th>
+                    <th className="px-5 py-4 text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Compra</th>
+                    <th className="px-5 py-4 text-[10px] font-bold text-zinc-400 uppercase tracking-widest text-center">Foto</th>
+                    <th className="px-5 py-4 text-[10px] font-bold text-zinc-400 uppercase tracking-widest text-center">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-zinc-100">
+                  {filteredTools.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="px-5 py-16 text-center">
+                        <Hammer className="w-10 h-10 text-zinc-200 mx-auto mb-3" />
+                        <p className="text-zinc-400 text-sm font-medium">Nenhuma ferramenta cadastrada.</p>
+                      </td>
+                    </tr>
+                  ) : filteredTools.map(tool => (
+                    <tr key={tool.id} className="hover:bg-zinc-50/50 transition-colors">
+                      <td className="px-5 py-4">
+                        <p className="text-sm font-bold text-zinc-900 break-words">{tool.nome}</p>
+                        {tool.descricao && <p className="text-[10px] text-zinc-400 mt-0.5 break-words">{tool.descricao}</p>}
+                      </td>
+                      <td className="px-5 py-4">
+                        <span className="text-xs font-mono text-zinc-500">{tool.codigo || '—'}</span>
+                      </td>
+                      <td className="px-5 py-4">
+                        <span className="text-xs text-zinc-600 break-words">{tool.modelo || '—'}</span>
+                      </td>
+                      <td className="px-5 py-4">
+                        <span className="text-xs font-bold text-zinc-900">
+                          {typeof tool.valor === 'number' ? tool.valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '—'}
+                        </span>
+                      </td>
+                      <td className="px-5 py-4">
+                        <span className="text-xs text-zinc-600">
+                          {tool.dataCompra ? new Date(`${tool.dataCompra}T00:00:00`).toLocaleDateString('pt-BR') : '—'}
+                        </span>
+                      </td>
+                      <td className="px-5 py-4 text-center">
+                        {tool.fotoModelo ? (
+                          <a href={tool.fotoModelo} target="_blank" rel="noopener noreferrer">
+                            <img src={tool.fotoModelo} alt={tool.nome} className="w-12 h-12 object-cover rounded-lg border border-zinc-200 hover:opacity-80 transition-opacity mx-auto" />
+                          </a>
+                        ) : (
+                          <span className="text-[10px] text-zinc-300 font-bold">—</span>
+                        )}
+                      </td>
+                      <td className="px-5 py-4 text-center">
+                        <span className={cn(
+                          'inline-flex items-center gap-1 px-2 py-1 rounded-full text-[9px] font-bold uppercase tracking-wide',
+                          tool.status === 'Disponível' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'
+                        )}>
+                          {tool.status}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'ferramentas' && (
+        <div className="space-y-3">
+          <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-widest pl-1">
+            Histórico de Movimentações ({filteredToolLogs.length})
+          </h3>
         <div className="bg-white rounded-2xl border border-zinc-200 shadow-sm overflow-hidden">
           {/* Mobile cards */}
           <div className="sm:hidden divide-y divide-zinc-100">
@@ -494,6 +616,7 @@ export default function Relatorios() {
               </tbody>
             </table>
           </div>
+        </div>
         </div>
       )}
 
