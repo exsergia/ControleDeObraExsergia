@@ -69,6 +69,7 @@ export interface Tool {
   valor?: number;
   dataCompra?: string;
   descricao?: string;
+  fotoModelo?: string;
   status: 'Disponível' | 'Em Uso' | 'Manutenção';
   lastLogId?: string;
 }

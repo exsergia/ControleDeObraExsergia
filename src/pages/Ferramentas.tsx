@@ -12,6 +12,7 @@ import {
   Building2,
   Calendar,
   Camera,
+  Images,
   CheckCircle2,
   Clock,
   Plus,
@@ -400,8 +401,11 @@ function ToolCard({ tool, onCheckOut, activeLog, onCheckIn, onEdit, onViewHistor
   return (
     <div className="bg-white p-5 rounded-3xl border border-zinc-200 shadow-sm hover:shadow-md transition-all group relative">
       <div className="flex items-start justify-between mb-4">
-        <div className="w-12 h-12 rounded-2xl bg-zinc-50 flex items-center justify-center text-zinc-900 group-hover:scale-110 transition-transform">
-          {(tool.nome || '').toLowerCase().includes('furadeira') ? <Wrench className="w-6 h-6" /> : <Hammer className="w-6 h-6" />}
+        <div className="w-12 h-12 rounded-2xl bg-zinc-50 flex items-center justify-center text-zinc-900 group-hover:scale-110 transition-transform overflow-hidden shrink-0">
+          {tool.fotoModelo
+            ? <img src={tool.fotoModelo} className="w-full h-full object-cover" alt={tool.nome} />
+            : (tool.nome || '').toLowerCase().includes('furadeira') ? <Wrench className="w-6 h-6" /> : <Hammer className="w-6 h-6" />
+          }
         </div>
         <div className="flex items-center gap-2">
           <div className="flex items-center gap-1">
@@ -714,6 +718,10 @@ function AddToolModal({ tool, onClose }: { tool?: Tool, onClose: () => void }) {
   const [valor, setValor] = useState(formatBRLFromNumber(tool?.valor));
   const [dataCompra, setDataCompra] = useState(tool?.dataCompra || '');
   const [descricao, setDescricao] = useState(tool?.descricao || '');
+  const [fotoModelo, setFotoModelo] = useState<File | null>(null);
+  const [fotoModeloPreview, setFotoModeloPreview] = useState<string | null>(tool?.fotoModelo || null);
+  const [showFotoCamera, setShowFotoCamera] = useState(false);
+  const fotoGaleriaRef = useRef<HTMLInputElement | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showScanner, setShowScanner] = useState(false);
@@ -748,6 +756,21 @@ function AddToolModal({ tool, onClose }: { tool?: Tool, onClose: () => void }) {
       // Ignora bloqueio de localStorage.
     }
   }, [tool, nome, codigo, modelo, valor, dataCompra, descricao]);
+
+  useEffect(() => {
+    return () => { if (fotoModeloPreview?.startsWith('blob:')) URL.revokeObjectURL(fotoModeloPreview); };
+  }, []);
+
+  const setFotoFromFile = (file: File) => {
+    setFotoModeloPreview(prev => { if (prev?.startsWith('blob:')) URL.revokeObjectURL(prev); return URL.createObjectURL(file); });
+    setFotoModelo(file);
+  };
+
+  const clearFotoModelo = () => {
+    setFotoModeloPreview(prev => { if (prev?.startsWith('blob:')) URL.revokeObjectURL(prev); return null; });
+    setFotoModelo(null);
+    if (fotoGaleriaRef.current) fotoGaleriaRef.current.value = '';
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -787,6 +810,13 @@ function AddToolModal({ tool, onClose }: { tool?: Tool, onClose: () => void }) {
 
       const trimmedDescricao = descricao.trim();
 
+      let fotoModeloUrl = tool?.fotoModelo || '';
+      if (fotoModelo) {
+        fotoModeloUrl = await uploadPhoto(fotoModelo, 'ferramentas/modelos');
+      } else if (!fotoModeloPreview) {
+        fotoModeloUrl = '';
+      }
+
       if (tool) {
         await updateDoc(doc(db, 'tools', tool.id), {
           nome: trimmedNome,
@@ -795,6 +825,7 @@ function AddToolModal({ tool, onClose }: { tool?: Tool, onClose: () => void }) {
           valor: parsedValor,
           dataCompra,
           descricao: trimmedDescricao,
+          fotoModelo: fotoModeloUrl,
           updatedAt: serverTimestamp()
         });
       } else {
@@ -805,6 +836,7 @@ function AddToolModal({ tool, onClose }: { tool?: Tool, onClose: () => void }) {
           valor: parsedValor,
           dataCompra,
           descricao: trimmedDescricao,
+          fotoModelo: fotoModeloUrl,
           status: 'Disponível',
           createdAt: serverTimestamp()
         });
@@ -897,6 +929,58 @@ function AddToolModal({ tool, onClose }: { tool?: Tool, onClose: () => void }) {
               onChange={e => setDescricao(e.target.value)}
             />
           </div>
+          <div className="space-y-2">
+            <label className="text-xs font-bold text-zinc-500 uppercase tracking-widest">
+              Foto de Referência <span className="font-normal normal-case text-zinc-400">(opcional)</span>
+            </label>
+            <input ref={fotoGaleriaRef} id="foto-modelo-galeria" type="file" accept="image/*" className="sr-only"
+              onChange={e => { const f = e.target.files?.[0]; if (f) setFotoFromFile(f); }} />
+            {fotoModeloPreview ? (
+              <div className="space-y-2">
+                <div className="relative w-full aspect-video rounded-2xl overflow-hidden border border-zinc-200">
+                  <img src={fotoModeloPreview} className="w-full h-full object-cover" alt="Foto modelo" />
+                </div>
+                <div className="flex gap-2">
+                  <button type="button" onClick={() => setShowFotoCamera(true)}
+                    className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl border border-zinc-200 bg-zinc-50 text-xs font-bold text-zinc-600 hover:bg-zinc-100 transition-all">
+                    <Camera className="w-4 h-4" /> Nova foto
+                  </button>
+                  <label htmlFor="foto-modelo-galeria"
+                    className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl border border-zinc-200 bg-zinc-50 text-xs font-bold text-zinc-600 cursor-pointer hover:bg-zinc-100 transition-all">
+                    <Images className="w-4 h-4" /> Da galeria
+                  </label>
+                  <button type="button" onClick={clearFotoModelo}
+                    className="px-3 py-2.5 rounded-xl border border-red-100 bg-red-50 text-red-600 hover:bg-red-100 transition-all">
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-3">
+                <button type="button" onClick={() => setShowFotoCamera(true)}
+                  className="flex flex-col items-center justify-center gap-2 py-6 rounded-2xl border-2 border-dashed border-zinc-200 bg-zinc-50 hover:bg-zinc-100 hover:border-zinc-400 transition-all group">
+                  <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform">
+                    <Camera className="w-5 h-5 text-zinc-500" />
+                  </div>
+                  <div className="text-center">
+                    <p className="text-xs font-bold text-zinc-700">Tirar Foto</p>
+                    <p className="text-[10px] text-zinc-400">Câmera no app</p>
+                  </div>
+                </button>
+                <label htmlFor="foto-modelo-galeria"
+                  className="flex flex-col items-center justify-center gap-2 py-6 rounded-2xl border-2 border-dashed border-zinc-200 bg-zinc-50 hover:bg-zinc-100 hover:border-zinc-400 transition-all cursor-pointer group">
+                  <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform">
+                    <Images className="w-5 h-5 text-zinc-500" />
+                  </div>
+                  <div className="text-center">
+                    <p className="text-xs font-bold text-zinc-700">Da Galeria</p>
+                    <p className="text-[10px] text-zinc-400">Foto já tirada</p>
+                  </div>
+                </label>
+              </div>
+            )}
+          </div>
+
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-2">
               <label className="text-xs font-bold text-zinc-500 uppercase tracking-widest">Valor da Ferramenta</label>
@@ -933,10 +1017,13 @@ function AddToolModal({ tool, onClose }: { tool?: Tool, onClose: () => void }) {
       </motion.div>
 
       <AnimatePresence>
+        {showFotoCamera && (
+          <CameraCapture onCapture={f => setFotoFromFile(f)} onClose={() => setShowFotoCamera(false)} />
+        )}
         {showScanner && (
-          <ScannerModal 
-            onSuccess={(text) => { setCodigo(text); setShowScanner(false); }} 
-            onClose={() => setShowScanner(false)} 
+          <ScannerModal
+            onSuccess={(text) => { setCodigo(text); setShowScanner(false); }}
+            onClose={() => setShowScanner(false)}
           />
         )}
       </AnimatePresence>
@@ -1045,6 +1132,18 @@ function CheckOutModal({ tool, obras, onClose }: { tool: Tool, obras: Obra[], on
           </button>
         </div>
         <form onSubmit={handleCheckOut} className="p-6 space-y-5">
+          {tool.fotoModelo && (
+            <div className="space-y-2">
+              <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Foto de Referência</span>
+              <div className="relative w-full aspect-video rounded-2xl overflow-hidden border border-zinc-200">
+                <img src={tool.fotoModelo} className="w-full h-full object-cover" alt={`Referência: ${tool.nome}`} />
+                <div className="absolute inset-x-0 bottom-0 p-3 bg-gradient-to-t from-black/70 to-transparent">
+                  <span className="text-white text-xs font-bold">Estado esperado de devolução</span>
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="space-y-2">
             <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest pl-1">Quem está retirando?</label>
             <div className="relative">
