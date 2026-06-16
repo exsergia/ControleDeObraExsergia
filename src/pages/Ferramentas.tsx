@@ -132,6 +132,7 @@ export default function Ferramentas() {
   }, [tools, logs]);
 
   return (
+    <>
     <div className="space-y-6 pb-20 animate-in fade-in duration-500">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
@@ -203,47 +204,48 @@ export default function Ferramentas() {
         </div>
       </div>
 
-      <AnimatePresence>
-        {(showAddTool || editingTool) && (
-          <AddToolModal 
-            tool={editingTool || undefined} 
-            onClose={() => { setShowAddTool(false); setEditingTool(null); }} 
-          />
-        )}
-        {showHistory && (
-          <ToolHistoryModal 
-            tool={showHistory} 
-            obras={obras}
-            onClose={() => setShowHistory(null)} 
-          />
-        )}
-        {showCheckOut && (
-          <CheckOutModal 
-            tool={showCheckOut} 
-            obras={obras}
-            onClose={() => setShowCheckOut(null)} 
-          />
-        )}
-        {showCheckIn && (
-          <CheckInModal 
-            log={showCheckIn} 
-            tool={tools.find(t => t.id === showCheckIn.toolId) || {
-              id: showCheckIn.toolId,
-              nome: 'Ferramenta removida',
-              codigo: '---',
-              status: 'Em Uso'
-            } as Tool}
-            onClose={() => setShowCheckIn(null)} 
-          />
-        )}
-        {showScanner && (
-          <ScannerModal 
-            onSuccess={handleScanSuccess} 
-            onClose={() => setShowScanner(false)} 
-          />
-        )}
-      </AnimatePresence>
     </div>
+    <AnimatePresence>
+      {(showAddTool || editingTool) && (
+        <AddToolModal
+          tool={editingTool || undefined}
+          onClose={() => { setShowAddTool(false); setEditingTool(null); }}
+        />
+      )}
+      {showHistory && (
+        <ToolHistoryModal
+          tool={showHistory}
+          obras={obras}
+          onClose={() => setShowHistory(null)}
+        />
+      )}
+      {showCheckOut && (
+        <CheckOutModal
+          tool={showCheckOut}
+          obras={obras}
+          onClose={() => setShowCheckOut(null)}
+        />
+      )}
+      {showCheckIn && (
+        <CheckInModal
+          log={showCheckIn}
+          tool={tools.find(t => t.id === showCheckIn.toolId) || {
+            id: showCheckIn.toolId,
+            nome: 'Ferramenta removida',
+            codigo: '---',
+            status: 'Em Uso'
+          } as Tool}
+          onClose={() => setShowCheckIn(null)}
+        />
+      )}
+      {showScanner && (
+        <ScannerModal
+          onSuccess={handleScanSuccess}
+          onClose={() => setShowScanner(false)}
+        />
+      )}
+    </AnimatePresence>
+    </>
   );
 }
 
