@@ -103,6 +103,26 @@ export default function Relatorios() {
     return true;
   });
 
+  const handleExportInventario = () => {
+    const wb = utils.book_new();
+    const data = tools.map(t => ({
+      'Nome': t.nome || '---',
+      'Código': t.codigo || '---',
+      'Modelo': t.modelo || '---',
+      'Descrição': t.descricao || '---',
+      'Valor (R$)': typeof t.valor === 'number' ? t.valor.toFixed(2).replace('.', ',') : '---',
+      'Data de Compra': t.dataCompra ? new Date(`${t.dataCompra}T00:00:00`).toLocaleDateString('pt-BR') : '---',
+      'Status': t.status || '---',
+      'Foto de Referência': t.fotoModelo || '---',
+    }));
+    const ws = utils.json_to_sheet(data);
+    const colWidths = [30, 15, 20, 40, 15, 16, 12, 50];
+    ws['!cols'] = colWidths.map(w => ({ wch: w }));
+    utils.book_append_sheet(wb, ws, 'INVENTARIO_FERRAMENTAS');
+    writeFile(wb, `Inventario_Ferramentas_${format(new Date(), 'yyyy-MM-dd')}.xlsx`);
+    notify('success', 'Excel Exportado', 'Inventário de ferramentas gerado com sucesso!');
+  };
+
   const handleExportFerramentas = () => {
     const wb = utils.book_new();
     const data = toolLogs.map(l => {
@@ -277,13 +297,22 @@ export default function Relatorios() {
             </>
           )}
           {activeTab === 'ferramentas' && isAdmin && (
-            <button
-              onClick={handleExportFerramentas}
-              className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2.5 bg-white border border-zinc-200 text-zinc-600 rounded-xl text-xs sm:text-sm font-bold hover:bg-zinc-50 transition-all shadow-sm"
-            >
-              <FileDown className="w-4 h-4 shrink-0" />
-              Exportar Excel
-            </button>
+            <>
+              <button
+                onClick={handleExportInventario}
+                className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2.5 bg-zinc-900 text-white rounded-xl text-xs sm:text-sm font-bold hover:bg-zinc-800 transition-all shadow-sm"
+              >
+                <FileDown className="w-4 h-4 shrink-0" />
+                Inventário Excel
+              </button>
+              <button
+                onClick={handleExportFerramentas}
+                className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2.5 bg-white border border-zinc-200 text-zinc-600 rounded-xl text-xs sm:text-sm font-bold hover:bg-zinc-50 transition-all shadow-sm"
+              >
+                <FileDown className="w-4 h-4 shrink-0" />
+                Movimentações Excel
+              </button>
+            </>
           )}
         </div>
       </div>
