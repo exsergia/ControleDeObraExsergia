@@ -1124,9 +1124,9 @@ function CheckOutModal({ tool, obras, onClose }: { tool: Tool, obras: Obra[], on
           {tool.fotoModelo && (
             <div className="space-y-2">
               <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Foto de Referência</span>
-              <div className="relative w-full aspect-video rounded-2xl overflow-hidden border border-zinc-200">
-                <img src={tool.fotoModelo} className="w-full h-full object-cover" alt={`Referência: ${tool.nome}`} />
-                <div className="absolute inset-x-0 bottom-0 p-3 bg-gradient-to-t from-black/70 to-transparent">
+              <div className="relative w-full rounded-2xl overflow-hidden border border-zinc-200 bg-zinc-100">
+                <img src={tool.fotoModelo} className="w-full h-auto object-contain" alt={`Referência: ${tool.nome}`} />
+                <div className="absolute inset-x-0 bottom-0 p-3 bg-gradient-to-t from-black/60 to-transparent">
                   <span className="text-white text-xs font-bold">Estado esperado de devolução</span>
                 </div>
               </div>
