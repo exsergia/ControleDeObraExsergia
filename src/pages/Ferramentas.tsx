@@ -401,7 +401,7 @@ function ToolCard({ tool, onCheckOut, activeLog, onCheckIn, onEdit, onViewHistor
   return (
     <div className="bg-white p-5 rounded-3xl border border-zinc-200 shadow-sm hover:shadow-md transition-all group relative">
       <div className="flex items-start justify-between mb-4">
-        <div className="w-12 h-12 rounded-2xl bg-zinc-50 flex items-center justify-center text-zinc-900 group-hover:scale-110 transition-transform overflow-hidden shrink-0">
+        <div className="w-12 h-12 rounded-full bg-zinc-50 flex items-center justify-center text-zinc-900 group-hover:scale-110 transition-transform overflow-hidden shrink-0">
           {tool.fotoModelo
             ? <img src={tool.fotoModelo} className="w-full h-full object-cover" alt={tool.nome} />
             : (tool.nome || '').toLowerCase().includes('furadeira') ? <Wrench className="w-6 h-6" /> : <Hammer className="w-6 h-6" />
