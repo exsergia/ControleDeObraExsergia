@@ -150,10 +150,10 @@ export default function ProgressoFisico() {
             onChange={(e) => { setSearch(e.target.value); setPage(1); }}
           />
         </div>
-        <div className="flex items-center gap-2 bg-white p-1.5 rounded-2xl border border-zinc-200 shadow-sm">
-          <Building2 className="w-4 h-4 text-zinc-400 ml-2" />
+        <div className="flex items-center gap-2 bg-white p-1.5 rounded-2xl border border-zinc-200 shadow-sm min-w-0 w-full sm:w-auto sm:max-w-[260px]">
+          <Building2 className="w-4 h-4 text-zinc-400 ml-2 shrink-0" />
           <select
-            className="bg-transparent border-none text-sm font-bold text-zinc-900 focus:ring-0 pr-8"
+            className="bg-transparent border-none text-sm font-bold text-zinc-900 focus:ring-0 pr-8 min-w-0 flex-1 truncate"
             value={selectedObraId}
             onChange={(e) => { setSelectedObraId(e.target.value); setPage(1); }}
           >
