@@ -937,7 +937,7 @@ function Layout({ children }: { children: React.ReactNode }) {
     { label: 'Operadores', icon: Users, path: '/operadores', adminOnly: true },
     { label: 'Progresso Físico', icon: Activity, path: '/progresso' },
     { label: 'Financeiro', icon: DollarSign, path: '/financeiro', adminOnly: true, soAdmin: true },
-    { label: 'Relatórios', icon: FileText, path: '/relatorios', soAdmin: true },
+    { label: 'Relatórios', icon: FileText, path: '/relatorios', adminOnly: true, soAdmin: true },
     { label: 'Ferramentas', icon: Hammer, path: '/ferramentas' },
     { label: 'Configurações', icon: Settings, path: '/settings' },
   ];
