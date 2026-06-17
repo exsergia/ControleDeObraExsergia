@@ -1,19 +1,11 @@
 import React, { useState } from 'react';
-import { Bell, Save, KeyRound, Loader2, Eye, EyeOff, Sun, Moon, Monitor, Palette } from 'lucide-react';
+import { Bell, Save, KeyRound, Loader2, Eye, EyeOff } from 'lucide-react';
 import { requestNotificationPermission, sendBrowserNotification } from '../lib/services';
 import { changePassword } from '../lib/supabase';
-import { useTheme, type Theme } from '../lib/theme';
 import { useAuth } from '../App';
 
 export default function Settings() {
   const { notify } = useAuth();
-  const { theme, setTheme } = useTheme();
-
-  const themeOptions: { value: Theme; label: string; desc: string; icon: typeof Sun }[] = [
-    { value: 'light', label: 'Claro', desc: 'Aparência clara', icon: Sun },
-    { value: 'dark', label: 'Escuro', desc: 'Aparência escura', icon: Moon },
-    { value: 'system', label: 'Sistema', desc: 'Acompanha o aparelho', icon: Monitor },
-  ];
   const [notifications, setNotifications] = useState({
     materials: true,
     checklist: true,
@@ -74,43 +66,6 @@ export default function Settings() {
       <div className="flex flex-col gap-1">
         <h2 className="text-2xl font-bold tracking-tight text-zinc-900">Configurações</h2>
         <p className="text-zinc-500 text-sm">Gerencie suas preferências de sistema e notificações.</p>
-      </div>
-
-      <div className="bg-white rounded-2xl border border-zinc-200 shadow-sm overflow-hidden">
-        <div className="p-6 border-b border-zinc-100 bg-zinc-50/50">
-          <div className="flex items-center gap-3">
-            <Palette className="w-5 h-5 text-zinc-400" />
-            <h3 className="font-bold text-zinc-900 uppercase tracking-widest text-xs">Aparência</h3>
-          </div>
-        </div>
-        <div className="p-6">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            {themeOptions.map(opt => {
-              const active = theme === opt.value;
-              const Icon = opt.icon;
-              return (
-                <button
-                  key={opt.value}
-                  type="button"
-                  onClick={() => setTheme(opt.value)}
-                  className={`flex flex-col items-start gap-3 p-4 rounded-2xl border-2 text-left transition-all ${
-                    active
-                      ? 'border-zinc-900 bg-zinc-50 shadow-sm'
-                      : 'border-zinc-200 hover:border-zinc-300 hover:bg-zinc-50/50'
-                  }`}
-                >
-                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${active ? 'bg-zinc-900 text-white' : 'bg-zinc-100 text-zinc-500'}`}>
-                    <Icon className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <p className="font-bold text-zinc-900 text-sm">{opt.label}</p>
-                    <p className="text-[11px] text-zinc-500">{opt.desc}</p>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        </div>
       </div>
 
       <div className="bg-white rounded-2xl border border-zinc-200 shadow-sm overflow-hidden">

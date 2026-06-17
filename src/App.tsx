@@ -606,7 +606,7 @@ function LoginView() {
 
   return (
     <div className="min-h-screen grid lg:grid-cols-2 bg-slate-50 font-sans">
-      <div className="keep-dark hidden lg:flex flex-col justify-between p-12 bg-slate-900 text-white border-r border-slate-800">
+      <div className="hidden lg:flex flex-col justify-between p-12 bg-slate-900 text-white border-r border-slate-800">
         <div>
           <div className="flex items-center gap-2 font-bold text-2xl tracking-tighter">
             <div className="w-8 h-8 bg-blue-600 rounded flex items-center justify-center">
@@ -827,7 +827,7 @@ function NovaSenhaView({ onComplete, notify }: { onComplete: () => void; notify:
 
   return (
     <div className="min-h-screen grid lg:grid-cols-2 bg-slate-50 font-sans">
-      <div className="keep-dark hidden lg:flex flex-col justify-between p-12 bg-slate-900 text-white border-r border-slate-800">
+      <div className="hidden lg:flex flex-col justify-between p-12 bg-slate-900 text-white border-r border-slate-800">
         <div className="flex items-center gap-2 font-bold text-2xl tracking-tighter">
           <div className="w-8 h-8 bg-blue-600 rounded flex items-center justify-center">
             <HardHat className="text-white w-5 h-5" />
@@ -965,7 +965,7 @@ function Layout({ children }: { children: React.ReactNode }) {
 
       {/* Sidebar */}
       <aside className={cn(
-        "keep-dark fixed inset-y-0 left-0 z-50 w-56 bg-slate-900 border-r border-slate-800 flex flex-col transform transition-transform duration-300 lg:relative lg:translate-x-0 shadow-2xl lg:shadow-none",
+        "fixed inset-y-0 left-0 z-50 w-56 bg-slate-900 border-r border-slate-800 flex flex-col transform transition-transform duration-300 lg:relative lg:translate-x-0 shadow-2xl lg:shadow-none",
         sidebarOpen ? "translate-x-0" : "-translate-x-full"
       )}>
         <div className="h-12 flex items-center px-4 border-b border-slate-800">
