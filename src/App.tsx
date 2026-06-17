@@ -510,6 +510,8 @@ function LoginView() {
         return;
       }
 
+      // Cadastro também já loga: começa no Dashboard.
+      localStorage.removeItem(LAST_ROUTE_KEY);
       const cred = await createUserWithEmailAndPassword(auth, emailLimpo, senha, {
         nome: nome.trim(),
         sobrenome: sobrenome.trim(),
@@ -585,6 +587,8 @@ function LoginView() {
         }
       }
 
+      // Login novo sempre começa no Dashboard (não restaura a rota do uso anterior).
+      localStorage.removeItem(LAST_ROUTE_KEY);
       await signInWithEmailAndPassword(auth, emailLogin, senha);
     } catch (error: any) {
       const code = error?.code || '';
