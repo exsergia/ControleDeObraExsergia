@@ -8,11 +8,108 @@
   --color-brand: var(--color-blue-600);
 }
 
+/* Tema escuro acionado por classe .dark no <html> (não por prefers-color-scheme) */
+@custom-variant dark (&:where(.dark, .dark *));
+
 @layer base {
   body {
     @apply bg-slate-50 text-slate-900 antialiased overflow-hidden;
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
   }
+}
+
+/*
+  Tema escuro: em vez de adicionar dark: em centenas de classes, remapeamos as
+  variáveis de cor neutras. As tonalidades "claras" (50-200) viram superfícies
+  escuras e as "escuras" (700-900) viram texto claro. Acentos (azul/vermelho/
+  verde/âmbar) não são alterados. Tonalidades 950 ficam intactas como âncoras escuras.
+*/
+.dark {
+  color-scheme: dark;
+
+  --color-white: #0e1116;
+
+  --color-slate-50:  #0b0f15;
+  --color-slate-100: #131822;
+  --color-slate-200: #1f2632;
+  --color-slate-300: #2c3543;
+  --color-slate-400: #8b97a8;
+  --color-slate-500: #b6c0cd;
+  --color-slate-600: #d3dae3;
+  --color-slate-700: #e6eaf0;
+  --color-slate-800: #f1f4f8;
+  --color-slate-900: #f8fafc;
+
+  --color-zinc-50:  #17171a;
+  --color-zinc-100: #1d1d21;
+  --color-zinc-200: #2a2a30;
+  --color-zinc-300: #3a3a42;
+  --color-zinc-400: #9b9ba6;
+  --color-zinc-500: #c2c2cb;
+  --color-zinc-600: #dcdce0;
+  --color-zinc-700: #ececee;
+  --color-zinc-800: #f6f6f7;
+  --color-zinc-900: #fafafa;
+
+  --color-gray-50:  #17181b;
+  --color-gray-100: #1d1e22;
+  --color-gray-200: #2a2b31;
+  --color-gray-300: #3a3b42;
+  --color-gray-400: #9a9ca6;
+  --color-gray-500: #c1c3cb;
+  --color-gray-600: #dbdce0;
+  --color-gray-700: #ebecee;
+  --color-gray-800: #f6f6f7;
+  --color-gray-900: #fafafa;
+}
+
+/*
+  Superfícies que devem PERMANECER escuras nos dois temas (menu lateral, painel
+  de login, etc.). Restaura os valores originais das neutras só nesse trecho,
+  fazendo o subárvore renderizar como no tema claro (fundo escuro, texto claro).
+*/
+.dark .keep-dark {
+  --color-white: #ffffff;
+
+  --color-slate-50:  #f8fafc;
+  --color-slate-100: #f1f5f9;
+  --color-slate-200: #e2e8f0;
+  --color-slate-300: #cbd5e1;
+  --color-slate-400: #94a3b8;
+  --color-slate-500: #64748b;
+  --color-slate-600: #475569;
+  --color-slate-700: #334155;
+  --color-slate-800: #1e293b;
+  --color-slate-900: #0f172a;
+
+  --color-zinc-50:  #fafafa;
+  --color-zinc-100: #f4f4f5;
+  --color-zinc-200: #e4e4e7;
+  --color-zinc-300: #d4d4d8;
+  --color-zinc-400: #a1a1aa;
+  --color-zinc-500: #71717a;
+  --color-zinc-600: #52525b;
+  --color-zinc-700: #3f3f46;
+  --color-zinc-800: #27272a;
+  --color-zinc-900: #18181b;
+}
+
+/*
+  Botões com cor de destaque (azul/vermelho/verde/âmbar) mantêm o texto branco no
+  tema escuro — o remap acima deixaria o texto escuro e ilegível sobre a cor cheia.
+  Aplica-se quando bg e texto estão no mesmo elemento (padrão dos botões do app).
+*/
+.dark .text-white.bg-blue-600,
+.dark .text-white.bg-blue-700,
+.dark .text-white.bg-red-600,
+.dark .text-white.bg-red-700,
+.dark .text-white.bg-green-600,
+.dark .text-white.bg-green-700,
+.dark .text-white.bg-emerald-600,
+.dark .text-white.bg-emerald-700,
+.dark .text-white.bg-amber-500,
+.dark .text-white.bg-amber-600 {
+  color: #ffffff;
 }
 
 @layer components {
