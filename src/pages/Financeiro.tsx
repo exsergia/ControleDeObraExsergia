@@ -157,10 +157,10 @@ export default function Financeiro() {
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
-        <div className="flex items-center gap-3">
-           <Filter className="w-4 h-4 text-zinc-400" title="Filtrar por Obra" />
-           <select 
-            className="bg-white border border-zinc-200 px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider focus:outline-none"
+        <div className="flex items-center gap-3 min-w-0">
+           <Filter className="w-4 h-4 text-zinc-400 shrink-0" title="Filtrar por Obra" />
+           <select
+            className="bg-white border border-zinc-200 px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider focus:outline-none truncate w-full sm:w-auto sm:max-w-[220px]"
             value={selectedObraId}
             onChange={(e) => setSelectedObraId(e.target.value)}
            >
