@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
-import { Bell, Save } from 'lucide-react';
+import React, { useState } from 'react';
+import { Bell, Save, KeyRound, Loader2, Eye, EyeOff } from 'lucide-react';
 import { requestNotificationPermission, sendBrowserNotification } from '../lib/services';
+import { changePassword } from '../lib/supabase';
 import { useAuth } from '../App';
 
 export default function Settings() {
@@ -20,6 +21,44 @@ export default function Settings() {
     requestNotificationPermission();
     sendBrowserNotification('Configurações Salvas', 'Suas preferências de notificação foram atualizadas.');
     notify('success', 'Preferências Salvas', 'Suas configurações de sistema foram atualizadas com sucesso.');
+  };
+
+  const [senhaAtual, setSenhaAtual] = useState('');
+  const [novaSenha, setNovaSenha] = useState('');
+  const [confirmarSenha, setConfirmarSenha] = useState('');
+  const [mostrarSenhas, setMostrarSenhas] = useState(false);
+  const [salvandoSenha, setSalvandoSenha] = useState(false);
+
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!senhaAtual || !novaSenha || !confirmarSenha) {
+      notify('error', 'Campos obrigatórios', 'Preencha todos os campos para alterar a senha.');
+      return;
+    }
+    if (novaSenha.length < 6) {
+      notify('error', 'Senha muito curta', 'A nova senha precisa ter pelo menos 6 caracteres.');
+      return;
+    }
+    if (novaSenha !== confirmarSenha) {
+      notify('error', 'Senhas não conferem', 'A nova senha e a confirmação precisam ser iguais.');
+      return;
+    }
+    if (novaSenha === senhaAtual) {
+      notify('error', 'Senha repetida', 'A nova senha precisa ser diferente da atual.');
+      return;
+    }
+    setSalvandoSenha(true);
+    try {
+      await changePassword(senhaAtual, novaSenha);
+      notify('success', 'Senha alterada!', 'Sua senha foi atualizada com sucesso.');
+      setSenhaAtual('');
+      setNovaSenha('');
+      setConfirmarSenha('');
+    } catch (err: any) {
+      notify('error', 'Erro ao alterar senha', err?.message || 'Não foi possível alterar a senha.');
+    } finally {
+      setSalvandoSenha(false);
+    }
   };
 
   return (
@@ -66,13 +105,80 @@ export default function Settings() {
       </div>
 
       <div className="flex justify-end gap-3 pt-4">
-        <button 
+        <button
           onClick={handleSave}
           className="flex items-center justify-center gap-2 px-8 py-4 bg-zinc-900 text-white rounded-xl font-bold uppercase tracking-widest hover:bg-zinc-800 transition-all shadow-xl shadow-zinc-200"
         >
           <Save className="w-5 h-5" />
           Salvar Preferências
         </button>
+      </div>
+
+      <div className="bg-white rounded-2xl border border-zinc-200 shadow-sm overflow-hidden">
+        <div className="p-6 border-b border-zinc-100 bg-zinc-50/50">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <KeyRound className="w-5 h-5 text-zinc-400" />
+              <h3 className="font-bold text-zinc-900 uppercase tracking-widest text-xs">Alterar Senha</h3>
+            </div>
+            <button
+              type="button"
+              onClick={() => setMostrarSenhas(v => !v)}
+              className="flex items-center gap-1.5 text-[11px] font-bold text-zinc-400 hover:text-zinc-700 transition-colors"
+            >
+              {mostrarSenhas ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              {mostrarSenhas ? 'Ocultar' : 'Mostrar'}
+            </button>
+          </div>
+        </div>
+
+        <form onSubmit={handleChangePassword} className="p-6 space-y-4">
+          <div className="space-y-2">
+            <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Senha Atual</label>
+            <input
+              type={mostrarSenhas ? 'text' : 'password'}
+              value={senhaAtual}
+              onChange={(e) => setSenhaAtual(e.target.value)}
+              placeholder="Digite sua senha atual"
+              autoComplete="current-password"
+              className="w-full h-12 px-4 bg-white border border-zinc-200 rounded-xl text-sm font-medium outline-none focus:ring-2 focus:ring-zinc-900 focus:border-zinc-900 transition-all"
+            />
+          </div>
+          <div className="grid sm:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Nova Senha</label>
+              <input
+                type={mostrarSenhas ? 'text' : 'password'}
+                value={novaSenha}
+                onChange={(e) => setNovaSenha(e.target.value)}
+                placeholder="Mín. 6 caracteres"
+                autoComplete="new-password"
+                className="w-full h-12 px-4 bg-white border border-zinc-200 rounded-xl text-sm font-medium outline-none focus:ring-2 focus:ring-zinc-900 focus:border-zinc-900 transition-all"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Confirmar Nova Senha</label>
+              <input
+                type={mostrarSenhas ? 'text' : 'password'}
+                value={confirmarSenha}
+                onChange={(e) => setConfirmarSenha(e.target.value)}
+                placeholder="Repita a nova senha"
+                autoComplete="new-password"
+                className="w-full h-12 px-4 bg-white border border-zinc-200 rounded-xl text-sm font-medium outline-none focus:ring-2 focus:ring-zinc-900 focus:border-zinc-900 transition-all"
+              />
+            </div>
+          </div>
+          <div className="flex justify-end pt-2">
+            <button
+              type="submit"
+              disabled={salvandoSenha}
+              className="flex items-center justify-center gap-2 px-8 py-4 bg-zinc-900 text-white rounded-xl font-bold uppercase tracking-widest hover:bg-zinc-800 transition-all shadow-xl shadow-zinc-200 disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              {salvandoSenha ? <Loader2 className="w-5 h-5 animate-spin" /> : <KeyRound className="w-5 h-5" />}
+              {salvandoSenha ? 'Salvando...' : 'Alterar Senha'}
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   );

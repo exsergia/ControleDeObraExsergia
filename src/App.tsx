@@ -376,18 +376,20 @@ function RouteTracker() {
   const location = useLocation();
   const navigate = useNavigate();
 
+  // Ao montar, se o app abriu na raiz mas havia uma rota salva, restaura.
+  // Cobre tanto o refresh quanto reabrir o navegador (localStorage persiste).
   useEffect(() => {
-    const saved = sessionStorage.getItem(LAST_ROUTE_KEY);
+    const saved = localStorage.getItem(LAST_ROUTE_KEY);
     if (saved && saved !== '/' && location.pathname === '/') {
       navigate(saved, { replace: true });
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Salva a rota atual (incluindo a Dashboard) sempre que ela muda.
   useEffect(() => {
-    if (location.pathname !== '/') {
-      sessionStorage.setItem(LAST_ROUTE_KEY, location.pathname);
-    }
-  }, [location.pathname]);
+    localStorage.setItem(LAST_ROUTE_KEY, location.pathname + location.search);
+  }, [location.pathname, location.search]);
 
   return null;
 }

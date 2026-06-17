@@ -48,6 +48,16 @@ export async function signInWithEmailAndPassword(_auth: unknown, email: string, 
   return { user: data.user };
 }
 
+export async function changePassword(currentPassword: string, newPassword: string) {
+  const email = auth.currentUser?.email;
+  if (!email) throw new Error('Nenhum usuário autenticado.');
+  // Revalida a senha atual antes de permitir a troca
+  const { error: reauthError } = await supabase.auth.signInWithPassword({ email, password: currentPassword });
+  if (reauthError) throw new Error('Senha atual incorreta.');
+  const { error } = await supabase.auth.updateUser({ password: newPassword });
+  if (error) throw error;
+}
+
 export async function createUserWithEmailAndPassword(_auth: unknown, email: string, password: string, metadata?: Record<string, unknown>) {
   const { data, error } = await supabase.auth.signUp({
     email,

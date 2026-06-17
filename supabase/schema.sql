@@ -102,13 +102,13 @@ as $$
     exists (
       select 1
       from public.admin_access a
-      where a.id = ('email:' || lower(coalesce(auth.jwt() ->> 'email', '')))
+      where regexp_replace(a.id, '^\s+|\s+$', '', 'g') = ('email:' || lower(coalesce(auth.jwt() ->> 'email', '')))
         and coalesce((a.data ->> 'ativo')::boolean, true) = true
     )
     or exists (
       select 1
       from public.operadores o
-      join public.admin_access a on a.id = ('cpf:' || regexp_replace(coalesce(o.data ->> 'cpf', ''), '\\D', '', 'g'))
+      join public.admin_access a on regexp_replace(a.id, '^\s+|\s+$', '', 'g') = ('cpf:' || regexp_replace(coalesce(o.data ->> 'cpf', ''), '\\D', '', 'g'))
       where o.id = auth.uid()::text
         and coalesce((a.data ->> 'ativo')::boolean, true) = true
     );
