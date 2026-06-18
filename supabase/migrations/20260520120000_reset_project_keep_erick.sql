@@ -36,8 +36,27 @@ create table if not exists public.checklists (
 create table if not exists public.operadores (
   id text primary key,
   data jsonb not null default '{}'::jsonb,
+  nome text,
+  sobrenome text,
+  email text,
+  cpf text,
+  telefone text,
+  funcao text,
+  role text default 'operator',
+  lgpd_aceite_versao text,
+  lgpd_aceite_data timestamptz,
   created_at timestamptz not null default now()
 );
+
+alter table public.operadores add column if not exists nome text;
+alter table public.operadores add column if not exists sobrenome text;
+alter table public.operadores add column if not exists email text;
+alter table public.operadores add column if not exists cpf text;
+alter table public.operadores add column if not exists telefone text;
+alter table public.operadores add column if not exists funcao text;
+alter table public.operadores add column if not exists role text default 'operator';
+alter table public.operadores add column if not exists lgpd_aceite_versao text;
+alter table public.operadores add column if not exists lgpd_aceite_data timestamptz;
 
 create table if not exists public.cpfs (
   id text primary key,
@@ -107,6 +126,7 @@ create index if not exists idx_atividades_obra on public.atividades ((data ->> '
 create index if not exists idx_checklists_data on public.checklists ((data ->> 'data') desc);
 create index if not exists idx_operadores_email_data on public.operadores (lower(coalesce(data ->> 'email', '')));
 create index if not exists idx_operadores_cpf_data on public.operadores (regexp_replace(coalesce(data ->> 'cpf', ''), '\D', '', 'g'));
+create index if not exists idx_operadores_lgpd_aceite_data on public.operadores (lgpd_aceite_data);
 
 -- 6) Admin unico.
 insert into public.admin_access (id, data) values

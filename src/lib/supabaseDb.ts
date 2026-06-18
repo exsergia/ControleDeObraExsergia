@@ -48,7 +48,16 @@ export function serverTimestamp() {
 }
 
 function unwrap(row: any) {
-  return { id: row.id, ...(row.data || {}) };
+  const item = { id: row.id, ...(row.data || {}) };
+
+  if (row.lgpd_aceite_versao || row.lgpd_aceite_data) {
+    item.lgpdAceite = {
+      versao: row.lgpd_aceite_versao || item.lgpdAceite?.versao || '',
+      data: row.lgpd_aceite_data || item.lgpdAceite?.data || '',
+    };
+  }
+
+  return item;
 }
 
 function docSnap(id: string, data: any | null) {
@@ -101,7 +110,7 @@ function applyConstraints(items: any[], constraints: QueryConstraint[] = []) {
 }
 
 export async function getDoc(ref: DocRef) {
-  const { data, error } = await supabase.from(ref.table).select('id,data').eq('id', ref.id).maybeSingle();
+  const { data, error } = await supabase.from(ref.table).select('*').eq('id', ref.id).maybeSingle();
   if (error) throw error;
   return docSnap(ref.id, data ? unwrap(data) : null);
 }
@@ -112,7 +121,7 @@ const FLAT_COLUMN_MAP: Record<string, Record<string, string>> = {
 };
 
 export async function getDocs(ref: CollectionRef) {
-  let q = supabase.from(ref.table).select('id,data');
+  let q = supabase.from(ref.table).select('*');
 
   // Empurra WHERE com campo flat para o servidor (evita carregar todas as linhas em JS)
   for (const c of ref.constraints) {
@@ -133,7 +142,7 @@ export async function setDoc(ref: DocRef, value: any) {
   const row: any = { id: ref.id, data: payload };
 
   if (ref.table === 'operadores') {
-    const { nome, sobrenome, email, cpf, telefone, funcao, role } = payload;
+    const { nome, sobrenome, email, cpf, telefone, funcao, role, lgpdAceite } = payload;
     if (nome !== undefined) row.nome = nome;
     if (sobrenome !== undefined) row.sobrenome = sobrenome;
     if (email !== undefined) row.email = email;
@@ -141,6 +150,10 @@ export async function setDoc(ref: DocRef, value: any) {
     if (telefone !== undefined) row.telefone = telefone;
     if (funcao !== undefined) row.funcao = funcao;
     if (role !== undefined) row.role = role;
+    if (lgpdAceite !== undefined) {
+      row.lgpd_aceite_versao = lgpdAceite?.versao || null;
+      row.lgpd_aceite_data = lgpdAceite?.data || null;
+    }
   }
 
   if (ref.table === 'obras') {
