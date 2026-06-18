@@ -40,6 +40,7 @@ export interface Operator {
   telefone?: string;
   cpf?: string;
   role: 'admin' | 'encarregado' | 'operator';
+  lgpdAceite?: { versao: string; data: string };
 }
 
 export interface Atividade {

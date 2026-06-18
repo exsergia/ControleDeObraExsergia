@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext, createContext } from 'react';
+import React, { useState, useEffect, useRef, useContext, createContext } from 'react';
 import { HashRouter as BrowserRouter, Routes, Route, Navigate, Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   auth,
@@ -394,6 +394,89 @@ function RouteTracker() {
   return null;
 }
 
+// Versão do termo aceito — incrementar quando o texto do termo mudar
+const TERMO_LGPD_VERSAO = 'v1';
+
+function TermoLGPDModal({ open, onClose, onAccept }: { open: boolean; onClose: () => void; onAccept: () => void }) {
+  const [podeAceitar, setPodeAceitar] = useState(false);
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    setPodeAceitar(false);
+    // Se o conteúdo couber sem rolagem, libera o aceite direto
+    const el = scrollRef.current;
+    if (el && el.scrollHeight <= el.clientHeight + 4) setPodeAceitar(true);
+  }, [open]);
+
+  if (!open) return null;
+
+  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const el = e.currentTarget;
+    if (el.scrollHeight - el.scrollTop - el.clientHeight < 24) setPodeAceitar(true);
+  };
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+      <div className="w-full max-w-lg max-h-[85vh] bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden">
+        <div className="p-5 border-b border-slate-200 flex items-center justify-between gap-3 shrink-0">
+          <div className="flex items-center gap-2">
+            <ShieldCheck className="w-5 h-5 text-blue-600" />
+            <h3 className="font-bold text-slate-900">Termo de Uso e Privacidade (LGPD)</h3>
+          </div>
+          <button type="button" onClick={onClose} className="p-1 rounded-lg hover:bg-slate-100 text-slate-500">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        <div
+          ref={scrollRef}
+          onScroll={handleScroll}
+          className="flex-1 overflow-y-auto p-5 text-sm text-slate-600 leading-relaxed space-y-3"
+        >
+          <p className="text-[11px] uppercase tracking-widest font-bold text-slate-400">Documento provisório — sujeito a alterações</p>
+
+          <p><strong>1. Aceite e Objeto.</strong> Ao criar uma conta e utilizar o aplicativo Controle de Obras Exsergia ("Aplicativo"), você declara ter lido, compreendido e concordado com este Termo de Uso e com a Política de Privacidade, em conformidade com a Lei nº 13.709/2018 (Lei Geral de Proteção de Dados — LGPD).</p>
+
+          <p><strong>2. Dados Coletados.</strong> Para o funcionamento do serviço, coletamos e tratamos dados pessoais como nome, sobrenome, e-mail, telefone e CPF, além de dados operacionais inseridos no uso do Aplicativo (obras, materiais, atividades, fotos, registros de ferramentas e checklists).</p>
+
+          <p><strong>3. Finalidade do Tratamento.</strong> Os dados são utilizados exclusivamente para autenticação, identificação do usuário, controle operacional das obras, rastreabilidade das atividades e geração de relatórios gerenciais. Não comercializamos seus dados pessoais.</p>
+
+          <p><strong>4. Compartilhamento.</strong> Os dados são armazenados em infraestrutura de nuvem (Supabase) e podem ser acessados por usuários autorizados da organização conforme o nível de permissão. Não há compartilhamento com terceiros para fins de marketing.</p>
+
+          <p><strong>5. Segurança.</strong> Adotamos medidas técnicas e administrativas para proteger os dados, incluindo controle de acesso, criptografia em trânsito (HTTPS) e regras de segurança no banco de dados.</p>
+
+          <p><strong>6. Direitos do Titular.</strong> Você pode, a qualquer momento, solicitar acesso, correção, portabilidade ou exclusão dos seus dados pessoais, bem como revogar este consentimento, mediante contato com o responsável pelo tratamento na organização.</p>
+
+          <p><strong>7. Retenção.</strong> Os dados serão mantidos pelo período necessário ao cumprimento das finalidades e das obrigações legais aplicáveis.</p>
+
+          <p><strong>8. Consentimento.</strong> Ao confirmar o aceite abaixo, você consente livre e expressamente com o tratamento dos seus dados pessoais nos termos aqui descritos.</p>
+
+          <p className="text-slate-400">Este é um texto provisório e será substituído pela versão oficial do termo. Em caso de dúvidas, procure o responsável pela área.</p>
+
+          <p className="text-[11px] text-slate-400">— Fim do documento —</p>
+        </div>
+
+        <div className="p-4 border-t border-slate-200 bg-slate-50 shrink-0">
+          {!podeAceitar && (
+            <p className="text-[11px] text-amber-600 font-medium mb-2 text-center">
+              Role o texto até o final para habilitar o aceite.
+            </p>
+          )}
+          <button
+            type="button"
+            disabled={!podeAceitar}
+            onClick={onAccept}
+            className="w-full h-12 flex items-center justify-center gap-2 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <CheckCircle className="w-5 h-5" /> Li e aceito o termo
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function LoginView() {
   const [mode, setMode] = useState<'login' | 'cadastro' | 'recuperar'>('login');
   const [loadingAuth, setLoadingAuth] = useState(false);
@@ -408,6 +491,8 @@ function LoginView() {
   const [email, setEmail] = useState('');
   const [cpf, setCpf] = useState('');
   const [confirmarSenha, setConfirmarSenha] = useState('');
+  const [mostrarTermo, setMostrarTermo] = useState(false);
+  const [aceitouTermo, setAceitouTermo] = useState(false);
 
   const handleRecuperar = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -500,6 +585,12 @@ function LoginView() {
       return;
     }
 
+    if (!aceitouTermo) {
+      alert('Para criar a conta, abra e aceite o Termo de Uso e Privacidade (LGPD).');
+      setMostrarTermo(true);
+      return;
+    }
+
     setLoadingAuth(true);
     try {
       const cpfRef = doc(db, 'cpfs', cpfLimpo);
@@ -528,6 +619,7 @@ function LoginView() {
         email: emailLimpo,
         funcao: 'Operador de Campo',
         role: 'operator',
+        lgpdAceite: { versao: TERMO_LGPD_VERSAO, data: new Date().toISOString() },
       };
 
       await setDoc(doc(db, 'operadores', cred.user.id), perfil);
@@ -776,15 +868,41 @@ function LoginView() {
                 placeholder="Confirmar senha"
                 className="w-full h-12 px-4 bg-white border border-slate-200 rounded-lg text-sm font-medium outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               />
+
+              {aceitouTermo ? (
+                <div className="flex items-center justify-between gap-2 rounded-lg border border-green-200 bg-green-50 p-3">
+                  <span className="flex items-center gap-2 text-xs font-bold text-green-700">
+                    <CheckCircle className="w-4 h-4 shrink-0" /> Termo de Uso e Privacidade aceito
+                  </span>
+                  <button type="button" onClick={() => setMostrarTermo(true)} className="text-[11px] text-green-700 underline shrink-0">
+                    Reler
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setMostrarTermo(true)}
+                  className="w-full flex items-center justify-center gap-2 rounded-lg border-2 border-dashed border-blue-300 bg-blue-50/50 p-3 text-xs font-bold text-blue-700 hover:bg-blue-50 transition-colors"
+                >
+                  <FileText className="w-4 h-4" /> Abrir e aceitar o Termo de Uso e Privacidade (LGPD)
+                </button>
+              )}
+
               <button
                 type="submit"
-                disabled={loadingAuth}
+                disabled={loadingAuth || !aceitouTermo}
                 className="w-full h-12 flex items-center justify-center bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 transition-all shadow-sm disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 {loadingAuth ? 'Cadastrando...' : 'Cadastrar usuário'}
               </button>
             </form>
           )}
+
+          <TermoLGPDModal
+            open={mostrarTermo}
+            onClose={() => setMostrarTermo(false)}
+            onAccept={() => { setAceitouTermo(true); setMostrarTermo(false); }}
+          />
 
           {mode !== 'recuperar' && (
             <button
