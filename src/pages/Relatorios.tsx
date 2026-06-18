@@ -105,18 +105,30 @@ export default function Relatorios() {
 
   const handleExportInventario = () => {
     const wb = utils.book_new();
-    const data = tools.map(t => ({
-      'Nome': t.nome || '---',
-      'Código': t.codigo || '---',
-      'Modelo': t.modelo || '---',
-      'Descrição': t.descricao || '---',
-      'Valor (R$)': typeof t.valor === 'number' ? t.valor.toFixed(2).replace('.', ',') : '---',
-      'Data de Compra': t.dataCompra ? new Date(`${t.dataCompra}T00:00:00`).toLocaleDateString('pt-BR') : '---',
-      'Status': t.status || '---',
-      'Foto de Referência': t.fotoModelo || '---',
-    }));
+    const data = tools.map(t => {
+      const openLog = toolLogs.find(l => l.toolId === t.id && l.statusLog === 'Aberta');
+      let localizacao = 'Em estoque';
+      if (openLog) {
+        const obraNome = obras.find(o => o.id === openLog.obraId)?.nome || 'Obra não identificada';
+        const ativNome = openLog.activityId ? atividades.find(a => a.id === openLog.activityId)?.descricao : '';
+        localizacao = ativNome ? `${obraNome} — ${ativNome}` : obraNome;
+      } else if (t.status === 'Manutenção') {
+        localizacao = 'Em manutenção';
+      }
+      return {
+        'Nome': t.nome || '---',
+        'Código': t.codigo || '---',
+        'Modelo': t.modelo || '---',
+        'Descrição': t.descricao || '---',
+        'Valor (R$)': typeof t.valor === 'number' ? t.valor.toFixed(2).replace('.', ',') : '---',
+        'Data de Compra': t.dataCompra ? new Date(`${t.dataCompra}T00:00:00`).toLocaleDateString('pt-BR') : '---',
+        'Status': t.status || '---',
+        'Localização Atual': localizacao,
+        'Foto de Referência': t.fotoModelo || '---',
+      };
+    });
     const ws = utils.json_to_sheet(data);
-    const colWidths = [30, 15, 20, 40, 15, 16, 12, 50];
+    const colWidths = [30, 15, 20, 40, 15, 16, 12, 45, 50];
     ws['!cols'] = colWidths.map(w => ({ wch: w }));
     utils.book_append_sheet(wb, ws, 'INVENTARIO_FERRAMENTAS');
     writeFile(wb, `Inventario_Ferramentas_${format(new Date(), 'yyyy-MM-dd')}.xlsx`);
