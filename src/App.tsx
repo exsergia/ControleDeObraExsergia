@@ -17,6 +17,7 @@ import {
   Package,
   ClipboardCheck,
   Hammer,
+  Truck,
   Users,
   FileText,
   LogOut,
@@ -83,6 +84,7 @@ const Financeiro = React.lazy(() => import('./pages/Financeiro'));
 const Relatorios = React.lazy(() => import('./pages/Relatorios'));
 const Progresso = React.lazy(() => import('./pages/Progresso'));
 const Ferramentas = React.lazy(() => import('./pages/Ferramentas'));
+const Frota = React.lazy(() => import('./pages/Frota'));
 const SettingsPage = React.lazy(() => import('./pages/Settings'));
 
 interface Notification {
@@ -357,6 +359,7 @@ function App() {
                     <Route path="/relatorios" element={isAdmin ? <Relatorios /> : <Navigate to="/" replace />} />
                     <Route path="/progresso" element={<Progresso />} />
                     <Route path="/ferramentas" element={<Ferramentas />} />
+                    <Route path="/frota" element={<Frota />} />
                     <Route path="/settings" element={<SettingsPage />} />
                     <Route path="*" element={<Navigate to="/" replace />} />
                   </Routes>
@@ -1057,6 +1060,7 @@ function Layout({ children }: { children: React.ReactNode }) {
     { label: 'Financeiro', icon: DollarSign, path: '/financeiro', adminOnly: true, soAdmin: true },
     { label: 'Relatórios', icon: FileText, path: '/relatorios', adminOnly: true, soAdmin: true },
     { label: 'Ferramentas', icon: Hammer, path: '/ferramentas' },
+    { label: 'Controle de Frota', icon: Truck, path: '/frota' },
     { label: 'Configurações', icon: Settings, path: '/settings' },
   ];
 

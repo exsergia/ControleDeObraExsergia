@@ -90,6 +90,45 @@ export interface ToolLog {
   activityId?: string;
 }
 
+export type VehicleStatus = 'Disponível' | 'Em Uso' | 'Manutenção';
+
+export interface GeoPoint {
+  lat: number;
+  lng: number;
+  accuracy?: number;
+}
+
+export interface Vehicle {
+  id: string;
+  placa: string;
+  modelo: string;
+  codigo?: string;        // código interno / QR Code
+  status: VehicleStatus;
+  fotoVeiculo?: string;   // opcional
+  observacoes?: string;
+  lastLogId?: string;
+}
+
+export interface VehicleLog {
+  id: string;
+  vehicleId: string;
+  responsavelNome: string;
+  responsavelId?: string;
+  // Retirada
+  dataSaida: any;
+  fotoPainelSaida?: string;
+  localSaida?: GeoPoint | null;
+  // Devolução
+  dataDevolucao?: any;
+  fotoPainelDevolucao?: string;
+  localDevolucao?: GeoPoint | null;
+  observacaoDevolucao?: string;   // "Sem avarias" ou texto livre
+  fotosAvaria?: string[];         // fotos extras de avaria
+  statusLog: 'Aberta' | 'Concluída';
+  movementHash?: string;
+  activityId?: string;
+}
+
 export interface Checklist {
   id: string;
   obraId: string;

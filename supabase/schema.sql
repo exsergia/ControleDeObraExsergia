@@ -72,6 +72,18 @@ create table if not exists public."toolLogs" (
   created_at timestamptz not null default now()
 );
 
+create table if not exists public.vehicles (
+  id text primary key default gen_random_uuid()::text,
+  data jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public."vehicleLogs" (
+  id text primary key default gen_random_uuid()::text,
+  data jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now()
+);
+
 create table if not exists public.admin_access (
   id text primary key,
   data jsonb not null default '{}'::jsonb,
@@ -87,6 +99,9 @@ create index if not exists idx_obras_created_at on public.obras (created_at desc
 create index if not exists idx_materiais_created_at on public.materiais (created_at desc);
 create index if not exists idx_atividades_created_at on public.atividades (created_at desc);
 create index if not exists idx_tools_status on public.tools ((data ->> 'status'));
+create index if not exists idx_vehicles_status on public.vehicles ((data ->> 'status'));
+create index if not exists idx_vehicles_codigo on public.vehicles ((data ->> 'codigo'));
+create index if not exists idx_vehiclelogs_vehicle on public."vehicleLogs" ((data ->> 'vehicleId'));
 create index if not exists idx_operadores_lgpd_aceite_data on public.operadores (lgpd_aceite_data);
 
 -- ZERA DADOS DE TESTE/FICTÍCIOS.
@@ -100,6 +115,8 @@ truncate table
   public.cpfs,
   public.tools,
   public."toolLogs",
+  public.vehicles,
+  public."vehicleLogs",
   public.admin_access
 restart identity cascade;
 
@@ -142,6 +159,8 @@ alter table public.operadores enable row level security;
 alter table public.cpfs enable row level security;
 alter table public.tools enable row level security;
 alter table public."toolLogs" enable row level security;
+alter table public.vehicles enable row level security;
+alter table public."vehicleLogs" enable row level security;
 alter table public.admin_access enable row level security;
 
 do $$
@@ -149,7 +168,7 @@ declare
   tbl text;
   pol record;
 begin
-  foreach tbl in array array['obras','materiais','atividades','checklists','operadores','cpfs','tools','toolLogs','admin_access'] loop
+  foreach tbl in array array['obras','materiais','atividades','checklists','operadores','cpfs','tools','toolLogs','vehicles','vehicleLogs','admin_access'] loop
     for pol in execute format('select policyname from pg_policies where schemaname = ''public'' and tablename = %L', tbl) loop
       execute format('drop policy if exists %I on public.%I', pol.policyname, tbl);
     end loop;
@@ -163,6 +182,8 @@ create policy "select authenticated checklists" on public.checklists for select 
 create policy "select authenticated operadores" on public.operadores for select to authenticated using (true);
 create policy "select authenticated tools" on public.tools for select to authenticated using (true);
 create policy "select authenticated toolLogs" on public."toolLogs" for select to authenticated using (true);
+create policy "select authenticated vehicles" on public.vehicles for select to authenticated using (true);
+create policy "select authenticated vehicleLogs" on public."vehicleLogs" for select to authenticated using (true);
 
 create policy "admin all obras" on public.obras for all to authenticated using (public.is_app_admin()) with check (public.is_app_admin());
 create policy "admin all materiais" on public.materiais for all to authenticated using (public.is_app_admin()) with check (public.is_app_admin());
@@ -173,6 +194,8 @@ create policy "admin all admin_access" on public.admin_access for all to authent
 
 create policy "authenticated write tools" on public.tools for all to authenticated using (true) with check (true);
 create policy "authenticated write toolLogs" on public."toolLogs" for all to authenticated using (true) with check (true);
+create policy "authenticated write vehicles" on public.vehicles for all to authenticated using (true) with check (true);
+create policy "authenticated write vehicleLogs" on public."vehicleLogs" for all to authenticated using (true) with check (true);
 create policy "authenticated write atividades" on public.atividades for all to authenticated using (true) with check (true);
 create policy "authenticated write checklists" on public.checklists for all to authenticated using (true) with check (true);
 create policy "authenticated write materiais" on public.materiais for all to authenticated using (true) with check (true);
@@ -211,5 +234,7 @@ begin
   begin alter publication supabase_realtime add table public.cpfs; exception when duplicate_object then null; end;
   begin alter publication supabase_realtime add table public.tools; exception when duplicate_object then null; end;
   begin alter publication supabase_realtime add table public."toolLogs"; exception when duplicate_object then null; end;
+  begin alter publication supabase_realtime add table public.vehicles; exception when duplicate_object then null; end;
+  begin alter publication supabase_realtime add table public."vehicleLogs"; exception when duplicate_object then null; end;
   begin alter publication supabase_realtime add table public.admin_access; exception when duplicate_object then null; end;
 end $$;
