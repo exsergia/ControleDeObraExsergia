@@ -476,8 +476,8 @@ function ActivityCard({ ativ, obra, onUpdate, onDelete, readOnly = false }: {
         </div>
       </div>
 
-      {/* Rodapé financeiro — só se tiver valor unitário */}
-      {(ativ.valorUnitario || 0) > 0 && (
+      {/* Rodapé financeiro — só admin/encarregado (operador não vê valores de mão de obra) e se tiver valor unitário */}
+      {!readOnly && (ativ.valorUnitario || 0) > 0 && (
         <div className="px-4 py-2 sm:px-5 border-t border-zinc-50 flex items-center justify-between">
           <p className="text-[10px] text-zinc-400 flex items-center gap-1">
             <DollarSign className="w-3 h-3" />
