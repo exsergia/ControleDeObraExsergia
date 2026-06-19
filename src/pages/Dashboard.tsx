@@ -50,6 +50,13 @@ function formatNumber(value: number) {
   return Number(value || 0).toLocaleString('pt-BR', { maximumFractionDigits: 2 });
 }
 
+function saudacaoPorHorario() {
+  const hora = new Date().getHours();
+  if (hora >= 5 && hora < 12) return 'Bom dia';
+  if (hora >= 12 && hora < 18) return 'Boa tarde';
+  return 'Boa noite';
+}
+
 export default function Dashboard() {
   const { user, userProfile } = useAuth();
   const [obrasSnap, loading] = useCollection(collection(db, 'obras'));
@@ -180,7 +187,7 @@ export default function Dashboard() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-bold tracking-tight text-zinc-900">
-            Bom dia, {userProfile?.nome || user?.email?.split('@')[0] || 'Usuário'}
+            {saudacaoPorHorario()}, {userProfile?.nome || user?.email?.split('@')[0] || 'Usuário'}
           </h2>
           <p className="text-zinc-500">
             Você está logado como <span className="font-bold text-zinc-900 uppercase text-xs">{userProfile?.role || 'operador'}</span>.
