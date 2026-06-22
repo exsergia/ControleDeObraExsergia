@@ -32,24 +32,10 @@ import { uploadPhoto } from '../lib/services';
 import { Html5Qrcode } from 'html5-qrcode';
 import { useAuth } from '../App';
 import { capturarLocalizacao, mapsUrl, formatGeo } from '../lib/geo';
+import { parseDate } from '../lib/dateUtils';
 
-const parseMovementDate = (value: any): Date | null => {
-  if (!value) return null;
-  if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value;
-  if (typeof value?.toDate === 'function') {
-    const parsed = value.toDate();
-    return parsed instanceof Date && !Number.isNaN(parsed.getTime()) ? parsed : null;
-  }
-  if (typeof value === 'string' || typeof value === 'number') {
-    const parsed = new Date(value);
-    return Number.isNaN(parsed.getTime()) ? null : parsed;
-  }
-  if (typeof value === 'object') {
-    if (typeof value.seconds === 'number') return new Date(value.seconds * 1000);
-    if (typeof value._seconds === 'number') return new Date(value._seconds * 1000);
-  }
-  return null;
-};
+// Reaproveita o helper compartilhado (antes havia uma cópia local idêntica).
+const parseMovementDate = parseDate;
 
 const createMovementActivityId = (prefix = 'mov') => {
   const randomPart = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'

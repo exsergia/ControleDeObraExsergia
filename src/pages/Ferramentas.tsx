@@ -31,25 +31,11 @@ import { uploadPhoto, requestNotificationPermission, sendBrowserNotification } f
 import { Html5QrcodeScanner, Html5Qrcode } from 'html5-qrcode';
 import { useAuth } from '../App';
 import { registerPushForUser } from '../lib/push';
+import { parseDate } from '../lib/dateUtils';
 
 
-const parseMovementDateForScope = (value: any): Date | null => {
-  if (!value) return null;
-  if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value;
-  if (typeof value?.toDate === 'function') {
-    const parsed = value.toDate();
-    return parsed instanceof Date && !Number.isNaN(parsed.getTime()) ? parsed : null;
-  }
-  if (typeof value === 'string' || typeof value === 'number') {
-    const parsed = new Date(value);
-    return Number.isNaN(parsed.getTime()) ? null : parsed;
-  }
-  if (typeof value === 'object') {
-    if (typeof value.seconds === 'number') return new Date(value.seconds * 1000);
-    if (typeof value._seconds === 'number') return new Date(value._seconds * 1000);
-  }
-  return null;
-};
+// Reaproveita o helper compartilhado (antes havia uma cópia local idêntica).
+const parseMovementDateForScope = parseDate;
 
 const createMovementActivityId = (prefix = 'mov') => {
   const randomPart = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
