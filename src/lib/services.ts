@@ -10,9 +10,26 @@ export const requestNotificationPermission = async () => {
   return false;
 };
 
-export const sendBrowserNotification = (title: string, body: string) => {
-  if ('Notification' in window && Notification.permission === 'granted') {
-    new Notification(title, { body, icon: '/favicon.ico' });
+export const sendBrowserNotification = async (title: string, body: string) => {
+  if (!('Notification' in window) || Notification.permission !== 'granted') return;
+
+  // No mobile (e em PWAs) o construtor `new Notification()` é ilegal — é preciso
+  // usar a Service Worker Registration. Tentamos esse caminho primeiro e só caímos
+  // no construtor (desktop) como fallback. Tudo protegido para nunca lançar.
+  try {
+    if ('serviceWorker' in navigator) {
+      const reg = await navigator.serviceWorker.ready;
+      await reg.showNotification(title, { body, icon: '/icon-192.png', badge: '/icon-192.png' });
+      return;
+    }
+  } catch {
+    // ignora e tenta o fallback abaixo
+  }
+
+  try {
+    new Notification(title, { body, icon: '/icon-192.png' });
+  } catch {
+    // Ambiente não suporta o construtor (ex.: mobile sem SW pronto) — silencia.
   }
 };
 
