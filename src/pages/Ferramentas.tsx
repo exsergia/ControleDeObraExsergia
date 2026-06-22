@@ -22,7 +22,6 @@ import {
   QrCode,
   Edit2,
   Trash2,
-  Bell,
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { format } from 'date-fns';
@@ -179,34 +178,6 @@ export default function Ferramentas() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [atrasadosKey]);
 
-  // Botão de teste de notificação restrito a um usuário específico.
-  const isTester = (userProfile?.email || auth.currentUser?.email || '').toLowerCase() === 'nascimentoerick446@gmail.com';
-
-  const handleTestNotification = React.useCallback(async () => {
-    try {
-      const ok = await requestNotificationPermission();
-      if (!ok) {
-        notify('warning', 'Permissão necessária', 'Ative as notificações do navegador para testar.');
-        return;
-      }
-      if (!('serviceWorker' in navigator)) {
-        notify('error', 'Sem suporte', 'Este dispositivo não suporta notificações via service worker.');
-        return;
-      }
-      const reg = await navigator.serviceWorker.ready;
-      await reg.showNotification('Teste de notificação ✅', {
-        body: 'Tudo certo! As notificações estão funcionando neste aparelho.',
-        icon: '/icon-192.png',
-        badge: '/icon-192.png',
-        tag: 'teste-notif',
-        data: { url: '/#/ferramentas' },
-      });
-      notify('success', 'Notificação enviada', 'Confira o aviso na barra de notificações do aparelho.');
-    } catch (e: any) {
-      notify('error', 'Falha no teste', e?.message || 'Não foi possível exibir a notificação.');
-    }
-  }, [notify]);
-
   const handleScanSuccess = React.useCallback((decodedText: string) => {
     const tool = tools.find(t => t.codigo === decodedText || t.id === decodedText);
     if (tool) {
@@ -233,16 +204,6 @@ export default function Ferramentas() {
           <p className="text-zinc-500">Controle de retirada e devolução de equipamentos.</p>
         </div>
         <div className="flex items-center gap-3">
-          {isTester && (
-            <button
-              onClick={handleTestNotification}
-              className="flex items-center gap-2 px-4 py-2.5 bg-white border border-zinc-200 text-zinc-600 rounded-xl text-sm font-bold hover:bg-zinc-50 transition-all shadow-sm active:scale-95"
-              title="Testar notificação neste aparelho"
-            >
-              <Bell className="w-4 h-4" />
-              Testar aviso
-            </button>
-          )}
           <button
             onClick={() => setShowScanner(true)}
             className="flex items-center gap-2 px-5 py-2.5 bg-white border border-zinc-200 text-zinc-600 rounded-xl text-sm font-bold hover:bg-zinc-50 transition-all shadow-sm active:scale-95"
