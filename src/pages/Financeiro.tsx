@@ -19,11 +19,7 @@ import {
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 
-import { useAuth } from '../App';
-import { parseDate } from '../lib/dateUtils';
-
 export default function Financeiro() {
-  const { notify, isAdmin } = useAuth();
   const [obrasSnap] = useCollection(collection(db, 'obras'));
   const [materiaisSnap, loading] = useCollection(query(collection(db, 'materiais'), orderBy('dataEntrega', 'desc')));
   const [atividadesSnap] = useCollection(collection(db, 'atividades'));
@@ -40,7 +36,7 @@ export default function Financeiro() {
     const filterMat = materiais.filter(m => selectedObraId === 'Todas' || m.obraId === selectedObraId);
     const filterAtiv = atividades.filter(a => selectedObraId === 'Todas' || a.obraId === selectedObraId);
     
-    const matTotal = filterMat.reduce((acc, m) => acc + m.valorTotal, 0);
+    const matTotal = filterMat.reduce((acc, m) => acc + (m.valorTotal || 0), 0);
     const ativTotalPrevisto = filterAtiv.reduce((acc, a) => acc + (a.quantidadePrevista * (a.valorUnitario || 0)), 0);
     const ativTotalExecutado = filterAtiv.reduce((acc, a) => acc + (a.quantidadeExecutada * (a.valorUnitario || 0)), 0);
     
@@ -190,8 +186,8 @@ export default function Financeiro() {
               </div>
               <p className="text-xs text-zinc-500">{mat.codigoEntrega}</p>
               <div className="flex items-center justify-between">
-                <p className="text-xs text-zinc-400">Un: {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(mat.precoUnitario)}</p>
-                <p className="text-sm font-bold font-mono text-zinc-900">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(mat.valorTotal)}</p>
+                <p className="text-xs text-zinc-400">Un: {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(mat.precoUnitario || 0)}</p>
+                <p className="text-sm font-bold font-mono text-zinc-900">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(mat.valorTotal || 0)}</p>
               </div>
             </div>
           )) : filteredAtividades.map(ativ => {
@@ -254,11 +250,11 @@ export default function Financeiro() {
                         </div>
                       </td>
                       <td className="px-6 py-4 text-sm font-mono text-zinc-500">
-                        {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(mat.precoUnitario)}
+                        {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(mat.precoUnitario || 0)}
                       </td>
                       <td className="px-6 py-4 text-right">
                         <p className="text-sm font-mono font-bold text-zinc-900">
-                          {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(mat.valorTotal)}
+                          {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(mat.valorTotal || 0)}
                         </p>
                       </td>
                       <td className="px-6 py-4 text-center">

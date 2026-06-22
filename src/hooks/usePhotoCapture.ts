@@ -1,6 +1,8 @@
 import { useState } from 'react';
 
-const MAX_SIZE = 5 * 1024 * 1024;
+// Limite generoso: o upload comprime as imagens depois (uploadImage), então
+// não há motivo para barrar fotos de celular, que facilmente passam de 5MB.
+const MAX_SIZE = 25 * 1024 * 1024;
 
 export function usePhotoCapture(onSizeError: () => void) {
   const [photoFile, setPhotoFile] = useState<File | null>(null);

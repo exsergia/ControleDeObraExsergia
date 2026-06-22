@@ -1,26 +1,48 @@
 import React, { useState } from 'react';
 import { Bell, Save, KeyRound, Loader2, Eye, EyeOff } from 'lucide-react';
 import { requestNotificationPermission, sendBrowserNotification } from '../lib/services';
-import { changePassword } from '../lib/supabase';
+import { changePassword, auth } from '../lib/supabase';
+import { registerPushForUser } from '../lib/push';
 import { useAuth } from '../App';
 
+const PREFS_KEY = 'prefs-notificacoes';
+const defaultPrefs = { materials: true, checklist: true, financial: false, updates: true };
+
 export default function Settings() {
-  const { notify } = useAuth();
-  const [notifications, setNotifications] = useState({
-    materials: true,
-    checklist: true,
-    financial: false,
-    updates: true
+  const { notify, userProfile } = useAuth();
+  const [notifications, setNotifications] = useState(() => {
+    try {
+      const saved = localStorage.getItem(PREFS_KEY);
+      return saved ? { ...defaultPrefs, ...JSON.parse(saved) } : defaultPrefs;
+    } catch {
+      return defaultPrefs;
+    }
   });
+  const [salvandoPrefs, setSalvandoPrefs] = useState(false);
 
   const handleToggle = (key: keyof typeof notifications) => {
     setNotifications(prev => ({ ...prev, [key]: !prev[key] }));
   };
 
-  const handleSave = () => {
-    requestNotificationPermission();
-    sendBrowserNotification('Configurações Salvas', 'Suas preferências de notificação foram atualizadas.');
-    notify('success', 'Preferências Salvas', 'Suas configurações de sistema foram atualizadas com sucesso.');
+  const handleSave = async () => {
+    setSalvandoPrefs(true);
+    try {
+      // Persiste as preferências de verdade (antes só viviam em memória).
+      try { localStorage.setItem(PREFS_KEY, JSON.stringify(notifications)); } catch {}
+
+      // Habilita as notificações reais: permissão + inscrição push do aparelho.
+      const ok = await requestNotificationPermission();
+      if (ok) {
+        const uid = userProfile?.id || auth.currentUser?.id;
+        if (uid) await registerPushForUser(uid);
+        sendBrowserNotification('Configurações Salvas', 'Notificações ativadas neste aparelho.');
+        notify('success', 'Preferências Salvas', 'Preferências salvas e notificações ativadas neste aparelho.');
+      } else {
+        notify('warning', 'Preferências Salvas', 'Preferências salvas, mas as notificações estão bloqueadas no navegador.');
+      }
+    } finally {
+      setSalvandoPrefs(false);
+    }
   };
 
   const [senhaAtual, setSenhaAtual] = useState('');
@@ -107,10 +129,11 @@ export default function Settings() {
       <div className="flex justify-end gap-3 pt-4">
         <button
           onClick={handleSave}
-          className="flex items-center justify-center gap-2 px-8 py-4 bg-zinc-900 text-white rounded-xl font-bold uppercase tracking-widest hover:bg-zinc-800 transition-all shadow-xl shadow-zinc-200"
+          disabled={salvandoPrefs}
+          className="flex items-center justify-center gap-2 px-8 py-4 bg-zinc-900 text-white rounded-xl font-bold uppercase tracking-widest hover:bg-zinc-800 transition-all shadow-xl shadow-zinc-200 disabled:opacity-60"
         >
-          <Save className="w-5 h-5" />
-          Salvar Preferências
+          {salvandoPrefs ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
+          {salvandoPrefs ? 'Salvando...' : 'Salvar Preferências'}
         </button>
       </div>
 

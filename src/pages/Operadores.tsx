@@ -175,7 +175,8 @@ function OperadoresTab({ isAdmin }: { isAdmin: boolean }) {
                     value={formData.funcao} onChange={e => setFormData({ ...formData, funcao: e.target.value })} /></div>
                 <div><label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">E-mail</label>
                   <input required type="email" className="w-full mt-1 px-3 py-2.5 bg-zinc-50 border border-zinc-200 rounded-xl text-sm focus:outline-none focus:border-zinc-900"
-                    value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} /></div>
+                    value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} />
+                  <p className="text-[10px] text-zinc-400 mt-1">O acesso só é ativado quando a pessoa criar a própria conta com este mesmo e-mail (tela "Criar cadastro").</p></div>
                 <div className="flex gap-3 pt-2">
                   <button type="button" onClick={closeModal} className="flex-1 py-3 bg-zinc-100 rounded-2xl font-bold text-sm">Cancelar</button>
                   <button type="submit" className="flex-[2] py-3 bg-zinc-900 text-white rounded-2xl font-bold text-sm">{editingOp ? 'Salvar' : 'Cadastrar'}</button>
