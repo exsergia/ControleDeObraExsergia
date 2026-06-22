@@ -30,6 +30,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { uploadPhoto, requestNotificationPermission, sendBrowserNotification } from '../lib/services';
 import { Html5QrcodeScanner, Html5Qrcode } from 'html5-qrcode';
 import { useAuth } from '../App';
+import { registerPushForUser } from '../lib/push';
 
 
 const parseMovementDateForScope = (value: any): Date | null => {
@@ -136,6 +137,12 @@ export default function Ferramentas() {
 
   const renderedMovementScopes = new Set<string>();
   const obras = (obrasSnap?.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Obra[]) || [];
+
+  // Inscreve o dispositivo para receber push de atraso (idempotente).
+  useEffect(() => {
+    const uid = userProfile?.id || auth.currentUser?.id;
+    if (uid) registerPushForUser(uid);
+  }, [userProfile?.id]);
 
   // ── Ferramentas atrasadas do usuário logado ──────────────────────────────────
   const meuId = userProfile?.id || auth.currentUser?.id || '';

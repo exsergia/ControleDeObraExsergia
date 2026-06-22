@@ -1,4 +1,4 @@
-const CACHE_NAME = 'exsergia-app-v3';
+const CACHE_NAME = 'exsergia-app-v4';
 
 // Ao instalar, já coloca o HTML principal no cache
 self.addEventListener('install', (event) => {
@@ -76,5 +76,46 @@ self.addEventListener('fetch', (event) => {
         return response;
       })
       .catch(() => caches.match(event.request))
+  );
+});
+
+// ── Web Push ─────────────────────────────────────────────────────────────────
+// Recebe a notificação enviada pelo servidor (funciona com o app fechado).
+self.addEventListener('push', (event) => {
+  let payload = {};
+  try {
+    payload = event.data ? event.data.json() : {};
+  } catch (e) {
+    payload = { title: 'Exsergia Hub', body: event.data ? event.data.text() : '' };
+  }
+
+  const title = payload.title || 'Exsergia Hub';
+  const options = {
+    body: payload.body || '',
+    icon: '/icon-192.png',
+    badge: '/icon-192.png',
+    tag: payload.tag || 'exsergia-notif',
+    renotify: true,
+    data: { url: payload.url || '/' },
+  };
+
+  event.waitUntil(self.registration.showNotification(title, options));
+});
+
+// Ao tocar na notificação, foca uma janela aberta ou abre o app.
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const targetUrl = (event.notification.data && event.notification.data.url) || '/';
+
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clients => {
+      for (const client of clients) {
+        if ('focus' in client) {
+          if ('navigate' in client) { try { client.navigate(targetUrl); } catch (e) {} }
+          return client.focus();
+        }
+      }
+      if (self.clients.openWindow) return self.clients.openWindow(targetUrl);
+    })
   );
 });
