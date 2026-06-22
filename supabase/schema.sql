@@ -238,3 +238,35 @@ begin
   begin alter publication supabase_realtime add table public."vehicleLogs"; exception when duplicate_object then null; end;
   begin alter publication supabase_realtime add table public.admin_access; exception when duplicate_object then null; end;
 end $$;
+
+-- Endurecimento de RLS: DELETE restrito a admin/encarregado nas tabelas de
+-- escrita aberta (insert/update seguem liberados para autenticados).
+create or replace function public.is_app_encarregado()
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1
+    from public.encarregados e
+    where e.id = auth.uid()::text
+      and coalesce((e.data ->> 'ativo')::boolean, true) = true
+  );
+$$;
+
+do $$
+declare
+  tbl text;
+begin
+  foreach tbl in array array['tools','toolLogs','vehicles','vehicleLogs','materiais','atividades','checklists'] loop
+    execute format('drop policy if exists %I on public.%I', 'authenticated write ' || tbl, tbl);
+    execute format('drop policy if exists %I on public.%I', tbl || ' insert auth', tbl);
+    execute format('drop policy if exists %I on public.%I', tbl || ' update auth', tbl);
+    execute format('drop policy if exists %I on public.%I', tbl || ' delete admin-enc', tbl);
+    execute format('create policy %I on public.%I for insert to authenticated with check (true)', tbl || ' insert auth', tbl);
+    execute format('create policy %I on public.%I for update to authenticated using (true) with check (true)', tbl || ' update auth', tbl);
+    execute format('create policy %I on public.%I for delete to authenticated using (public.is_app_admin() or public.is_app_encarregado())', tbl || ' delete admin-enc', tbl);
+  end loop;
+end $$;
