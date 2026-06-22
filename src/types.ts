@@ -86,6 +86,8 @@ export interface ToolLog {
   dataDevolucao?: any;
   fotoDevolucaoUrl?: string;
   statusLog: 'Aberta' | 'Concluída';
+  diasUso?: number;            // tempo de uso estipulado na retirada (em dias)
+  previsaoDevolucao?: any;     // data prevista de devolução (ISO) = dataSaida + diasUso
   movementHash?: string;
   activityId?: string;
 }

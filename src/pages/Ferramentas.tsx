@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useCollection } from '../lib/supabaseHooks';
 import { collection, addDoc, updateDoc, doc, serverTimestamp, query, orderBy, limit, writeBatch, where, getDocs, deleteDoc } from '../lib/supabaseDb';
 import { db, handleFirestoreError, OperationType, auth } from '../lib/supabase';
@@ -27,7 +27,7 @@ import { cn } from '../lib/utils';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { motion, AnimatePresence } from 'motion/react';
-import { uploadPhoto } from '../lib/services';
+import { uploadPhoto, requestNotificationPermission, sendBrowserNotification } from '../lib/services';
 import { Html5QrcodeScanner, Html5Qrcode } from 'html5-qrcode';
 import { useAuth } from '../App';
 
@@ -88,8 +88,31 @@ const getMovementScopeKey = (log: ToolLog) => {
   ]);
 };
 
+const DIA_MS = 86400000;
+
+// Previsão de devolução: usa o campo salvo ou calcula a partir de dataSaida + diasUso.
+const getPrevisaoDevolucao = (log?: ToolLog | null): Date | null => {
+  if (!log) return null;
+  if (log.previsaoDevolucao) {
+    const p = parseMovementDateForScope(log.previsaoDevolucao);
+    if (p) return p;
+  }
+  const saida = parseMovementDateForScope(log.dataSaida);
+  if (saida && typeof log.diasUso === 'number' && log.diasUso > 0) {
+    return new Date(saida.getTime() + log.diasUso * DIA_MS);
+  }
+  return null;
+};
+
+// Atrasada: log aberto cuja previsão de devolução já passou.
+const isLogAtrasado = (log?: ToolLog | null): boolean => {
+  if (!log || log.statusLog !== 'Aberta') return false;
+  const prev = getPrevisaoDevolucao(log);
+  return !!prev && Date.now() > prev.getTime();
+};
+
 export default function Ferramentas() {
-  const { isAdmin, isEncarregado, notify } = useAuth();
+  const { isAdmin, isEncarregado, userProfile, notify } = useAuth();
 
   // Estado dos modais declarado ANTES dos hooks de coleção para que anyModalOpen
   // esteja disponível ao configurar o Realtime (hooks devem seguir a mesma ordem).
@@ -113,6 +136,40 @@ export default function Ferramentas() {
 
   const renderedMovementScopes = new Set<string>();
   const obras = (obrasSnap?.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Obra[]) || [];
+
+  // ── Ferramentas atrasadas do usuário logado ──────────────────────────────────
+  const meuId = userProfile?.id || auth.currentUser?.id || '';
+  const meusAtrasados = logs.filter(l => isLogAtrasado(l) && l.responsavelId === meuId);
+  // Assinatura estável: só dispara quando o conjunto de atrasados muda.
+  const atrasadosKey = useMemo(
+    () => meusAtrasados.map(l => l.id).sort().join(','),
+    [meusAtrasados.map(l => l.id).sort().join(',')] // eslint-disable-line react-hooks/exhaustive-deps
+  );
+
+  useEffect(() => {
+    if (!atrasadosKey) return;
+    requestNotificationPermission();
+
+    const avisar = () => {
+      meusAtrasados.forEach(l => {
+        const t = tools.find(tt => tt.id === l.toolId);
+        notify(
+          'warning',
+          'Ferramenta em atraso',
+          `"${t?.nome || 'Ferramenta'}" passou do prazo de devolução. Renove ou devolva o quanto antes.`
+        );
+      });
+      sendBrowserNotification(
+        'Ferramenta em atraso',
+        `Você tem ${meusAtrasados.length} ferramenta(s) fora do prazo. Renove ou devolva.`
+      );
+    };
+
+    avisar();
+    const id = setInterval(avisar, 1000 * 60 * 5); // "spam" a cada 5 minutos enquanto houver atraso
+    return () => clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [atrasadosKey]);
 
   const handleScanSuccess = React.useCallback((decodedText: string) => {
     const tool = tools.find(t => t.codigo === decodedText || t.id === decodedText);
@@ -397,7 +454,36 @@ function ToolCard({ tool, onCheckOut, activeLog, onCheckIn, onEdit, onViewHistor
   const { isAdmin, isEncarregado, notify } = useAuth();
   const isAvailable = tool.status === 'Disponível';
   const canReturn = isAdmin || isEncarregado || (!!activeLog?.responsavelId && auth.currentUser?.id === activeLog.responsavelId);
-  
+  const atrasado = isLogAtrasado(activeLog);
+  const previsao = getPrevisaoDevolucao(activeLog);
+  const [renovando, setRenovando] = useState(false);
+
+  const handleRenovar = async () => {
+    if (!activeLog || renovando) return;
+    const entrada = prompt('Renovar por quantos dias a mais?', '1');
+    if (entrada === null) return;
+    const extra = Math.floor(Number(entrada) || 0);
+    if (extra < 1) {
+      notify('warning', 'Atenção', 'Informe um número de dias válido (mínimo 1).');
+      return;
+    }
+    setRenovando(true);
+    try {
+      const base = previsao && previsao.getTime() > Date.now() ? previsao.getTime() : Date.now();
+      const novaPrevisao = new Date(base + extra * DIA_MS).toISOString();
+      await updateDoc(doc(db, 'toolLogs', activeLog.id), {
+        previsaoDevolucao: novaPrevisao,
+        diasUso: (activeLog.diasUso || 0) + extra,
+      });
+      notify('success', 'Prazo Renovado', `Novo prazo de devolução: ${format(new Date(novaPrevisao), "dd/MM/yyyy 'às' HH:mm")}.`);
+    } catch (err: any) {
+      notify('error', 'Erro ao Renovar', err.message || 'Não foi possível renovar o prazo.');
+      handleFirestoreError(err, OperationType.WRITE, 'tool-renew');
+    } finally {
+      setRenovando(false);
+    }
+  };
+
   return (
     <div className="bg-white p-5 rounded-3xl border border-zinc-200 shadow-sm hover:shadow-md transition-all group relative">
       <div className="flex items-start justify-between mb-4">
@@ -448,9 +534,11 @@ function ToolCard({ tool, onCheckOut, activeLog, onCheckIn, onEdit, onViewHistor
           </div>
           <div className={cn(
             "px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider",
-            isAvailable ? "bg-green-100 text-green-700" : "bg-orange-100 text-orange-700"
+            atrasado ? "bg-red-100 text-red-700"
+              : isAvailable ? "bg-green-100 text-green-700"
+              : "bg-orange-100 text-orange-700"
           )}>
-            {tool.status}
+            {atrasado ? 'Atraso' : tool.status}
           </div>
         </div>
       </div>
@@ -474,20 +562,46 @@ function ToolCard({ tool, onCheckOut, activeLog, onCheckIn, onEdit, onViewHistor
 
       {activeLog ? (
         <div className="space-y-4">
-          <div className="p-3 bg-zinc-50 rounded-xl space-y-2">
+          <div className={cn(
+            "p-3 rounded-xl space-y-2 border",
+            atrasado ? "bg-red-50 border-red-100" : "bg-zinc-50 border-transparent"
+          )}>
             <div className="flex items-center gap-2 text-[10px] text-zinc-500 font-bold uppercase">
               <User className="w-3 h-3" />
               {activeLog.responsavelNome}
             </div>
+            {previsao && (
+              <div className={cn(
+                "flex items-center gap-2 text-[10px] font-bold",
+                atrasado ? "text-red-600" : "text-zinc-500"
+              )}>
+                {atrasado ? <AlertCircle className="w-3 h-3" /> : <Clock className="w-3 h-3" />}
+                {atrasado ? 'Atrasada desde' : 'Devolver até'} {format(previsao, "dd/MM 'às' HH:mm")}
+              </div>
+            )}
           </div>
           {canReturn ? (
-            <button
-              onClick={() => onCheckIn(activeLog)}
-              className="w-full flex items-center justify-center gap-2 py-2.5 bg-zinc-100 text-zinc-900 rounded-xl text-xs font-bold hover:bg-zinc-200 transition-all"
-            >
-              <ArrowDownLeft className="w-4 h-4" />
-              Devolver
-            </button>
+            <div className="flex gap-2">
+              <button
+                onClick={() => onCheckIn(activeLog)}
+                className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-zinc-100 text-zinc-900 rounded-xl text-xs font-bold hover:bg-zinc-200 transition-all"
+              >
+                <ArrowDownLeft className="w-4 h-4" />
+                Devolver
+              </button>
+              <button
+                onClick={handleRenovar}
+                disabled={renovando}
+                className={cn(
+                  "flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all border disabled:opacity-50",
+                  atrasado ? "bg-red-600 text-white border-red-600 hover:bg-red-700" : "bg-white text-zinc-600 border-zinc-200 hover:bg-zinc-50"
+                )}
+                title="Renovar prazo de uso"
+              >
+                <Clock className="w-4 h-4" />
+                {renovando ? '...' : 'Renovar'}
+              </button>
+            </div>
           ) : (
             <div className="w-full flex items-center justify-center gap-2 py-2.5 bg-zinc-50 text-zinc-400 rounded-xl text-xs font-bold cursor-not-allowed border border-dashed border-zinc-200">
               <ArrowDownLeft className="w-4 h-4" />
@@ -516,7 +630,9 @@ function LogItem({ log, tool, obra, showToolInfo = true }: { key?: string | numb
   const isPending = log.statusLog === 'Aberta';
   const outDate = parseMovementDateForScope(log.dataSaida) || new Date();
   const inDate = parseMovementDateForScope(log.dataDevolucao);
-  
+  const previsao = getPrevisaoDevolucao(log);
+  const atrasado = isLogAtrasado(log);
+
   return (
     <div className="p-5 hover:bg-zinc-50 transition-colors border-b border-zinc-100 last:border-0">
       <div className="flex flex-col gap-3">
@@ -562,14 +678,31 @@ function LogItem({ log, tool, obra, showToolInfo = true }: { key?: string | numb
               <p className="text-xs font-bold text-zinc-900">{format(outDate, "dd/MM/yyyy")} às {format(outDate, "HH:mm")}</p>
             </div>
           </div>
+
+          {previsao && (
+            <div className="flex items-start gap-2">
+              <div className={cn("w-7 h-7 rounded-lg flex items-center justify-center shrink-0 mt-0.5", atrasado ? "bg-red-100" : "bg-zinc-100")}>
+                {atrasado ? <AlertCircle className="w-3.5 h-3.5 text-red-500" /> : <Clock className="w-3.5 h-3.5 text-zinc-500" />}
+              </div>
+              <div>
+                <p className="text-[9px] text-zinc-400 font-bold uppercase tracking-tight">{isPending ? 'Devolver até' : 'Previsão era'}</p>
+                <p className={cn("text-xs font-bold", atrasado ? "text-red-600" : "text-zinc-900")}>
+                  {format(previsao, "dd/MM/yyyy")} às {format(previsao, "HH:mm")}
+                  {log.diasUso ? <span className="text-[9px] font-medium text-zinc-400"> ({log.diasUso} dia{log.diasUso > 1 ? 's' : ''})</span> : null}
+                </p>
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="flex items-center justify-between flex-wrap gap-2 pt-1">
           <span className={cn(
             "text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-tight flex items-center gap-1",
-            isPending ? "bg-orange-100 text-orange-700" : "bg-green-100 text-green-700"
+            atrasado ? "bg-red-100 text-red-700" : isPending ? "bg-orange-100 text-orange-700" : "bg-green-100 text-green-700"
           )}>
-            {isPending ? (
+            {atrasado ? (
+              <><AlertCircle className="w-2.5 h-2.5" />Atraso</>
+            ) : isPending ? (
               <><Clock className="w-2.5 h-2.5" />Pendente</>
             ) : (
               <><CheckCircle2 className="w-2.5 h-2.5" />Concluído</>
@@ -1026,6 +1159,7 @@ function CheckOutModal({ tool, obras, onClose }: { tool: Tool, obras: Obra[], on
   const [showScanner, setShowScanner] = useState(false);
   const userName = userProfile ? `${userProfile.nome} ${userProfile.sobrenome || ''}`.trim() : ((auth.currentUser?.user_metadata?.name || auth.currentUser?.email) || 'Usuário');
   const [responsavel] = useState(userName);
+  const [dias, setDias] = useState<number>(1);
   const [loading, setLoading] = useState(false);
 
   const handleCheckOut = async (e: React.FormEvent) => {
@@ -1035,11 +1169,16 @@ function CheckOutModal({ tool, obras, onClose }: { tool: Tool, obras: Obra[], on
       notify('warning', 'Atenção', 'Selecione uma obra de destino antes de confirmar.');
       return;
     }
+    if (!Number.isFinite(dias) || dias < 1) {
+      notify('warning', 'Atenção', 'Informe por quantos dias a ferramenta será utilizada.');
+      return;
+    }
     setLoading(true);
 
     try {
       const batch = writeBatch(db);
       const retiradaEm = serverTimestamp();
+      const previsaoDevolucao = new Date(Date.now() + dias * 86400000).toISOString();
       const logRef = doc(collection(db, 'toolLogs'));
       const activityId = createMovementActivityId('tool_activity');
       const movementHash = createMovementScopeHash([
@@ -1062,6 +1201,8 @@ function CheckOutModal({ tool, obras, onClose }: { tool: Tool, obras: Obra[], on
         responsavelId: userProfile?.id || auth.currentUser?.id || '',
         dataSaida: retiradaEm,
         dataDevolucao: null,
+        diasUso: dias,
+        previsaoDevolucao,
         statusLog: 'Aberta'
       });
 
@@ -1174,10 +1315,43 @@ function CheckOutModal({ tool, obras, onClose }: { tool: Tool, obras: Obra[], on
             </div>
           </div>
 
+          <div className="space-y-2">
+            <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest pl-1">Tempo de uso (dias)</label>
+            <div className="flex flex-wrap gap-2">
+              {[1, 2, 3, 7, 15, 30].map(d => (
+                <button
+                  key={d}
+                  type="button"
+                  onClick={() => setDias(d)}
+                  className={cn(
+                    'px-4 py-2 rounded-xl text-xs font-bold border transition-all',
+                    dias === d ? 'bg-zinc-900 text-white border-zinc-900' : 'bg-zinc-50 text-zinc-600 border-zinc-200 hover:bg-zinc-100'
+                  )}
+                >
+                  {d} {d === 1 ? 'dia' : 'dias'}
+                </button>
+              ))}
+            </div>
+            <div className="flex items-center gap-2 pt-1">
+              <span className="text-[11px] text-zinc-500 font-medium">Ou digite:</span>
+              <input
+                type="number"
+                min={1}
+                step={1}
+                inputMode="numeric"
+                className="w-24 px-3 py-2 bg-zinc-50 border border-zinc-200 rounded-xl text-sm font-bold text-center focus:ring-2 focus:ring-zinc-900/10 outline-none"
+                value={dias}
+                onKeyDown={(e) => ['-', '+', 'e', 'E', '.', ','].includes(e.key) && e.preventDefault()}
+                onChange={e => setDias(Math.max(1, Math.floor(Number(e.target.value) || 0)))}
+              />
+              <span className="text-[11px] text-zinc-500 font-medium">dia(s)</span>
+            </div>
+          </div>
+
           <div className="p-4 bg-orange-50 border border-orange-100 rounded-2xl flex items-start gap-3">
             <Clock className="w-5 h-5 text-orange-500 shrink-0" />
             <p className="text-[11px] text-orange-700 font-medium leading-relaxed">
-              O horário e data da operação serão registrados automaticamente conforme o horário oficial de Brasília.
+              A devolução está prevista para <span className="font-bold">{format(new Date(Date.now() + dias * 86400000), "dd/MM/yyyy 'às' HH:mm")}</span>. Após esse prazo a ferramenta é marcada como atrasada.
             </p>
           </div>
 
