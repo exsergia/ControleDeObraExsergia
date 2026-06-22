@@ -14,6 +14,10 @@ export class ErrorBoundary extends React.Component<{ children: React.ReactNode }
     return { hasError: true, error };
   }
 
+  componentDidCatch(error: Error, info: React.ErrorInfo) {
+    console.error('ErrorBoundary capturou:', error, info?.componentStack);
+  }
+
   render() {
     if (!this.state.hasError) return this.props.children;
 

@@ -79,17 +79,15 @@ export enum OperationType {
 }
 
 export function handleSupabaseError(error: unknown, operationType: OperationType, path: string | null) {
-  const errInfo = {
+  // Logger puro: registra o detalhe no console para depuração, sem relançar
+  // (evita unhandled rejections nos catch das páginas) e sem expor dado pessoal
+  // do usuário (e-mail) — apenas o id, relevante para LGPD.
+  console.error('Supabase Error:', {
     error: error instanceof Error ? error.message : String(error),
     operationType,
     path,
-    authInfo: {
-      userId: auth.currentUser?.id,
-      email: auth.currentUser?.email,
-    },
-  };
-  console.error('Supabase Error:', JSON.stringify(errInfo));
-  throw new Error(JSON.stringify(errInfo));
+    userId: auth.currentUser?.id,
+  });
 }
 
 export const handleFirestoreError = handleSupabaseError;
