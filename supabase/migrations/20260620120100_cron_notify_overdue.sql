@@ -9,10 +9,10 @@ create extension if not exists pg_net;
 select cron.unschedule('notify-overdue')
 where exists (select 1 from cron.job where jobname = 'notify-overdue');
 
--- Roda todo dia às 11:00 UTC (08:00 horário de Brasília).
+-- Roda de 6 em 6 horas (UTC 00:00, 06:00, 12:00, 18:00 = BRT 21h, 03h, 09h, 15h).
 select cron.schedule(
   'notify-overdue',
-  '0 11 * * *',
+  '0 */6 * * *',
   $$
   select net.http_post(
     url := 'https://krbimgxlnyucldfxkvdy.supabase.co/functions/v1/notify-overdue',
