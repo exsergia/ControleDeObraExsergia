@@ -1159,7 +1159,8 @@ function CheckOutModal({ tool, obras, onClose }: { tool: Tool, obras: Obra[], on
   const [showScanner, setShowScanner] = useState(false);
   const userName = userProfile ? `${userProfile.nome} ${userProfile.sobrenome || ''}`.trim() : ((auth.currentUser?.user_metadata?.name || auth.currentUser?.email) || 'Usuário');
   const [responsavel] = useState(userName);
-  const [dias, setDias] = useState<number>(1);
+  const [dias, setDias] = useState<number | ''>(1);
+  const diasNum = typeof dias === 'number' ? dias : NaN;
   const [loading, setLoading] = useState(false);
 
   const handleCheckOut = async (e: React.FormEvent) => {
@@ -1169,7 +1170,7 @@ function CheckOutModal({ tool, obras, onClose }: { tool: Tool, obras: Obra[], on
       notify('warning', 'Atenção', 'Selecione uma obra de destino antes de confirmar.');
       return;
     }
-    if (!Number.isFinite(dias) || dias < 1) {
+    if (!Number.isFinite(diasNum) || diasNum < 1) {
       notify('warning', 'Atenção', 'Informe por quantos dias a ferramenta será utilizada.');
       return;
     }
@@ -1178,7 +1179,7 @@ function CheckOutModal({ tool, obras, onClose }: { tool: Tool, obras: Obra[], on
     try {
       const batch = writeBatch(db);
       const retiradaEm = serverTimestamp();
-      const previsaoDevolucao = new Date(Date.now() + dias * 86400000).toISOString();
+      const previsaoDevolucao = new Date(Date.now() + diasNum * 86400000).toISOString();
       const logRef = doc(collection(db, 'toolLogs'));
       const activityId = createMovementActivityId('tool_activity');
       const movementHash = createMovementScopeHash([
@@ -1201,7 +1202,7 @@ function CheckOutModal({ tool, obras, onClose }: { tool: Tool, obras: Obra[], on
         responsavelId: userProfile?.id || auth.currentUser?.id || '',
         dataSaida: retiradaEm,
         dataDevolucao: null,
-        diasUso: dias,
+        diasUso: diasNum,
         previsaoDevolucao,
         statusLog: 'Aberta'
       });
@@ -1341,8 +1342,15 @@ function CheckOutModal({ tool, obras, onClose }: { tool: Tool, obras: Obra[], on
                 inputMode="numeric"
                 className="w-24 px-3 py-2 bg-zinc-50 border border-zinc-200 rounded-xl text-sm font-bold text-center focus:ring-2 focus:ring-zinc-900/10 outline-none"
                 value={dias}
+                onFocus={(e) => e.target.select()}
                 onKeyDown={(e) => ['-', '+', 'e', 'E', '.', ','].includes(e.key) && e.preventDefault()}
-                onChange={e => setDias(Math.max(1, Math.floor(Number(e.target.value) || 0)))}
+                onChange={e => {
+                  const v = e.target.value;
+                  if (v === '') { setDias(''); return; }
+                  const n = Math.floor(Number(v));
+                  setDias(Number.isFinite(n) && n > 0 ? n : '');
+                }}
+                onBlur={() => { if (dias === '') setDias(1); }}
               />
               <span className="text-[11px] text-zinc-500 font-medium">dia(s)</span>
             </div>
@@ -1351,7 +1359,11 @@ function CheckOutModal({ tool, obras, onClose }: { tool: Tool, obras: Obra[], on
           <div className="p-4 bg-orange-50 border border-orange-100 rounded-2xl flex items-start gap-3">
             <Clock className="w-5 h-5 text-orange-500 shrink-0" />
             <p className="text-[11px] text-orange-700 font-medium leading-relaxed">
-              A devolução está prevista para <span className="font-bold">{format(new Date(Date.now() + dias * 86400000), "dd/MM/yyyy 'às' HH:mm")}</span>. Após esse prazo a ferramenta é marcada como atrasada.
+              {Number.isFinite(diasNum) && diasNum >= 1 ? (
+                <>A devolução está prevista para <span className="font-bold">{format(new Date(Date.now() + diasNum * 86400000), "dd/MM/yyyy 'às' HH:mm")}</span>. Após esse prazo a ferramenta é marcada como atrasada.</>
+              ) : (
+                <>Informe por quantos dias a ferramenta será utilizada.</>
+              )}
             </p>
           </div>
 
