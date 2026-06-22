@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { compressImage } from './imageUtils';
 
 export const requestNotificationPermission = async () => {
   if (!('Notification' in window)) return false;
@@ -39,15 +40,29 @@ const buildPublicUrl = (bucket: string, path: string) => {
 };
 
 export const uploadImage = async (file: File, path = 'uploads', onProgress?: (progress: number) => void): Promise<string> => {
-  const fileExt = file.name.split('.').pop() || 'jpg';
-  const safeExt = fileExt.replace(/[^a-zA-Z0-9]/g, '') || 'jpg';
+  // Comprime imagens antes do upload (reduz tempo no 4G de campo e storage).
+  // Se a compressão falhar, sobe o arquivo original — sem regressão.
+  let body: Blob = file;
+  let safeExt = (file.name.split('.').pop() || 'jpg').replace(/[^a-zA-Z0-9]/g, '') || 'jpg';
+  let contentType = file.type || 'image/jpeg';
+
+  if ((file.type || '').startsWith('image/')) {
+    try {
+      body = await compressImage(file, 1600, 0.7);
+      safeExt = 'jpg';
+      contentType = 'image/jpeg';
+    } catch {
+      body = file;
+    }
+  }
+
   const fileName = `${path}/${Date.now()}-${Math.random().toString(36).slice(2)}.${safeExt}`;
 
   onProgress?.(10);
-  const { error } = await supabase.storage.from('uploads').upload(fileName, file, {
+  const { error } = await supabase.storage.from('uploads').upload(fileName, body, {
     cacheControl: '3600',
     upsert: false,
-    contentType: file.type || 'image/jpeg',
+    contentType,
   });
 
   if (error) throw error;

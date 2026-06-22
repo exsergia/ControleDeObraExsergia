@@ -120,19 +120,49 @@ const FLAT_COLUMN_MAP: Record<string, Record<string, string>> = {
   atividades: { obraId: 'obra_id' },
 };
 
-export async function getDocs(ref: CollectionRef) {
+// Monta a consulta empurrando o máximo possível para o servidor (PostgREST):
+// filtros de igualdade (coluna flat ou campo JSONB), além de orderBy e limit.
+// orderBy/limit só são empurrados quando TODOS os WHERE são '==' (server-side),
+// senão o limite cortaria linhas antes do filtro feito em JS.
+function buildServerQuery(ref: CollectionRef) {
   let q = supabase.from(ref.table).select('*');
 
-  // Empurra WHERE com campo flat para o servidor (evita carregar todas as linhas em JS)
-  for (const c of ref.constraints) {
-    if (c.type === 'where' && c.op === '==') {
-      const flatCol = FLAT_COLUMN_MAP[ref.table]?.[c.field];
-      if (flatCol) q = q.eq(flatCol, c.value);
-    }
+  const wheres = ref.constraints.filter((c): c is WhereFilter => c.type === 'where');
+  const allEq = wheres.every((c) => c.op === '==');
+
+  for (const c of wheres) {
+    if (c.op !== '==') continue;
+    const flatCol = FLAT_COLUMN_MAP[ref.table]?.[c.field];
+    q = flatCol ? q.eq(flatCol, c.value) : q.eq(`data->>${c.field}`, c.value);
   }
 
-  const { data, error } = await q;
-  if (error) throw error;
+  if (allEq) {
+    for (const c of ref.constraints) {
+      if (c.type === 'orderBy') {
+        const col = FLAT_COLUMN_MAP[ref.table]?.[c.field] || `data->>${c.field}`;
+        q = q.order(col, { ascending: c.direction !== 'desc' });
+      }
+    }
+    const lim = ref.constraints.find((c): c is LimitFilter => c.type === 'limit');
+    if (lim) q = q.limit(lim.count);
+  }
+
+  return q;
+}
+
+export async function getDocs(ref: CollectionRef) {
+  // Tenta a consulta otimizada (menos payload trafegado).
+  let { data, error } = await buildServerQuery(ref);
+
+  // Fallback seguro: se a consulta otimizada falhar (ex.: sintaxe JSONB não
+  // aceita em algum campo), busca tudo e filtra/ordena/limita em JS — exatamente
+  // o comportamento anterior. Garante que nada quebra.
+  if (error) {
+    console.warn('getDocs: consulta otimizada falhou, usando fallback completo:', error.message);
+    ({ data, error } = await supabase.from(ref.table).select('*'));
+    if (error) throw error;
+  }
+
   const items = applyConstraints((data || []).map(unwrap), ref.constraints);
   return docsSnap(items);
 }
