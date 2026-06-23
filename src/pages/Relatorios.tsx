@@ -3,7 +3,7 @@ import { usePersistedTab } from '../hooks/usePersistedTab';
 import { useCollection } from '../lib/supabaseHooks';
 import { collection, query, orderBy, addDoc, serverTimestamp, updateDoc, doc, arrayUnion, arrayRemove } from '../lib/supabaseDb';
 import { db, handleFirestoreError, OperationType } from '../lib/supabase';
-import { Attachment, Checklist, Obra, Material, Atividade, Operator, Tool, ToolLog } from '../types';
+import { Attachment, Checklist, Obra, Material, Atividade, Operator, Tool, ToolLog, Vehicle, VehicleLog } from '../types';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   LineChart, Line, PieChart, Pie, Cell, Legend
@@ -26,12 +26,14 @@ import {
   X as XIcon,
   Trash2,
   Hammer,
+  Truck,
   ArrowUpRight,
   ArrowDownLeft,
   Clock,
   CheckCircle2,
   TrendingUp,
-  AlertTriangle
+  AlertTriangle,
+  MapPin
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { format } from 'date-fns';
@@ -40,13 +42,16 @@ import { useNavigate } from 'react-router-dom';
 import { uploadFile } from '../lib/services';
 import { utils, read, writeFile } from 'xlsx';
 import { useAuth } from '../App';
+import { formatGeo, mapsUrl } from '../lib/geo';
 
 import { parseDateSafe as parseDate } from '../lib/dateUtils';
+
+type RelatorioTab = 'diarios' | 'ferramentas' | 'frota' | 'bi';
 
 export default function Relatorios() {
   const { isAdmin, notify } = useAuth();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = usePersistedTab<'diarios' | 'ferramentas' | 'bi'>('tab-relatorios', 'diarios');
+  const [activeTab, setActiveTab] = usePersistedTab<RelatorioTab>('tab-relatorios', 'diarios');
 
   const [checklistsSnap, loading] = useCollection(
     query(collection(db, 'checklists'), orderBy('data', 'desc'))
@@ -58,6 +63,10 @@ export default function Relatorios() {
   const [toolsSnap] = useCollection(collection(db, 'tools'));
   const [toolLogsSnap, loadingLogs] = useCollection(
     query(collection(db, 'toolLogs'), orderBy('dataSaida', 'desc'))
+  );
+  const [vehiclesSnap] = useCollection(query(collection(db, 'vehicles'), orderBy('placa', 'asc')));
+  const [vehicleLogsSnap, loadingVehicleLogs] = useCollection(
+    query(collection(db, 'vehicleLogs'), orderBy('dataSaida', 'desc'))
   );
   const [progressoDiarioSnap] = useCollection(collection(db, 'progresso_diario'));
 
@@ -72,6 +81,8 @@ export default function Relatorios() {
   const operadores = (operadoresSnap?.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Operator[]) || [];
   const tools = (toolsSnap?.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Tool[]) || [];
   const toolLogs = (toolLogsSnap?.docs.map(doc => ({ id: doc.id, ...doc.data() })) as ToolLog[]) || [];
+  const vehicles = (vehiclesSnap?.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Vehicle[]) || [];
+  const vehicleLogs = (vehicleLogsSnap?.docs.map(doc => ({ id: doc.id, ...doc.data() })) as VehicleLog[]) || [];
   const progressoDiario = (progressoDiarioSnap?.docs.map(doc => ({ id: doc.id, ...doc.data() }))) || [];
 
   const filteredTools = tools.filter(t => {
@@ -94,6 +105,39 @@ export default function Relatorios() {
         (tool?.codigo || '').toLowerCase().includes(q) ||
         (obra?.nome || '').toLowerCase().includes(q) ||
         (l.responsavelNome || '').toLowerCase().includes(q)
+      )) return false;
+    }
+    if (selectedDate) {
+      const d = parseDate(l.dataSaida);
+      if (format(d, 'yyyy-MM-dd') !== selectedDate) return false;
+    }
+    return true;
+  });
+
+  const filteredVehicles = vehicles.filter(v => {
+    if (!search) return true;
+    const q = search.toLowerCase();
+    const activeLog = vehicleLogs.find(l => (l.id === v.lastLogId || l.vehicleId === v.id) && l.statusLog === 'Aberta');
+    return (
+      (v.placa || '').toLowerCase().includes(q) ||
+      (v.codigo || '').toLowerCase().includes(q) ||
+      (v.modelo || '').toLowerCase().includes(q) ||
+      (v.status || '').toLowerCase().includes(q) ||
+      (v.observacoes || '').toLowerCase().includes(q) ||
+      (activeLog?.responsavelNome || '').toLowerCase().includes(q)
+    );
+  });
+
+  const filteredVehicleLogs = vehicleLogs.filter(l => {
+    if (search) {
+      const q = search.toLowerCase();
+      const vehicle = vehicles.find(v => v.id === l.vehicleId);
+      if (!(
+        (vehicle?.placa || '').toLowerCase().includes(q) ||
+        (vehicle?.codigo || '').toLowerCase().includes(q) ||
+        (vehicle?.modelo || '').toLowerCase().includes(q) ||
+        (l.responsavelNome || '').toLowerCase().includes(q) ||
+        (l.observacaoDevolucao || '').toLowerCase().includes(q)
       )) return false;
     }
     if (selectedDate) {
@@ -161,6 +205,62 @@ export default function Relatorios() {
     utils.book_append_sheet(wb, ws, 'MOVIMENTACAO_FERRAMENTAS');
     writeFile(wb, `Ferramentas_${format(new Date(), 'yyyy-MM-dd')}.xlsx`);
     notify('success', 'Excel Exportado', 'Histórico completo de movimentação gerado com sucesso!');
+  };
+
+  const handleExportInventarioFrota = () => {
+    const wb = utils.book_new();
+    const data = vehicles.map(v => {
+      const openLog = vehicleLogs.find(l => (l.id === v.lastLogId || l.vehicleId === v.id) && l.statusLog === 'Aberta');
+      const saida = openLog ? parseDate(openLog.dataSaida) : null;
+      return {
+        'Placa': v.placa || '---',
+        'Código': v.codigo || '---',
+        'Modelo': v.modelo || '---',
+        'Status': v.status || '---',
+        'Responsável Atual': openLog?.responsavelNome || '---',
+        'Retirado em': saida ? format(saida, 'dd/MM/yyyy HH:mm:ss') : '---',
+        'Local Retirada': formatGeo(openLog?.localSaida) || '---',
+        'Observações': v.observacoes || '---',
+        'Foto do Veículo': v.fotoVeiculo || '---',
+      };
+    });
+    const ws = utils.json_to_sheet(data);
+    ws['!cols'] = [14, 18, 28, 14, 28, 20, 22, 42, 50].map(w => ({ wch: w }));
+    utils.book_append_sheet(wb, ws, 'INVENTARIO_FROTA');
+    writeFile(wb, `Inventario_Frota_${format(new Date(), 'yyyy-MM-dd')}.xlsx`);
+    notify('success', 'Excel Exportado', 'Inventário da frota gerado com sucesso!');
+  };
+
+  const handleExportFrota = () => {
+    const wb = utils.book_new();
+    const data = vehicleLogs.map(l => {
+      const vehicle = vehicles.find(v => v.id === l.vehicleId);
+      const saida = parseDate(l.dataSaida);
+      const devolucao = l.dataDevolucao ? parseDate(l.dataDevolucao) : null;
+      return {
+        'ID Movimentação': l.id,
+        'ID Veículo': l.vehicleId,
+        'Placa': vehicle?.placa || 'Veículo removido',
+        'Código': vehicle?.codigo || '---',
+        'Modelo': vehicle?.modelo || '---',
+        'Responsável': l.responsavelNome || '---',
+        'Data Saída': format(saida, 'dd/MM/yyyy'),
+        'Hora Saída': format(saida, 'HH:mm:ss'),
+        'Local Saída': formatGeo(l.localSaida) || '---',
+        'Foto Painel Saída': l.fotoPainelSaida || '---',
+        'Data Devolução': devolucao ? format(devolucao, 'dd/MM/yyyy') : '---',
+        'Hora Devolução': devolucao ? format(devolucao, 'HH:mm:ss') : '---',
+        'Local Devolução': formatGeo(l.localDevolucao) || '---',
+        'Foto Painel Devolução': l.fotoPainelDevolucao || '---',
+        'Observação Devolução': l.observacaoDevolucao || '---',
+        'Fotos Avaria': (l.fotosAvaria || []).join(' | ') || '---',
+        'Status': l.statusLog,
+      };
+    });
+    const ws = utils.json_to_sheet(data);
+    utils.book_append_sheet(wb, ws, 'MOVIMENTACAO_FROTA');
+    writeFile(wb, `Frota_${format(new Date(), 'yyyy-MM-dd')}.xlsx`);
+    notify('success', 'Excel Exportado', 'Histórico completo da frota gerado com sucesso!');
   };
 
   const filteredChecklists = checklists.filter(c => {
@@ -235,9 +335,47 @@ export default function Relatorios() {
       });
     });
 
+    const vehiclesData = vehicles.map(v => {
+      const openLog = vehicleLogs.find(l => (l.id === v.lastLogId || l.vehicleId === v.id) && l.statusLog === 'Aberta');
+      return {
+        ID: v.id,
+        Placa: v.placa || '',
+        Codigo: v.codigo || '',
+        Modelo: v.modelo || '',
+        Status: v.status || '',
+        ResponsavelAtual: openLog?.responsavelNome || '',
+        Observacoes: v.observacoes || '',
+        FotoVeiculo: v.fotoVeiculo || ''
+      };
+    });
+
+    const vehicleLogsData = vehicleLogs.map(l => {
+      const vehicle = vehicles.find(v => v.id === l.vehicleId);
+      const saida = parseDate(l.dataSaida);
+      const devolucao = l.dataDevolucao ? parseDate(l.dataDevolucao) : null;
+      return {
+        ID: l.id,
+        VehicleID: l.vehicleId,
+        Placa: vehicle?.placa || '',
+        Modelo: vehicle?.modelo || '',
+        Responsavel: l.responsavelNome || '',
+        DataSaida: format(saida, 'yyyy-MM-dd'),
+        HoraSaida: format(saida, 'HH:mm'),
+        LocalSaida: formatGeo(l.localSaida) || '',
+        DataDevolucao: devolucao ? format(devolucao, 'yyyy-MM-dd') : '',
+        HoraDevolucao: devolucao ? format(devolucao, 'HH:mm') : '',
+        LocalDevolucao: formatGeo(l.localDevolucao) || '',
+        ObservacaoDevolucao: l.observacaoDevolucao || '',
+        QtdFotosAvaria: l.fotosAvaria?.length || 0,
+        Status: l.statusLog
+      };
+    });
+
     utils.book_append_sheet(workbook, utils.json_to_sheet(rawData), "CHECKLISTS");
     utils.book_append_sheet(workbook, utils.json_to_sheet(materialsData), "DADOS_MATERIAIS");
     utils.book_append_sheet(workbook, utils.json_to_sheet(progressData), "DADOS_PROGRESSO");
+    utils.book_append_sheet(workbook, utils.json_to_sheet(vehiclesData), "FROTA_VEICULOS");
+    utils.book_append_sheet(workbook, utils.json_to_sheet(vehicleLogsData), "FROTA_MOVIMENTACOES");
 
     writeFile(workbook, `BI_Consolidado_Obras_${format(new Date(), 'yyyy-MM-dd')}.xlsx`);
     notify('success', 'Excel Gerado', 'Base de dados para Power BI exportada com sucesso!');
@@ -287,7 +425,7 @@ export default function Relatorios() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
         <div>
           <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-zinc-900">Relatórios</h2>
-          <p className="text-zinc-500 text-sm">Checklists diários e movimentação de ferramentas.</p>
+          <p className="text-zinc-500 text-sm">Checklists diários, ferramentas, frota e indicadores gerenciais.</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {activeTab === 'diarios' && isAdmin && (
@@ -326,6 +464,24 @@ export default function Relatorios() {
               </button>
             </>
           )}
+          {activeTab === 'frota' && isAdmin && (
+            <>
+              <button
+                onClick={handleExportInventarioFrota}
+                className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2.5 bg-zinc-900 text-white rounded-xl text-xs sm:text-sm font-bold hover:bg-zinc-800 transition-all shadow-sm"
+              >
+                <FileDown className="w-4 h-4 shrink-0" />
+                Inventário Excel
+              </button>
+              <button
+                onClick={handleExportFrota}
+                className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2.5 bg-white border border-zinc-200 text-zinc-600 rounded-xl text-xs sm:text-sm font-bold hover:bg-zinc-50 transition-all shadow-sm"
+              >
+                <FileDown className="w-4 h-4 shrink-0" />
+                Movimentações Excel
+              </button>
+            </>
+          )}
         </div>
       </div>
 
@@ -334,6 +490,7 @@ export default function Relatorios() {
         {([
           { id: 'diarios', label: 'Relatórios Diários', labelMobile: 'Diários', icon: FileText },
           { id: 'ferramentas', label: 'Ferramentas', labelMobile: 'Ferramentas', icon: Hammer },
+          { id: 'frota', label: 'Controle de Frota', labelMobile: 'Frota', icon: Truck },
           { id: 'bi', label: 'Dashboard BI', labelMobile: 'BI', icon: TrendingUp },
         ] as const).map(tab => (
           <button
@@ -362,6 +519,8 @@ export default function Relatorios() {
           checklists={checklists}
           tools={tools}
           toolLogs={toolLogs}
+          vehicles={vehicles}
+          vehicleLogs={vehicleLogs}
           progressoDiario={progressoDiario}
         />
       )}
@@ -372,7 +531,13 @@ export default function Relatorios() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
           <input
             type="text"
-            placeholder={activeTab === 'diarios' ? 'Buscar por obra ou responsável...' : 'Buscar por ferramenta, obra ou responsável...'}
+            placeholder={
+              activeTab === 'diarios'
+                ? 'Buscar por obra ou responsável...'
+                : activeTab === 'frota'
+                  ? 'Buscar por placa, modelo, código ou responsável...'
+                  : 'Buscar por ferramenta, obra ou responsável...'
+            }
             className="w-full pl-10 pr-4 py-3 bg-white border border-zinc-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900/10 shadow-sm transition-all"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -661,6 +826,280 @@ export default function Relatorios() {
         </div>
       )}
 
+      {/* ── FROTA TAB ── */}
+      {activeTab === 'frota' && (
+        <div className="space-y-6">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            <KPICard
+              label="Veículos"
+              value={String(vehicles.length)}
+              sub={`${vehicles.filter(v => v.status === 'Disponível').length} disponíveis`}
+              color="blue"
+            />
+            <KPICard
+              label="Em Uso"
+              value={String(vehicleLogs.filter(l => l.statusLog === 'Aberta').length)}
+              sub="retiradas abertas"
+              color="amber"
+            />
+            <KPICard
+              label="Manutenção"
+              value={String(vehicles.filter(v => v.status === 'Manutenção').length)}
+              sub="fora de operação"
+              color="red"
+            />
+            <KPICard
+              label="Movimentações"
+              value={String(vehicleLogs.length)}
+              sub="histórico total"
+              color="green"
+            />
+          </div>
+
+          <div className="space-y-3">
+            <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-widest pl-1">
+              Inventário de Veículos ({filteredVehicles.length})
+            </h3>
+            <div className="bg-white rounded-2xl border border-zinc-200 shadow-sm overflow-hidden">
+              <div className="sm:hidden divide-y divide-zinc-100">
+                {filteredVehicles.length === 0 ? (
+                  <div className="p-12 text-center">
+                    <Truck className="w-10 h-10 text-zinc-200 mx-auto mb-3" />
+                    <p className="text-zinc-400 text-sm font-medium">Nenhum veículo cadastrado.</p>
+                  </div>
+                ) : filteredVehicles.map(vehicle => {
+                  const activeLog = vehicleLogs.find(l => (l.id === vehicle.lastLogId || l.vehicleId === vehicle.id) && l.statusLog === 'Aberta');
+                  return (
+                    <div key={vehicle.id} className="p-4 flex items-start gap-3">
+                      <div className="w-12 h-12 rounded-xl bg-zinc-100 overflow-hidden shrink-0 flex items-center justify-center">
+                        {vehicle.fotoVeiculo
+                          ? <img src={vehicle.fotoVeiculo} className="w-full h-full object-cover" alt={vehicle.placa} />
+                          : <Truck className="w-5 h-5 text-zinc-400" />}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-start justify-between gap-2">
+                          <p className="text-sm font-bold text-zinc-900 break-words">{vehicle.placa}</p>
+                          <VehicleStatusBadge status={vehicle.status} />
+                        </div>
+                        {vehicle.codigo && <p className="text-[10px] font-mono text-zinc-400 mt-0.5">#{vehicle.codigo}</p>}
+                        {vehicle.modelo && <p className="text-xs text-zinc-500 mt-0.5"><span className="font-bold">Modelo:</span> {vehicle.modelo}</p>}
+                        {activeLog && <p className="text-xs text-zinc-500"><span className="font-bold">Resp. atual:</span> {activeLog.responsavelNome}</p>}
+                        {vehicle.observacoes && <p className="text-xs text-zinc-400 mt-1 break-words">{vehicle.observacoes}</p>}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="hidden sm:block overflow-x-auto">
+                <table className="w-full text-left">
+                  <thead>
+                    <tr className="bg-zinc-50 border-b border-zinc-100">
+                      <th className="px-5 py-4 text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Veículo</th>
+                      <th className="px-5 py-4 text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Código</th>
+                      <th className="px-5 py-4 text-[10px] font-bold text-zinc-400 uppercase tracking-widest text-center">Status</th>
+                      <th className="px-5 py-4 text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Responsável Atual</th>
+                      <th className="px-5 py-4 text-[10px] font-bold text-zinc-400 uppercase tracking-widest text-center">Foto</th>
+                      <th className="px-5 py-4 text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Observações</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-zinc-100">
+                    {filteredVehicles.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="px-5 py-16 text-center">
+                          <Truck className="w-10 h-10 text-zinc-200 mx-auto mb-3" />
+                          <p className="text-zinc-400 text-sm font-medium">Nenhum veículo cadastrado.</p>
+                        </td>
+                      </tr>
+                    ) : filteredVehicles.map(vehicle => {
+                      const activeLog = vehicleLogs.find(l => (l.id === vehicle.lastLogId || l.vehicleId === vehicle.id) && l.statusLog === 'Aberta');
+                      return (
+                        <tr key={vehicle.id} className="hover:bg-zinc-50/50 transition-colors">
+                          <td className="px-5 py-4">
+                            <p className="text-sm font-bold text-zinc-900 break-words">{vehicle.placa}</p>
+                            {vehicle.modelo && <p className="text-[10px] text-zinc-400 mt-0.5 break-words">{vehicle.modelo}</p>}
+                          </td>
+                          <td className="px-5 py-4">
+                            <span className="text-xs font-mono text-zinc-500">{vehicle.codigo || '—'}</span>
+                          </td>
+                          <td className="px-5 py-4 text-center">
+                            <VehicleStatusBadge status={vehicle.status} />
+                          </td>
+                          <td className="px-5 py-4">
+                            <span className="text-xs font-semibold text-zinc-700">{activeLog?.responsavelNome || '—'}</span>
+                          </td>
+                          <td className="px-5 py-4 text-center">
+                            <PhotoLink url={vehicle.fotoVeiculo} label={`Foto ${vehicle.placa}`} />
+                          </td>
+                          <td className="px-5 py-4">
+                            <p className="text-xs text-zinc-500 break-words">{vehicle.observacoes || '—'}</p>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-widest pl-1">
+              Histórico de Movimentações da Frota ({filteredVehicleLogs.length})
+            </h3>
+            <div className="bg-white rounded-2xl border border-zinc-200 shadow-sm overflow-hidden">
+              <div className="sm:hidden divide-y divide-zinc-100">
+                {loadingVehicleLogs ? (
+                  Array(4).fill(0).map((_, i) => (
+                    <div key={i} className="p-4 animate-pulse"><div className="h-16 bg-zinc-100 rounded" /></div>
+                  ))
+                ) : filteredVehicleLogs.length === 0 ? (
+                  <div className="p-12 text-center">
+                    <Truck className="w-10 h-10 text-zinc-200 mx-auto mb-3" />
+                    <p className="text-zinc-400 text-sm font-medium">Nenhuma movimentação encontrada.</p>
+                  </div>
+                ) : filteredVehicleLogs.map(log => {
+                  const vehicle = vehicles.find(v => v.id === log.vehicleId);
+                  const saida = parseDate(log.dataSaida);
+                  const devolucao = log.dataDevolucao ? parseDate(log.dataDevolucao) : null;
+                  const isPending = log.statusLog === 'Aberta';
+                  return (
+                    <div key={log.id} className="p-4 space-y-2">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-bold text-zinc-900">{vehicle?.placa || 'Veículo removido'}</p>
+                          {vehicle?.modelo && <p className="text-xs text-zinc-400">{vehicle.modelo}</p>}
+                        </div>
+                        <span className={cn(
+                          'inline-flex items-center gap-1 px-2 py-1 rounded-full text-[9px] font-bold uppercase shrink-0',
+                          isPending ? 'bg-orange-100 text-orange-700' : 'bg-green-100 text-green-700'
+                        )}>
+                          {isPending ? <Clock className="w-2.5 h-2.5" /> : <CheckCircle2 className="w-2.5 h-2.5" />}
+                          {isPending ? 'Em Uso' : 'Devolvido'}
+                        </span>
+                      </div>
+                      <p className="text-xs text-zinc-600"><span className="font-bold">Resp:</span> {log.responsavelNome}</p>
+                      <div className="flex flex-wrap items-center gap-3 text-xs text-zinc-400">
+                        <span className="flex items-center gap-1"><ArrowUpRight className="w-3 h-3 text-orange-500" />{format(saida, 'dd/MM/yy HH:mm')}</span>
+                        {devolucao && <span className="flex items-center gap-1"><ArrowDownLeft className="w-3 h-3 text-green-500" />{format(devolucao, 'dd/MM/yy HH:mm')}</span>}
+                      </div>
+                      {log.localSaida && <VehicleLocationLink point={log.localSaida} label="Retirada" />}
+                      {log.localDevolucao && <VehicleLocationLink point={log.localDevolucao} label="Devolução" />}
+                      {log.observacaoDevolucao && <p className="text-xs text-zinc-500 break-words"><span className="font-bold">Devolução:</span> {log.observacaoDevolucao}</p>}
+                      <div className="flex flex-wrap gap-2">
+                        <PhotoLink url={log.fotoPainelSaida} label="Painel saída" />
+                        <PhotoLink url={log.fotoPainelDevolucao} label="Painel devolução" />
+                        {(log.fotosAvaria || []).slice(0, 3).map((url, index) => (
+                          <PhotoLink key={url} url={url} label={`Avaria ${index + 1}`} />
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="hidden sm:block overflow-x-auto">
+                <table className="w-full text-left">
+                  <thead>
+                    <tr className="bg-zinc-50 border-b border-zinc-100">
+                      <th className="px-5 py-4 text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Veículo / ID</th>
+                      <th className="px-5 py-4 text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Responsável</th>
+                      <th className="px-5 py-4 text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Saída</th>
+                      <th className="px-5 py-4 text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Devolução</th>
+                      <th className="px-5 py-4 text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Localização</th>
+                      <th className="px-5 py-4 text-[10px] font-bold text-zinc-400 uppercase tracking-widest text-center">Fotos</th>
+                      <th className="px-5 py-4 text-[10px] font-bold text-zinc-400 uppercase tracking-widest text-center">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-zinc-100">
+                    {loadingVehicleLogs ? (
+                      Array(5).fill(0).map((_, i) => (
+                        <tr key={i} className="animate-pulse">
+                          <td colSpan={7} className="px-5 py-6"><div className="h-4 bg-zinc-100 rounded w-full" /></td>
+                        </tr>
+                      ))
+                    ) : filteredVehicleLogs.length === 0 ? (
+                      <tr>
+                        <td colSpan={7} className="px-5 py-16 text-center">
+                          <Truck className="w-10 h-10 text-zinc-200 mx-auto mb-3" />
+                          <p className="text-zinc-400 text-sm font-medium">Nenhuma movimentação encontrada.</p>
+                        </td>
+                      </tr>
+                    ) : filteredVehicleLogs.map(log => {
+                      const vehicle = vehicles.find(v => v.id === log.vehicleId);
+                      const saida = parseDate(log.dataSaida);
+                      const devolucao = log.dataDevolucao ? parseDate(log.dataDevolucao) : null;
+                      const isPending = log.statusLog === 'Aberta';
+                      return (
+                        <tr key={log.id} className="hover:bg-zinc-50/50 transition-colors">
+                          <td className="px-5 py-4">
+                            <p className="text-sm font-bold text-zinc-900">{vehicle?.placa || 'Veículo removido'}</p>
+                            <p className="text-[10px] font-mono text-zinc-400 mt-0.5">ID: {log.id.slice(0, 12)}…</p>
+                            {vehicle?.modelo && <p className="text-[10px] text-zinc-500">{vehicle.modelo}</p>}
+                          </td>
+                          <td className="px-5 py-4">
+                            <p className="text-sm font-semibold text-zinc-800">{log.responsavelNome}</p>
+                          </td>
+                          <td className="px-5 py-4">
+                            <div className="flex items-center gap-1.5">
+                              <ArrowUpRight className="w-3.5 h-3.5 text-orange-500 shrink-0" />
+                              <div>
+                                <p className="text-xs font-bold text-zinc-900">{format(saida, 'dd/MM/yyyy')}</p>
+                                <p className="text-[10px] text-zinc-500">{format(saida, 'HH:mm:ss')}</p>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-5 py-4">
+                            {devolucao ? (
+                              <div className="flex items-center gap-1.5">
+                                <ArrowDownLeft className="w-3.5 h-3.5 text-green-600 shrink-0" />
+                                <div>
+                                  <p className="text-xs font-bold text-zinc-900">{format(devolucao, 'dd/MM/yyyy')}</p>
+                                  <p className="text-[10px] text-zinc-500">{format(devolucao, 'HH:mm:ss')}</p>
+                                </div>
+                              </div>
+                            ) : (
+                              <span className="text-[10px] text-zinc-400 font-bold uppercase">Pendente</span>
+                            )}
+                            {log.observacaoDevolucao && <p className="text-[10px] text-zinc-400 mt-1 max-w-[180px] break-words">{log.observacaoDevolucao}</p>}
+                          </td>
+                          <td className="px-5 py-4">
+                            <div className="space-y-1">
+                              <VehicleLocationLink point={log.localSaida} label="Retirada" />
+                              <VehicleLocationLink point={log.localDevolucao} label="Devolução" />
+                            </div>
+                          </td>
+                          <td className="px-5 py-4">
+                            <div className="flex items-center justify-center gap-2">
+                              <PhotoLink url={log.fotoPainelSaida} label="Painel saída" />
+                              <PhotoLink url={log.fotoPainelDevolucao} label="Painel devolução" />
+                              {(log.fotosAvaria || []).length > 0 && (
+                                <span className="text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-100 px-2 py-1 rounded-full">
+                                  {(log.fotosAvaria || []).length} avaria(s)
+                                </span>
+                              )}
+                            </div>
+                          </td>
+                          <td className="px-5 py-4 text-center">
+                            <span className={cn(
+                              'inline-flex items-center gap-1 px-2 py-1 rounded-full text-[9px] font-bold uppercase tracking-wide',
+                              isPending ? 'bg-orange-100 text-orange-700' : 'bg-green-100 text-green-700'
+                            )}>
+                              {isPending ? <Clock className="w-2.5 h-2.5" /> : <CheckCircle2 className="w-2.5 h-2.5" />}
+                              {isPending ? 'Em Uso' : 'Devolvido'}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ── DIÁRIOS TAB ── */}
       {activeTab === 'diarios' && <div className="grid md:grid-cols-2 gap-6">
         <div className={cn("space-y-4", selectedChecklist && "hidden md:block")}>
@@ -730,6 +1169,44 @@ export default function Relatorios() {
       </div>}
 
     </div>
+  );
+}
+
+function VehicleStatusBadge({ status }: { status: Vehicle['status'] }) {
+  return (
+    <span className={cn(
+      'inline-flex items-center gap-1 px-2 py-1 rounded-full text-[9px] font-bold uppercase tracking-wide',
+      status === 'Disponível'
+        ? 'bg-green-100 text-green-700'
+        : status === 'Manutenção'
+          ? 'bg-red-100 text-red-700'
+          : 'bg-orange-100 text-orange-700'
+    )}>
+      {status || 'Sem status'}
+    </span>
+  );
+}
+
+function PhotoLink({ url, label }: { key?: string | number; url?: string; label: string }) {
+  if (!url) return <span className="text-[10px] text-zinc-300 font-bold uppercase">—</span>;
+
+  return (
+    <a href={url} target="_blank" rel="noopener noreferrer" className="inline-block" title={label}>
+      <img src={url} alt={label} className="w-12 h-12 object-cover rounded-lg border border-zinc-200 hover:opacity-80 transition-opacity mx-auto" />
+    </a>
+  );
+}
+
+function VehicleLocationLink({ point, label }: { point?: VehicleLog['localSaida']; label: string }) {
+  const url = mapsUrl(point);
+  const text = formatGeo(point);
+  if (!url || !text) return <span className="text-[10px] text-zinc-300 font-bold uppercase">—</span>;
+
+  return (
+    <a href={url} target="_blank" rel="noopener noreferrer" className="text-[10px] font-bold text-blue-600 hover:underline flex items-center gap-1">
+      <MapPin className="w-3 h-3 shrink-0" />
+      <span>{label}: {text}</span>
+    </a>
   );
 }
 
@@ -1163,9 +1640,10 @@ const STATUS_COLORS: Record<string, string> = {
   'Ativa': '#22c55e', 'Concluída': '#3b82f6', 'Pausada': '#f59e0b', 'Cancelada': '#ef4444'
 };
 
-function BIDashboard({ obras, materiais, atividades, checklists, tools, toolLogs, progressoDiario }: {
+function BIDashboard({ obras, materiais, atividades, checklists, tools, toolLogs, vehicles, vehicleLogs, progressoDiario }: {
   obras: Obra[]; materiais: Material[]; atividades: Atividade[];
-  checklists: Checklist[]; tools: Tool[]; toolLogs: ToolLog[]; progressoDiario: any[];
+  checklists: Checklist[]; tools: Tool[]; toolLogs: ToolLog[];
+  vehicles: Vehicle[]; vehicleLogs: VehicleLog[]; progressoDiario: any[];
 }) {
   const fmtBRL = (v: number) =>
     new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(v);
@@ -1178,6 +1656,7 @@ function BIDashboard({ obras, materiais, atividades, checklists, tools, toolLogs
   const valorOrcado = atividades.reduce((s, a) => s + Number(a.quantidadePrevista || 0) * Number(a.valorUnitario || 0), 0);
   const valorExecutado = atividades.reduce((s, a) => s + Number(a.quantidadeExecutada || 0) * Number(a.valorUnitario || 0), 0);
   const ferramentasEmUso = toolLogs.filter(l => l.statusLog === 'Aberta').length;
+  const veiculosEmUso = vehicleLogs.filter(l => l.statusLog === 'Aberta').length;
   const checklistsMes = checklists.filter(c => {
     const d = new Date(c.data || '');
     const now = new Date();
@@ -1247,11 +1726,12 @@ function BIDashboard({ obras, materiais, atividades, checklists, tools, toolLogs
     <div className="space-y-6 animate-in fade-in duration-500">
 
       {/* KPIs */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-6 gap-4">
         <KPICard label="Obras Ativas" value={String(obrasAtivas)} sub={`de ${obras.length} total`} color="blue" />
         <KPICard label="Progresso Geral" value={`${progressoGeral.toFixed(1)}%`} sub="mão de obra" color="green" />
         <KPICard label="Valor Executado" value={fmtBRL(valorExecutado)} sub={`orçado: ${fmtBRL(valorOrcado)}`} color="amber" />
         <KPICard label="Ferramentas em Uso" value={String(ferramentasEmUso)} sub={`de ${tools.length} cadastradas`} color="purple" />
+        <KPICard label="Veículos em Uso" value={String(veiculosEmUso)} sub={`de ${vehicles.length} cadastrados`} color="blue" />
         <KPICard label="Checklists no Mês" value={String(checklistsMes)} sub={`de ${checklists.length} total`} color="red" />
       </div>
 
