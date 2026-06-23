@@ -20,6 +20,8 @@ import {
   Truck,
   Users,
   FileText,
+  Receipt,
+  Boxes,
   LogOut,
   Menu,
   X,
@@ -85,7 +87,12 @@ const Relatorios = React.lazy(() => import('./pages/Relatorios'));
 const Progresso = React.lazy(() => import('./pages/Progresso'));
 const Ferramentas = React.lazy(() => import('./pages/Ferramentas'));
 const Frota = React.lazy(() => import('./pages/Frota'));
+const NotasFiscais = React.lazy(() => import('./pages/NotasFiscais'));
+const Equipamentos = React.lazy(() => import('./pages/Equipamentos'));
 const SettingsPage = React.lazy(() => import('./pages/Settings'));
+
+// E-mails autorizados a ver a aba de NF/Cupom Fiscal (financeiro).
+const FISCAL_EMAILS = ['contasapagar@gmail.com', 'nascimentoerick446@gmail.com'];
 
 interface Notification {
   id: string;
@@ -305,6 +312,7 @@ function App() {
 
   const isAdmin = userProfile?.role === 'admin';
   const isEncarregado = userProfile?.role === 'encarregado';
+  const canFiscal = FISCAL_EMAILS.includes((userProfile?.email || user?.email || '').toLowerCase());
 
   if (loading) {
     return (
@@ -360,6 +368,8 @@ function App() {
                     <Route path="/progresso" element={<Progresso />} />
                     <Route path="/ferramentas" element={<Ferramentas />} />
                     <Route path="/frota" element={<Frota />} />
+                    <Route path="/equipamentos" element={isAdmin ? <Equipamentos /> : <Navigate to="/" replace />} />
+                    <Route path="/notas-fiscais" element={canFiscal ? <NotasFiscais /> : <Navigate to="/" replace />} />
                     <Route path="/settings" element={<SettingsPage />} />
                     <Route path="*" element={<Navigate to="/" replace />} />
                   </Routes>
@@ -1048,9 +1058,13 @@ function PageLoader() {
 function Layout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
-  const { userProfile, isAdmin, isEncarregado } = useAuth();
+  const { userProfile, user, isAdmin, isEncarregado } = useAuth();
+  const canFiscal = FISCAL_EMAILS.includes((userProfile?.email || user?.email || '').toLowerCase());
 
-  const menuItems = [
+  const menuItems: {
+    label: string; icon: any; path: string;
+    adminOnly?: boolean; soAdmin?: boolean; fiscalOnly?: boolean;
+  }[] = [
     { label: 'Dashboard', icon: LayoutDashboard, path: '/' },
     { label: 'Obras', icon: HardHat, path: '/obras', adminOnly: true },
     { label: 'Materiais', icon: Package, path: '/materiais' },
@@ -1061,10 +1075,13 @@ function Layout({ children }: { children: React.ReactNode }) {
     { label: 'Relatórios', icon: FileText, path: '/relatorios', adminOnly: true, soAdmin: true },
     { label: 'Ferramentas', icon: Hammer, path: '/ferramentas' },
     { label: 'Controle de Frota', icon: Truck, path: '/frota' },
+    { label: 'Equipamentos', icon: Boxes, path: '/equipamentos', adminOnly: true, soAdmin: true },
+    { label: 'NF / Cupom Fiscal', icon: Receipt, path: '/notas-fiscais', fiscalOnly: true },
     { label: 'Configurações', icon: Settings, path: '/settings' },
   ];
 
   const filteredMenuItems = menuItems.filter(item => {
+    if (item.fiscalOnly) return canFiscal;     // só os e-mails autorizados (independe do papel)
     if (isAdmin) return true;
     if (isEncarregado) return !item.soAdmin;  // encarregado vê tudo exceto financeiro e relatórios
     return !item.adminOnly;

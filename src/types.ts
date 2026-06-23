@@ -144,3 +144,67 @@ export interface Checklist {
   materiais: { materialId: string; qtdConferida: number }[];
   progresso: { atividadeId: string; qtdExecutadaNoDia: number }[];
 }
+
+// ── Frente 1: NF / Cupom Fiscal ────────────────────────────────────────────
+export interface FiscalDoc {
+  id: string;
+  tipo: 'NF' | 'Cupom';
+  fotoUrl: string;            // foto do documento (obrigatória)
+  valor: number;
+  data: any;                  // data do documento (ISO)
+  fornecedor?: string;
+  cartaoFinal?: string;       // últimos 4 dígitos do cartão usado
+  observacoes?: string;
+  criadoPorNome?: string;
+  criadoPorId?: string;
+  createdAt: any;
+}
+
+// ── Frente 2: Equipamentos (custo e rentabilidade) ─────────────────────────
+export type EquipamentoStatus = 'Ativo' | 'Em Manutenção' | 'Locado' | 'Inativo' | 'Vendido';
+
+export interface Equipamento {
+  id: string;
+  nome: string;
+  codigo?: string;
+  categoria?: string;
+  dataAquisicao?: string;     // date
+  valorAquisicao?: number;
+  status: EquipamentoStatus;
+  fotoUrl?: string;
+  observacoes?: string;
+  createdAt?: any;
+}
+
+export type ManutencaoTipo = 'Preventiva' | 'Corretiva' | 'Preditiva';
+
+export interface CustoItem {
+  descricao: string;
+  valor: number;
+}
+
+export interface EquipamentoManutencao {
+  id: string;
+  equipamentoId: string;
+  data: any;                  // data da manutenção (ISO/date)
+  tipo: ManutencaoTipo;
+  horasEquipe: number;
+  custoHora: number;
+  valorMaoObra: number;       // = horasEquipe * custoHora
+  pecas: CustoItem[];         // peças e materiais utilizados
+  outrosCustos: CustoItem[];  // deslocamento, combustível, terceiros, etc.
+  custoTotal: number;         // mão de obra + peças + outros
+  observacoes?: string;
+  createdAt?: any;
+}
+
+export interface EquipamentoLocacao {
+  id: string;
+  equipamentoId: string;
+  cliente: string;
+  dataInicio: string;         // date
+  dataFim?: string;           // date
+  valorLocacao: number;       // receita total da locação
+  observacoes?: string;
+  createdAt?: any;
+}
