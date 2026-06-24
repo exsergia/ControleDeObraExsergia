@@ -24,7 +24,7 @@ if (typeof document !== 'undefined') {
 export function useCollection(
   ref: CollectionRef | null | undefined,
   paused = false
-): [any | undefined, boolean, Error | undefined] {
+): [any | undefined, boolean, Error | undefined, () => Promise<void>] {
   const [snap, setSnap] = useState<any>();
   const [loading, setLoading] = useState(!!ref);
   const [error, setError] = useState<Error>();
@@ -145,5 +145,10 @@ export function useCollection(
     };
   }, [ref?.table, loadData]);
 
-  return [snap, loading, error];
+  // Recarrega na hora, ignorando o debounce/Realtime — usado logo após uma
+  // gravação local pra refletir a mudança instantaneamente, sem esperar o
+  // evento do Realtime dar a volta no servidor.
+  const refetch = useCallback(() => loadData(false), [loadData]);
+
+  return [snap, loading, error, refetch];
 }

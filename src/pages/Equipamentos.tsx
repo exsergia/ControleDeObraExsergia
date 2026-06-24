@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { useCollection } from '../lib/supabaseHooks';
 import { collection, addDoc, updateDoc, deleteDoc, doc, serverTimestamp, query, orderBy } from '../lib/supabaseDb';
 import { db, handleFirestoreError, OperationType } from '../lib/supabase';
@@ -45,9 +45,12 @@ function calcFinance(eq: Equipamento, manuts: EquipamentoManutencao[], locs: Equ
 
 export default function Equipamentos() {
   const { notify } = useAuth();
-  const [equipSnap, loading] = useCollection(query(collection(db, 'equipamentos'), orderBy('nome', 'asc')));
-  const [manutSnap] = useCollection(collection(db, 'equipamento_manutencoes'));
-  const [locSnap] = useCollection(collection(db, 'equipamento_locacoes'));
+  const [equipSnap, loading, , refetchEquip] = useCollection(query(collection(db, 'equipamentos'), orderBy('nome', 'asc')));
+  const [manutSnap, , , refetchManut] = useCollection(collection(db, 'equipamento_manutencoes'));
+  const [locSnap, , , refetchLoc] = useCollection(collection(db, 'equipamento_locacoes'));
+
+  // Recarrega tudo na hora após uma gravação local (sem esperar o Realtime).
+  const reload = useCallback(() => { refetchEquip(); refetchManut(); refetchLoc(); }, [refetchEquip, refetchManut, refetchLoc]);
 
   const [selected, setSelected] = useState<Equipamento | null>(null);
   const [showAdd, setShowAdd] = useState(false);
@@ -105,6 +108,7 @@ export default function Equipamentos() {
           locacoes={locacoes.filter(l => l.equipamentoId === current.id)}
           onBack={() => setSelected(null)}
           onEdit={() => setEditing(current)}
+          onChanged={reload}
         />
         {/* O modal precisa ser renderizado aqui também: nesta branch o return acontece
             antes da lista, então o modal lá embaixo nunca apareceria no detalhe. */}
@@ -112,6 +116,7 @@ export default function Equipamentos() {
           <EquipamentoModal
             equipamento={editing}
             onClose={() => setEditing(null)}
+            onSaved={reload}
             onDeleted={() => { handleDelete(editing); setEditing(null); setSelected(null); }}
           />
         )}
@@ -189,6 +194,7 @@ export default function Equipamentos() {
         <EquipamentoModal
           equipamento={editing || undefined}
           onClose={() => { setShowAdd(false); setEditing(null); }}
+          onSaved={reload}
           onDeleted={editing ? () => { handleDelete(editing); setEditing(null); } : undefined}
         />
       )}
@@ -197,9 +203,9 @@ export default function Equipamentos() {
 }
 
 // ── Detalhe ───────────────────────────────────────────────────────────────────
-function EquipamentoDetalhe({ equipamento, manutencoes, locacoes, onBack, onEdit }: {
+function EquipamentoDetalhe({ equipamento, manutencoes, locacoes, onBack, onEdit, onChanged }: {
   equipamento: Equipamento; manutencoes: EquipamentoManutencao[]; locacoes: EquipamentoLocacao[];
-  onBack: () => void; onEdit: () => void;
+  onBack: () => void; onEdit: () => void; onChanged: () => void;
 }) {
   const { notify } = useAuth();
   const [periodo, setPeriodo] = useState<'mes' | 'ano' | 'tudo'>('tudo');
@@ -235,12 +241,12 @@ function EquipamentoDetalhe({ equipamento, manutencoes, locacoes, onBack, onEdit
 
   const handleDelManut = async (id: string) => {
     if (!confirm('Excluir esta manutenção?')) return;
-    try { await deleteDoc(doc(db, 'equipamento_manutencoes', id)); notify('success', 'Excluído', 'Manutenção removida.'); }
+    try { await deleteDoc(doc(db, 'equipamento_manutencoes', id)); onChanged(); notify('success', 'Excluído', 'Manutenção removida.'); }
     catch (err: any) { handleFirestoreError(err, OperationType.DELETE, 'equipamento_manutencoes'); }
   };
   const handleDelLoc = async (id: string) => {
     if (!confirm('Excluir esta locação?')) return;
-    try { await deleteDoc(doc(db, 'equipamento_locacoes', id)); notify('success', 'Excluído', 'Locação removida.'); }
+    try { await deleteDoc(doc(db, 'equipamento_locacoes', id)); onChanged(); notify('success', 'Excluído', 'Locação removida.'); }
     catch (err: any) { handleFirestoreError(err, OperationType.DELETE, 'equipamento_locacoes'); }
   };
 
@@ -387,8 +393,8 @@ function EquipamentoDetalhe({ equipamento, manutencoes, locacoes, onBack, onEdit
         )}
       </Section>
 
-      {showManut && <ManutencaoModal equipamentoId={equipamento.id} onClose={() => setShowManut(false)} />}
-      {showLoc && <LocacaoModal equipamentoId={equipamento.id} onClose={() => setShowLoc(false)} />}
+      {showManut && <ManutencaoModal equipamentoId={equipamento.id} onSaved={onChanged} onClose={() => setShowManut(false)} />}
+      {showLoc && <LocacaoModal equipamentoId={equipamento.id} onSaved={onChanged} onClose={() => setShowLoc(false)} />}
     </div>
   );
 }
@@ -441,7 +447,7 @@ function Section({ title, icon, action, children }: { title: string; icon: React
 const Empty = ({ texto }: { texto: string }) => <div className="p-8 text-center text-zinc-400 text-xs">{texto}</div>;
 
 // ── Modal: equipamento ──────────────────────────────────────────────────────
-function EquipamentoModal({ equipamento, onClose, onDeleted }: { equipamento?: Equipamento; onClose: () => void; onDeleted?: () => void }) {
+function EquipamentoModal({ equipamento, onClose, onSaved, onDeleted }: { equipamento?: Equipamento; onClose: () => void; onSaved?: () => void; onDeleted?: () => void }) {
   const { notify } = useAuth();
   const [nome, setNome] = useState(equipamento?.nome || '');
   const [codigo, setCodigo] = useState(equipamento?.codigo || '');
@@ -478,6 +484,7 @@ function EquipamentoModal({ equipamento, onClose, onDeleted }: { equipamento?: E
       };
       if (equipamento) await updateDoc(doc(db, 'equipamentos', equipamento.id), { ...payload, updatedAt: serverTimestamp() });
       else await addDoc(collection(db, 'equipamentos'), { ...payload, createdAt: serverTimestamp() });
+      onSaved?.();
       notify('success', 'Salvo', equipamento ? 'Equipamento atualizado.' : 'Equipamento cadastrado.');
       onClose();
     } catch (err: any) {
@@ -545,7 +552,7 @@ function EquipamentoModal({ equipamento, onClose, onDeleted }: { equipamento?: E
 }
 
 // ── Modal: manutenção ───────────────────────────────────────────────────────
-function ManutencaoModal({ equipamentoId, onClose }: { equipamentoId: string; onClose: () => void }) {
+function ManutencaoModal({ equipamentoId, onClose, onSaved }: { equipamentoId: string; onClose: () => void; onSaved?: () => void }) {
   const { notify } = useAuth();
   const [data, setData] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [tipo, setTipo] = useState<ManutencaoTipo>('Preventiva');
@@ -581,6 +588,7 @@ function ManutencaoModal({ equipamentoId, onClose }: { equipamentoId: string; on
         observacoes: observacoes.trim(),
         createdAt: serverTimestamp(),
       });
+      onSaved?.();
       notify('success', 'Registrada', 'Manutenção lançada.');
       onClose();
     } catch (err: any) {
@@ -657,7 +665,7 @@ function ItemList({ titulo, itens, setItens }: { titulo: string; itens: CustoIte
 }
 
 // ── Modal: locação ──────────────────────────────────────────────────────────
-function LocacaoModal({ equipamentoId, onClose }: { equipamentoId: string; onClose: () => void }) {
+function LocacaoModal({ equipamentoId, onClose, onSaved }: { equipamentoId: string; onClose: () => void; onSaved?: () => void }) {
   const { notify } = useAuth();
   const [cliente, setCliente] = useState('');
   const [dataInicio, setDataInicio] = useState(format(new Date(), 'yyyy-MM-dd'));
@@ -679,6 +687,7 @@ function LocacaoModal({ equipamentoId, onClose }: { equipamentoId: string; onClo
         equipamentoId, cliente: cliente.trim(), dataInicio, dataFim: dataFim || '', valorLocacao: valorNum,
         observacoes: observacoes.trim(), createdAt: serverTimestamp(),
       });
+      onSaved?.();
       notify('success', 'Registrada', 'Locação lançada.');
       onClose();
     } catch (err: any) {
