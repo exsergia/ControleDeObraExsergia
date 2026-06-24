@@ -6,6 +6,7 @@ import { FiscalDoc } from '../types';
 import { useAuth } from '../App';
 import { uploadPhoto } from '../lib/services';
 import { CameraCapture } from '../components/CameraCapture';
+import { CurrencyInput } from '../components/CurrencyInput';
 import { parseDate } from '../lib/dateUtils';
 import { format } from 'date-fns';
 import { cn } from '../lib/utils';
@@ -256,13 +257,9 @@ function FiscalModal({ userName, userId, onClose, onSaved }: { userName: string;
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
-              <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest pl-1">Valor (R$)</label>
-              <input type="number" min="0" step="0.01" inputMode="decimal" required
-                className="w-full px-4 py-2.5 bg-zinc-50 border border-zinc-200 rounded-xl text-sm font-bold focus:outline-none focus:border-zinc-900"
-                placeholder="0,00"
-                value={valor}
-                onKeyDown={(e) => ['-', '+', 'e', 'E'].includes(e.key) && e.preventDefault()}
-                onChange={e => { const v = e.target.value; setValor(v === '' ? '' : Math.max(0, parseFloat(v) || 0)); }} />
+              <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest pl-1">Valor</label>
+              <CurrencyInput value={valor} onChange={setValor} required
+                className="w-full px-4 py-2.5 bg-zinc-50 border border-zinc-200 rounded-xl text-sm font-bold focus:outline-none focus:border-zinc-900" />
             </div>
             <div className="space-y-2">
               <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest pl-1">Data</label>

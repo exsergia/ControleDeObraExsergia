@@ -6,6 +6,7 @@ import { Equipamento, EquipamentoManutencao, EquipamentoLocacao, EquipamentoStat
 import { useAuth } from '../App';
 import { uploadPhoto } from '../lib/services';
 import { CameraCapture } from '../components/CameraCapture';
+import { CurrencyInput } from '../components/CurrencyInput';
 import { parseDate } from '../lib/dateUtils';
 import { format } from 'date-fns';
 import { cn } from '../lib/utils';
@@ -491,9 +492,7 @@ function EquipamentoModal({ equipamento, onClose, onDeleted }: { equipamento?: E
           </div>
           <div className="grid grid-cols-2 gap-3">
             <Field label="Data de aquisição"><input type="date" className={inputCls} value={dataAquisicao} onChange={e => setDataAquisicao(e.target.value)} /></Field>
-            <Field label="Valor de aquisição (R$)"><input type="number" min="0" step="0.01" className={inputCls} placeholder="0,00" value={valorAquisicao}
-              onKeyDown={(e) => ['-', '+', 'e', 'E'].includes(e.key) && e.preventDefault()}
-              onChange={e => setValorAquisicao(e.target.value === '' ? '' : Math.max(0, parseFloat(e.target.value) || 0))} /></Field>
+            <Field label="Valor de aquisição"><CurrencyInput value={valorAquisicao} onChange={setValorAquisicao} className={inputCls} /></Field>
           </div>
           <Field label="Status">
             <select className={inputCls} value={status} onChange={e => setStatus(e.target.value as EquipamentoStatus)}>
@@ -602,9 +601,7 @@ function ManutencaoModal({ equipamentoId, onClose }: { equipamentoId: string; on
             <Field label="Horas da equipe"><input type="number" min="0" step="0.5" className={inputCls} placeholder="0" value={horas}
               onKeyDown={(e) => ['-', '+', 'e', 'E'].includes(e.key) && e.preventDefault()}
               onChange={e => setHoras(e.target.value === '' ? '' : Math.max(0, parseFloat(e.target.value) || 0))} /></Field>
-            <Field label="Custo/hora (R$)"><input type="number" min="0" step="0.01" className={inputCls} placeholder="0,00" value={custoHora}
-              onKeyDown={(e) => ['-', '+', 'e', 'E'].includes(e.key) && e.preventDefault()}
-              onChange={e => setCustoHora(e.target.value === '' ? '' : Math.max(0, parseFloat(e.target.value) || 0))} /></Field>
+            <Field label="Custo/hora"><CurrencyInput value={custoHora} onChange={setCustoHora} className={inputCls} /></Field>
           </div>
           <div className="text-xs text-zinc-500 -mt-2">Mão de obra: <span className="font-bold text-zinc-800">{brl(maoObra)}</span></div>
 
@@ -640,9 +637,7 @@ function ItemList({ titulo, itens, setItens }: { titulo: string; itens: CustoIte
       {itens.map((it, i) => (
         <div key={i} className="flex gap-2">
           <input className={cn(inputCls, 'flex-1')} placeholder="Descrição" value={it.descricao} onChange={e => upd(i, { descricao: e.target.value })} />
-          <input type="number" min="0" step="0.01" className={cn(inputCls, 'w-28')} placeholder="R$" value={it.valor || ''}
-            onKeyDown={(e) => ['-', '+', 'e', 'E'].includes(e.key) && e.preventDefault()}
-            onChange={e => upd(i, { valor: Math.max(0, parseFloat(e.target.value) || 0) })} />
+          <CurrencyInput value={it.valor || ''} onChange={v => upd(i, { valor: typeof v === 'number' ? v : 0 })} className={cn(inputCls, 'w-32')} placeholder="R$ 0,00" />
           <button type="button" onClick={() => rem(i)} className="px-3 rounded-xl bg-red-50 text-red-500 hover:bg-red-100"><X className="w-4 h-4" /></button>
         </div>
       ))}
@@ -695,9 +690,7 @@ function LocacaoModal({ equipamentoId, onClose }: { equipamentoId: string; onClo
             <Field label="Início"><input type="date" required className={inputCls} value={dataInicio} onChange={e => setDataInicio(e.target.value)} /></Field>
             <Field label="Fim"><input type="date" className={inputCls} value={dataFim} onChange={e => setDataFim(e.target.value)} /></Field>
           </div>
-          <Field label="Valor da locação (R$)"><input type="number" min="0" step="0.01" required className={inputCls} placeholder="0,00" value={valor}
-            onKeyDown={(e) => ['-', '+', 'e', 'E'].includes(e.key) && e.preventDefault()}
-            onChange={e => setValor(e.target.value === '' ? '' : Math.max(0, parseFloat(e.target.value) || 0))} /></Field>
+          <Field label="Valor da locação"><CurrencyInput value={valor} onChange={setValor} required className={inputCls} /></Field>
           <Field label="Observações"><textarea rows={2} className={cn(inputCls, 'resize-none')} value={observacoes} onChange={e => setObservacoes(e.target.value)} /></Field>
           <button type="submit" disabled={loading} className={cn('w-full py-3 rounded-2xl font-bold transition-all flex items-center justify-center gap-2', loading ? 'bg-zinc-100 text-zinc-300' : 'bg-zinc-900 text-white hover:bg-zinc-800')}>
             {loading ? 'Salvando...' : <>Registrar Locação <CheckCircle2 className="w-5 h-5" /></>}
