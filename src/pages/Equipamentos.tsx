@@ -98,13 +98,24 @@ export default function Equipamentos() {
   if (selected) {
     const current = equipamentos.find(e => e.id === selected.id) || selected;
     return (
-      <EquipamentoDetalhe
-        equipamento={current}
-        manutencoes={manutencoes.filter(m => m.equipamentoId === current.id)}
-        locacoes={locacoes.filter(l => l.equipamentoId === current.id)}
-        onBack={() => setSelected(null)}
-        onEdit={() => setEditing(current)}
-      />
+      <>
+        <EquipamentoDetalhe
+          equipamento={current}
+          manutencoes={manutencoes.filter(m => m.equipamentoId === current.id)}
+          locacoes={locacoes.filter(l => l.equipamentoId === current.id)}
+          onBack={() => setSelected(null)}
+          onEdit={() => setEditing(current)}
+        />
+        {/* O modal precisa ser renderizado aqui também: nesta branch o return acontece
+            antes da lista, então o modal lá embaixo nunca apareceria no detalhe. */}
+        {editing && (
+          <EquipamentoModal
+            equipamento={editing}
+            onClose={() => setEditing(null)}
+            onDeleted={() => { handleDelete(editing); setEditing(null); setSelected(null); }}
+          />
+        )}
+      </>
     );
   }
 
