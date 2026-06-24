@@ -230,9 +230,11 @@ function AdminManager() {
   const meuEmail = (userProfile?.email || auth.currentUser?.email || '').trim().toLowerCase();
 
   // Só os admins por e-mail (id `email:...`); os por CPF são raros e gerenciados à parte.
+  // O e-mail exibido vem do ID (fonte da verdade do acesso), nunca do campo `valor`
+  // — o login casa o admin pelo id `email:<login>`, então `valor` é só um espelho que pode estar errado.
   const admins = (adminSnap?.docs || [])
-    .map(d => ({ id: d.id, email: (d.data()?.valor || d.id.replace(/^email:/, '')).trim().toLowerCase(), ativo: d.data()?.ativo !== false }))
-    .filter(a => a.id.trim().toLowerCase().startsWith('email:'))
+    .filter(d => d.id.trim().toLowerCase().startsWith('email:'))
+    .map(d => ({ id: d.id, email: d.id.trim().toLowerCase().replace(/^email:/, ''), ativo: d.data()?.ativo !== false }))
     .sort((a, b) => a.email.localeCompare(b.email));
 
   const emailValido = (e: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
