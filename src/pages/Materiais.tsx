@@ -13,6 +13,7 @@ import { useAutoSaveForm } from '../hooks/useAutoSaveForm';
 import { parseDate } from '../lib/dateUtils';
 import { usePhotoCapture } from '../hooks/usePhotoCapture';
 import { CameraCapture } from '../components/CameraCapture';
+import { CurrencyInput } from '../components/CurrencyInput';
 
 export default function Materiais() {
   const { isAdmin, isEncarregado, notify } = useAuth();
@@ -373,21 +374,11 @@ export default function Materiais() {
                 {canEdit && (
                   <div className="space-y-2">
                     <label className="text-xs font-bold text-zinc-500 uppercase tracking-widest">Preço Un.</label>
-                    <div className="relative">
-                      <DollarSign className="absolute left-3 top-3 w-4 h-4 text-zinc-400" />
-                      <input
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        className="w-full pl-8 pr-2 py-2.5 bg-zinc-50 border border-zinc-200 rounded-lg text-sm text-center font-bold"
-                        value={!formData.precoUnitario ? '' : formData.precoUnitario}
-                        onKeyDown={(e) => ['-', '+', 'e', 'E'].includes(e.key) && e.preventDefault()}
-                        onChange={(e) => {
-                          const val = Math.max(0, parseFloat(e.target.value) || 0);
-                          setFormData({...formData, precoUnitario: val});
-                        }}
-                      />
-                    </div>
+                    <CurrencyInput
+                      value={formData.precoUnitario || ''}
+                      onChange={(v) => setFormData({ ...formData, precoUnitario: typeof v === 'number' ? v : 0 })}
+                      className="w-full px-3 py-2.5 bg-zinc-50 border border-zinc-200 rounded-lg text-sm text-center font-bold focus:outline-none focus:border-zinc-900"
+                    />
                   </div>
                 )}
                 <div className="space-y-2 text-left">
