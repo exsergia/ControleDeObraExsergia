@@ -154,7 +154,12 @@ export interface FiscalDoc {
   data: any;                  // data do documento (ISO)
   fornecedor?: string;
   cartaoFinal?: string;       // últimos 4 dígitos do cartão usado
-  observacoes?: string;
+  observacoes?: string;       // legado (campo removido do formulário)
+  obraId?: string;            // obra vinculada
+  obraNome?: string;          // denormalizado para exibição
+  atividadeId?: string;       // atividade da obra (cadastrada em Obras) vinculada
+  atividadeDescricao?: string;// denormalizado para exibição
+  operadoresPresentes?: { id: string; nome: string }[]; // quem estava presente
   criadoPorNome?: string;
   criadoPorId?: string;
   createdAt: any;
