@@ -11,7 +11,7 @@ import { parseDate } from '../lib/dateUtils';
 import { format } from 'date-fns';
 import { cn } from '../lib/utils';
 import {
-  Receipt, Plus, Camera, Images, X, Search, CreditCard, Calendar,
+  Receipt, Plus, Camera, X, Search, CreditCard, Calendar,
   Building2, FileText, AlertCircle, Trash2, CheckCircle2, User,
 } from 'lucide-react';
 
@@ -231,27 +231,17 @@ function FiscalModal({ userName, userId, onClose, onSaved }: { userName: string;
           {/* Foto obrigatória */}
           <div className="space-y-2">
             <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest pl-1">Foto do documento (obrigatório)</label>
-            <input id="fiscal-galeria" type="file" accept="image/*" className="sr-only"
-              onChange={e => { const f = e.target.files?.[0]; if (f) setFoto(f); e.target.value = ''; }} />
             {fotoPreview ? (
               <div className="space-y-2">
                 <div className="relative w-full aspect-video rounded-2xl overflow-hidden border-2 border-zinc-200">
                   <img src={fotoPreview} className="w-full h-full object-cover" alt="Pré-visualização" />
                 </div>
-                <div className="flex gap-2">
-                  <button type="button" onClick={() => setShowCamera(true)} className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl border border-zinc-200 bg-zinc-50 text-xs font-bold text-zinc-600 hover:bg-zinc-100"><Camera className="w-4 h-4" /> Nova foto</button>
-                  <label htmlFor="fiscal-galeria" className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl border border-zinc-200 bg-zinc-50 text-xs font-bold text-zinc-600 cursor-pointer hover:bg-zinc-100"><Images className="w-4 h-4" /> Galeria</label>
-                </div>
+                <button type="button" onClick={() => setShowCamera(true)} className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-zinc-200 bg-zinc-50 text-xs font-bold text-zinc-600 hover:bg-zinc-100"><Camera className="w-4 h-4" /> Nova foto</button>
               </div>
             ) : (
-              <div className="grid grid-cols-2 gap-3">
-                <button type="button" onClick={() => setShowCamera(true)} className="flex flex-col items-center justify-center gap-2 py-6 rounded-2xl border-2 border-dashed border-zinc-200 bg-zinc-50 hover:bg-zinc-100 hover:border-zinc-400 transition-all">
-                  <Camera className="w-6 h-6 text-zinc-500" /><span className="text-xs font-bold text-zinc-700">Tirar Foto</span>
-                </button>
-                <label htmlFor="fiscal-galeria" className="flex flex-col items-center justify-center gap-2 py-6 rounded-2xl border-2 border-dashed border-zinc-200 bg-zinc-50 hover:bg-zinc-100 hover:border-zinc-400 transition-all cursor-pointer">
-                  <Images className="w-6 h-6 text-zinc-500" /><span className="text-xs font-bold text-zinc-700">Da Galeria</span>
-                </label>
-              </div>
+              <button type="button" onClick={() => setShowCamera(true)} className="w-full flex flex-col items-center justify-center gap-2 py-6 rounded-2xl border-2 border-dashed border-zinc-200 bg-zinc-50 hover:bg-zinc-100 hover:border-zinc-400 transition-all">
+                <Camera className="w-6 h-6 text-zinc-500" /><span className="text-xs font-bold text-zinc-700">Tirar Foto</span>
+              </button>
             )}
           </div>
 
