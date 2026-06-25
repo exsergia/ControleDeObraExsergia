@@ -9,7 +9,8 @@ import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
 } from './lib/supabase';
-import { doc, getDoc, getDocs, setDoc, updateDoc, collection, db } from './lib/supabaseDb';
+import { doc, getDoc, getDocs, setDoc, updateDoc, collection, db, query, where } from './lib/supabaseDb';
+import { useCollection } from './lib/supabaseHooks';
 import { Operator } from './types';
 import {
   LayoutDashboard,
@@ -41,7 +42,7 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from './lib/utils';
 import { ErrorBoundary } from './components/ErrorBoundary';
-import { requestNotificationPermission } from './lib/services';
+import { requestNotificationPermission, sendBrowserNotification } from './lib/services';
 
 const AuthContext = createContext<{
   user: SupabaseUser | null;
@@ -354,6 +355,7 @@ function App() {
         ) : (
           <BrowserRouter>
             <RouteTracker />
+            <OverdueToolsAlert />
             <ErrorBoundary>
               <Layout>
                 <React.Suspense fallback={<PageLoader />}>
@@ -381,6 +383,45 @@ function App() {
       </div>
     </AuthContext.Provider>
   );
+}
+
+// Alerta global de ferramentas em atraso: dispara UMA vez quando o usuário entra
+// no app (em qualquer página), avisando sobre as ferramentas dele fora do prazo.
+// Fica montado dentro da área autenticada, então roda a cada login/refresh.
+function OverdueToolsAlert() {
+  const { userProfile, user, notify } = useAuth();
+  const meuId = userProfile?.id || user?.id || '';
+  const [logsSnap] = useCollection(
+    meuId ? query(collection(db, 'toolLogs'), where('responsavelId', '==', meuId)) : null
+  );
+  const alertedRef = useRef(false);
+
+  useEffect(() => {
+    if (alertedRef.current || !logsSnap) return;
+    const now = Date.now();
+    const atrasados = (logsSnap.docs || [])
+      .map((d: any) => d.data())
+      .filter((l: any) =>
+        l?.statusLog === 'Aberta' &&
+        l?.previsaoDevolucao &&
+        new Date(l.previsaoDevolucao).getTime() < now
+      );
+    if (atrasados.length === 0) return;
+
+    alertedRef.current = true; // garante 1 alerta por entrada no app
+    const n = atrasados.length;
+    notify(
+      'warning',
+      'Ferramenta em atraso',
+      `Você tem ${n} ferramenta(s) fora do prazo de devolução. Renove ou devolva o quanto antes.`
+    );
+    sendBrowserNotification(
+      'Ferramenta em atraso',
+      `Você tem ${n} ferramenta(s) fora do prazo. Renove ou devolva.`
+    );
+  }, [logsSnap, notify]);
+
+  return null;
 }
 
 const LAST_ROUTE_KEY = 'last-route';
