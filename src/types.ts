@@ -157,8 +157,6 @@ export interface FiscalDoc {
   observacoes?: string;       // legado (campo removido do formulário)
   obraId?: string;            // obra vinculada
   obraNome?: string;          // denormalizado para exibição
-  atividadeId?: string;       // atividade da obra (cadastrada em Obras) vinculada
-  atividadeDescricao?: string;// denormalizado para exibição
   operadoresPresentes?: { id: string; nome: string }[]; // quem estava presente
   criadoPorNome?: string;
   criadoPorId?: string;

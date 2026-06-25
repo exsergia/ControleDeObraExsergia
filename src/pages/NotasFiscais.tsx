@@ -13,9 +13,9 @@ import { cn } from '../lib/utils';
 import {
   Receipt, Plus, Camera, X, Search, CreditCard, Calendar,
   Building2, FileText, AlertCircle, Trash2, CheckCircle2, User,
-  HardHat, Users, Activity,
+  HardHat, Users,
 } from 'lucide-react';
-import { Obra, Operator, Atividade } from '../types';
+import { Obra, Operator } from '../types';
 
 // E-mails autorizados a usar a aba (financeiro).
 export const FISCAL_EMAILS = ['contasapagar@gmail.com', 'nascimentoerick446@gmail.com'];
@@ -123,7 +123,7 @@ export default function NotasFiscais() {
                   {d.cartaoFinal && (
                     <p className="text-xs text-zinc-600 flex items-center gap-1 font-mono"><CreditCard className="w-3 h-3 text-zinc-400" />•••• {d.cartaoFinal}</p>
                   )}
-                  {d.obraNome && <p className="text-xs text-zinc-600 break-words flex items-center gap-1"><HardHat className="w-3 h-3 text-zinc-400" />{d.obraNome}{d.atividadeDescricao ? ` · ${d.atividadeDescricao}` : ''}</p>}
+                  {d.obraNome && <p className="text-xs text-zinc-600 break-words flex items-center gap-1"><HardHat className="w-3 h-3 text-zinc-400" />{d.obraNome}</p>}
                   {(d.operadoresPresentes?.length || 0) > 0 && <p className="text-[11px] text-zinc-500 break-words flex items-center gap-1"><Users className="w-3 h-3 text-zinc-400" />{d.operadoresPresentes!.map(p => p.nome).join(', ')}</p>}
                   {d.observacoes && <p className="text-[11px] text-zinc-400 break-words">{d.observacoes}</p>}
                   <div className="flex items-center justify-between pt-1">
@@ -157,10 +157,8 @@ function FiscalModal({ userName, userId, onClose, onSaved }: { userName: string;
   const { notify } = useAuth();
   const [obrasSnap] = useCollection(query(collection(db, 'obras'), orderBy('nome', 'asc')));
   const [operadoresSnap] = useCollection(query(collection(db, 'operadores'), orderBy('nome', 'asc')));
-  const [atividadesSnap] = useCollection(collection(db, 'atividades'));
   const obras = (obrasSnap?.docs.map(d => ({ id: d.id, ...d.data() })) as Obra[]) || [];
   const operadores = (operadoresSnap?.docs.map(d => ({ id: d.id, ...d.data() })) as Operator[]) || [];
-  const atividades = (atividadesSnap?.docs.map(d => ({ id: d.id, ...d.data() })) as Atividade[]) || [];
 
   const [tipo, setTipo] = useState<'NF' | 'Cupom'>('Cupom');
   const [valor, setValor] = useState<number | ''>('');
@@ -168,7 +166,6 @@ function FiscalModal({ userName, userId, onClose, onSaved }: { userName: string;
   const [fornecedor, setFornecedor] = useState('');
   const [cartaoFinal, setCartaoFinal] = useState('');
   const [obraId, setObraId] = useState('');
-  const [atividadeId, setAtividadeId] = useState('');
   const [operadoresPresentes, setOperadoresPresentes] = useState<string[]>([]);
   const [fotoFile, setFotoFile] = useState<File | null>(null);
   const [fotoPreview, setFotoPreview] = useState<string | null>(null);
@@ -202,7 +199,6 @@ function FiscalModal({ userName, userId, onClose, onSaved }: { userName: string;
     try {
       const fotoUrl = await uploadPhoto(fotoFile, 'fiscal');
       const obraSel = obras.find(o => o.id === obraId);
-      const atividadeSel = atividades.find(a => a.id === atividadeId);
       const presentes = operadores
         .filter(o => operadoresPresentes.includes(o.id))
         .map(o => ({ id: o.id, nome: `${o.nome} ${o.sobrenome || ''}`.trim() }));
@@ -215,8 +211,6 @@ function FiscalModal({ userName, userId, onClose, onSaved }: { userName: string;
         cartaoFinal: cartaoFinal.replace(/\D/g, '').slice(-4),
         obraId: obraId || '',
         obraNome: obraSel?.nome || '',
-        atividadeId: atividadeId || '',
-        atividadeDescricao: atividadeSel?.descricao || '',
         operadoresPresentes: presentes,
         criadoPorNome: userName,
         criadoPorId: userId,
@@ -307,28 +301,13 @@ function FiscalModal({ userName, userId, onClose, onSaved }: { userName: string;
             <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest pl-1">Obra vinculada</label>
             <div className="relative">
               <HardHat className="w-4 h-4 text-zinc-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-              <select value={obraId} onChange={e => { setObraId(e.target.value); setAtividadeId(''); setOperadoresPresentes([]); }}
+              <select value={obraId} onChange={e => { setObraId(e.target.value); setOperadoresPresentes([]); }}
                 className="w-full pl-9 pr-4 py-2.5 bg-zinc-50 border border-zinc-200 rounded-xl text-sm focus:outline-none focus:border-zinc-900 appearance-none">
                 <option value="">Nenhuma</option>
                 {obras.map(o => <option key={o.id} value={o.id}>{o.nome}</option>)}
               </select>
             </div>
           </div>
-
-          {/* Atividade da obra (cadastrada em Obras) — só quando a obra escolhida tem atividades */}
-          {obraId && atividades.some(a => a.obraId === obraId) && (
-            <div className="space-y-2">
-              <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest pl-1">Atividade realizada</label>
-              <div className="relative">
-                <Activity className="w-4 h-4 text-zinc-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-                <select value={atividadeId} onChange={e => setAtividadeId(e.target.value)}
-                  className="w-full pl-9 pr-4 py-2.5 bg-zinc-50 border border-zinc-200 rounded-xl text-sm focus:outline-none focus:border-zinc-900 appearance-none">
-                  <option value="">Nenhuma</option>
-                  {atividades.filter(a => a.obraId === obraId).map(a => <option key={a.id} value={a.id}>{a.descricao}</option>)}
-                </select>
-              </div>
-            </div>
-          )}
 
           {/* Operadores presentes (multi-seleção) */}
           <div className="space-y-2">
