@@ -180,14 +180,18 @@ export default function Ferramentas() {
         notify('error', 'Sem suporte', 'Este dispositivo não suporta notificações via service worker.');
         return;
       }
+      // Reproduz EXATAMENTE a notificação real de atraso: mesmo título, corpo, ícone,
+      // badge, tag, renotify e url que a Edge Function notify-overdue envia e o sw.js renderiza.
+      const exemplo = 'Furadeira de Impacto';
       const reg = await navigator.serviceWorker.ready;
-      await reg.showNotification('Teste de notificação ✅', {
-        body: 'Tudo certo! As notificações estão funcionando neste aparelho.',
+      await reg.showNotification('Ferramenta em atraso', {
+        body: `"${exemplo}" passou do prazo de devolução. Renove ou devolva o quanto antes.`,
         icon: '/icon-192.png',
         badge: '/icon-192.png',
-        tag: 'teste-notif',
+        tag: 'atraso-teste',
+        renotify: true,
         data: { url: '/#/ferramentas' },
-      });
+      } as NotificationOptions);
       notify('success', 'Notificação enviada', 'Confira o aviso na barra de notificações do aparelho.');
     } catch (e: any) {
       notify('error', 'Falha no teste', e?.message || 'Não foi possível exibir a notificação.');
