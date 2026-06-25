@@ -312,7 +312,7 @@ function App() {
 
   const isAdmin = userProfile?.role === 'admin';
   const isEncarregado = userProfile?.role === 'encarregado';
-  const canFiscal = FISCAL_EMAILS.includes((userProfile?.email || user?.email || '').toLowerCase());
+  const canFiscal = userProfile?.role === 'operator' || FISCAL_EMAILS.includes((userProfile?.email || user?.email || '').toLowerCase());
 
   if (loading) {
     return (
@@ -1059,7 +1059,7 @@ function Layout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
   const { userProfile, user, isAdmin, isEncarregado } = useAuth();
-  const canFiscal = FISCAL_EMAILS.includes((userProfile?.email || user?.email || '').toLowerCase());
+  const canFiscal = userProfile?.role === 'operator' || FISCAL_EMAILS.includes((userProfile?.email || user?.email || '').toLowerCase());
 
   const menuItems: {
     label: string; icon: any; path: string;
@@ -1158,7 +1158,7 @@ function Layout({ children }: { children: React.ReactNode }) {
                 {userProfile?.nome} {userProfile?.sobrenome}
               </p>
               <p className="text-[9px] text-slate-500 truncate font-mono uppercase tracking-tighter">
-                {userProfile?.role || 'Visitante'}
+                {({ admin: 'Administrador', encarregado: 'Encarregado', operator: 'Operador' }[userProfile?.role || ''] || 'Visitante')}
               </p>
             </div>
           </div>
