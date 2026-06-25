@@ -176,6 +176,13 @@ function FiscalModal({ userName, userId, onClose, onSaved }: { userName: string;
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Equipe da obra selecionada — os operadores presentes saem DAQUI, não de todos.
+  const obraSelecionada = obras.find(o => o.id === obraId);
+  const idsEquipe = obraSelecionada
+    ? (obraSelecionada.operadoresIds?.length ? obraSelecionada.operadoresIds : (obraSelecionada.equipe || []).map(e => e.operatorId))
+    : [];
+  const operadoresDaObra = operadores.filter(o => idsEquipe.includes(o.id));
+
   const setFoto = (file: File) => {
     if (fotoPreview) URL.revokeObjectURL(fotoPreview);
     setFotoFile(file);
@@ -300,7 +307,7 @@ function FiscalModal({ userName, userId, onClose, onSaved }: { userName: string;
             <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest pl-1">Obra vinculada</label>
             <div className="relative">
               <HardHat className="w-4 h-4 text-zinc-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-              <select value={obraId} onChange={e => { setObraId(e.target.value); setAtividadeId(''); }}
+              <select value={obraId} onChange={e => { setObraId(e.target.value); setAtividadeId(''); setOperadoresPresentes([]); }}
                 className="w-full pl-9 pr-4 py-2.5 bg-zinc-50 border border-zinc-200 rounded-xl text-sm focus:outline-none focus:border-zinc-900 appearance-none">
                 <option value="">Nenhuma</option>
                 {obras.map(o => <option key={o.id} value={o.id}>{o.nome}</option>)}
@@ -329,11 +336,13 @@ function FiscalModal({ userName, userId, onClose, onSaved }: { userName: string;
               <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest pl-1 flex items-center gap-1"><Users className="w-3.5 h-3.5" />Quem estava presente</label>
               {operadoresPresentes.length > 0 && <span className="text-[10px] font-bold text-zinc-500">{operadoresPresentes.length} selecionado(s)</span>}
             </div>
-            {operadores.length === 0 ? (
-              <p className="text-xs text-zinc-400 px-1">Nenhum operador cadastrado.</p>
+            {!obraId ? (
+              <p className="text-xs text-zinc-400 px-1">Selecione uma obra acima para ver a equipe.</p>
+            ) : operadoresDaObra.length === 0 ? (
+              <p className="text-xs text-zinc-400 px-1">Nenhum operador atribuído a esta obra. Atribua a equipe em Obras &gt; Equipe Atribuída.</p>
             ) : (
               <div className="flex flex-wrap gap-2">
-                {operadores.map(o => {
+                {operadoresDaObra.map(o => {
                   const nome = `${o.nome} ${o.sobrenome || ''}`.trim();
                   const sel = operadoresPresentes.includes(o.id);
                   return (
