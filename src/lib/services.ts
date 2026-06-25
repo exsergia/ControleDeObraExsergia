@@ -20,7 +20,8 @@ export const sendBrowserNotification = async (title: string, body: string) => {
   try {
     if ('serviceWorker' in navigator) {
       const reg = await navigator.serviceWorker.ready;
-      await reg.showNotification(title, { body, icon: '/icon-192.png', badge: '/icon-192.png' });
+      // Sem `icon` (ícone grande): no Android ele fica à direita e corta o texto do corpo.
+      await reg.showNotification(title, { body, badge: '/icon-192.png' });
       return;
     }
   } catch {
@@ -28,7 +29,7 @@ export const sendBrowserNotification = async (title: string, body: string) => {
   }
 
   try {
-    new Notification(title, { body, icon: '/icon-192.png' });
+    new Notification(title, { body });
   } catch {
     // Ambiente não suporta o construtor (ex.: mobile sem SW pronto) — silencia.
   }

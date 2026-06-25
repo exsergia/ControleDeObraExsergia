@@ -186,7 +186,6 @@ export default function Ferramentas() {
       const reg = await navigator.serviceWorker.ready;
       await reg.showNotification('Ferramenta em atraso', {
         body: `"${exemplo}" passou do prazo de devolução. Renove ou devolva o quanto antes.`,
-        icon: '/icon-192.png',
         badge: '/icon-192.png',
         tag: 'atraso-teste',
         renotify: true,

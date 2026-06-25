@@ -92,7 +92,8 @@ self.addEventListener('push', (event) => {
   const title = payload.title || 'Exsergia Hub';
   const options = {
     body: payload.body || '',
-    icon: '/icon-192.png',
+    // Sem `icon` (ícone grande): no Android ele fica à direita e quebra/corta o
+    // texto do corpo. Mantemos só o `badge` (ícone monocromático da barra de status).
     badge: '/icon-192.png',
     tag: payload.tag || 'exsergia-notif',
     renotify: true,
