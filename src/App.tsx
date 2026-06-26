@@ -11,6 +11,7 @@ import {
 } from './lib/supabase';
 import { doc, getDoc, getDocs, setDoc, updateDoc, collection, db, query, where } from './lib/supabaseDb';
 import { useCollection } from './lib/supabaseHooks';
+import { PageIntro } from './components/PageIntro';
 import { Operator } from './types';
 import {
   LayoutDashboard,
@@ -1130,6 +1131,8 @@ function Layout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex h-screen bg-slate-50 overflow-hidden font-sans">
+      {/* Introdutório por página (abre na 1ª visita + botão "?" pra reabrir) */}
+      <PageIntro />
       {/* Mobile Sidebar Overlay */}
       <AnimatePresence>
         {sidebarOpen && (
