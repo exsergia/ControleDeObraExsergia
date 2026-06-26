@@ -121,7 +121,7 @@ export default function ProgressoFisico() {
 
   return (
     <div className="space-y-6 pb-20 animate-in fade-in duration-500">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div data-tour="prog-header" className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-bold tracking-tight text-zinc-900">Mão de Obra e Progresso Físico</h2>
           <p className="text-zinc-500 text-sm">Controle de execução e produtividade em tempo real.</p>
@@ -129,6 +129,7 @@ export default function ProgressoFisico() {
         <div className="flex flex-wrap items-center gap-3">
           {(isAdmin || isEncarregado) && (
             <button
+              data-tour="prog-new"
               onClick={() => setIsModalOpen(true)}
               className="flex items-center justify-center gap-2 px-5 py-3 bg-zinc-900 text-white rounded-2xl font-bold hover:bg-zinc-800 transition-all shadow-lg shadow-zinc-200 active:scale-95"
             >
@@ -139,7 +140,7 @@ export default function ProgressoFisico() {
         </div>
       </div>
 
-      <div className="flex flex-col sm:flex-row gap-4">
+      <div data-tour="prog-filters" className="flex flex-col sm:flex-row gap-4">
         <div className="flex-1 relative">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
           <input
@@ -165,7 +166,7 @@ export default function ProgressoFisico() {
         </div>
       </div>
 
-      <div className="grid gap-6">
+      <div data-tour="prog-list" className="grid gap-6">
         {loading ? (
           Array(3).fill(0).map((_, i) => (
             <div key={i} className="h-64 bg-white animate-pulse rounded-[2.5rem] border border-zinc-100" />

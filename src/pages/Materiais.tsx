@@ -112,13 +112,14 @@ export default function Materiais() {
 
   return (
     <div className="space-y-6 pb-20 animate-in fade-in duration-500">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div data-tour="mat-header" className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-bold tracking-tight text-zinc-900">Materiais Entregues</h2>
           <p className="text-zinc-500">Controle de tudo que chega nas obras.</p>
         </div>
         {canEdit && (
           <button
+            data-tour="mat-new"
             onClick={() => setIsModalOpen(true)}
             className="flex items-center justify-center gap-2 px-5 py-2.5 bg-zinc-900 text-white rounded-lg font-semibold hover:bg-zinc-800 transition-all shadow-lg active:scale-95"
           >
@@ -129,7 +130,7 @@ export default function Materiais() {
       </div>
 
       {/* Search */}
-      <div className="relative w-full sm:max-w-md">
+      <div data-tour="mat-search" className="relative w-full sm:max-w-md">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
         <input
           type="text"
@@ -141,7 +142,7 @@ export default function Materiais() {
       </div>
 
       {/* Table / Cards */}
-      <div className="bg-white rounded-xl border border-zinc-200 shadow-sm overflow-hidden">
+      <div data-tour="mat-list" className="bg-white rounded-xl border border-zinc-200 shadow-sm overflow-hidden">
         {/* Mobile card list */}
         <div className="sm:hidden divide-y divide-zinc-100">
           {loading ? (

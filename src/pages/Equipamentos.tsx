@@ -126,18 +126,18 @@ export default function Equipamentos() {
 
   return (
     <div className="space-y-6 pb-20 animate-in fade-in duration-500">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div data-tour="equip-header" className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-bold tracking-tight text-zinc-900">Equipamentos</h2>
           <p className="text-zinc-500">Custo e rentabilidade por ativo — cada máquina como centro de custo e receita.</p>
         </div>
-        <button onClick={() => setShowAdd(true)} className="flex items-center justify-center gap-2 px-5 py-2.5 bg-zinc-900 text-white rounded-xl text-sm font-bold hover:bg-zinc-800 transition-all shadow-lg active:scale-95">
+        <button data-tour="equip-new" onClick={() => setShowAdd(true)} className="flex items-center justify-center gap-2 px-5 py-2.5 bg-zinc-900 text-white rounded-xl text-sm font-bold hover:bg-zinc-800 transition-all shadow-lg active:scale-95">
           <Plus className="w-4 h-4" /> Novo Equipamento
         </button>
       </div>
 
       {/* KPIs gerais */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div data-tour="equip-kpis" className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <KPI label="Receita Total" value={brl(totals.receita)} icon={<TrendingUp className="w-5 h-5" />} tone="green" />
         <KPI label="Custo Total" value={brl(totals.custo)} icon={<TrendingDown className="w-5 h-5" />} tone="red" />
         <KPI label="Resultado" value={brl(totals.resultado)} icon={<DollarSign className="w-5 h-5" />} tone={totals.resultado >= 0 ? 'dark' : 'red'} />
@@ -145,7 +145,7 @@ export default function Equipamentos() {
 
       {/* Rankings */}
       {equipamentos.length > 0 && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div data-tour="equip-rankings" className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <RankCard title="Mais lucrativos" icon={<Trophy className="w-4 h-4 text-amber-500" />}
             items={rankLucrativos.map(e => ({ nome: e.nome, valor: financeById[e.id]?.resultado || 0 }))} positive />
           <RankCard title="Maior custo de manutenção" icon={<Wrench className="w-4 h-4 text-orange-500" />}
@@ -154,7 +154,7 @@ export default function Equipamentos() {
       )}
 
       {/* Lista */}
-      <div className="space-y-3">
+      <div data-tour="equip-list" className="space-y-3">
         <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-widest pl-1">Ativos cadastrados</h3>
         {loading ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">{Array(3).fill(0).map((_, i) => <div key={i} className="h-44 bg-white rounded-2xl border border-zinc-100 animate-pulse" />)}</div>

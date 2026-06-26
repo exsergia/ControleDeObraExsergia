@@ -114,13 +114,14 @@ export default function Frota() {
   return (
     <>
     <div className="space-y-6 pb-20 animate-in fade-in duration-500">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div data-tour="frota-header" className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-bold tracking-tight text-zinc-900">Controle de Frota</h2>
           <p className="text-zinc-500">Retirada e devolução de veículos com foto e localização.</p>
         </div>
         <div className="flex items-center gap-3">
           <button
+            data-tour="frota-scan"
             onClick={() => setShowScanner(true)}
             className="flex items-center gap-2 px-5 py-2.5 bg-white border border-zinc-200 text-zinc-600 rounded-xl text-sm font-bold hover:bg-zinc-50 transition-all shadow-sm active:scale-95"
           >
@@ -129,6 +130,7 @@ export default function Frota() {
           </button>
           {(isAdmin || isEncarregado) && (
             <button
+              data-tour="frota-add"
               onClick={() => setShowAddVehicle(true)}
               className="flex items-center gap-2 px-5 py-2.5 bg-zinc-900 text-white rounded-xl text-sm font-bold hover:bg-zinc-800 transition-all shadow-lg active:scale-95"
             >
@@ -141,7 +143,7 @@ export default function Frota() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Frota */}
-        <div className="lg:col-span-2 space-y-4">
+        <div data-tour="frota-list" className="lg:col-span-2 space-y-4">
           <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-widest pl-1">Veículos Cadastrados</h3>
           {vehicles.length === 0 ? (
             <div className="py-20 text-center bg-white rounded-3xl border-2 border-dashed border-zinc-100">
@@ -167,7 +169,7 @@ export default function Frota() {
         </div>
 
         {/* Histórico recente */}
-        <div className="space-y-4">
+        <div data-tour="frota-history" className="space-y-4">
           <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-widest pl-1">Atividade Recente</h3>
           <div className="bg-white rounded-3xl border border-zinc-200 overflow-hidden shadow-sm">
             <div className="p-4 bg-zinc-50 border-b border-zinc-200 flex items-center gap-2">

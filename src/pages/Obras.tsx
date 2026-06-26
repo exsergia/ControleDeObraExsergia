@@ -131,13 +131,14 @@ export default function Obras() {
         />
       ) : (
         <>
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div data-tour="obras-header" className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
               <h2 className="text-2xl font-bold tracking-tight text-zinc-900 text-shadow-sm">Cadastro de Obras</h2>
               <p className="text-zinc-500">Gerencie todas as obras ativas e concluídas.</p>
             </div>
             {isAdmin && (
-              <button 
+              <button
+                data-tour="obras-new"
                 onClick={() => setIsModalOpen(true)}
                 className="flex items-center justify-center gap-2 px-5 py-2.5 bg-zinc-900 text-white rounded-lg font-semibold hover:bg-zinc-800 transition-all shadow-lg shadow-zinc-200 active:scale-95"
               >
@@ -148,7 +149,7 @@ export default function Obras() {
           </div>
 
           {/* Filters */}
-          <div className="flex flex-col gap-3 bg-white p-4 rounded-xl border border-zinc-200 shadow-sm">
+          <div data-tour="obras-filters" className="flex flex-col gap-3 bg-white p-4 rounded-xl border border-zinc-200 shadow-sm">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
               <input
@@ -178,7 +179,7 @@ export default function Obras() {
           </div>
 
           {/* List */}
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div data-tour="obras-list" className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
             {loading ? (
               Array(6).fill(0).map((_, i) => (
                 <div key={i} className="h-56 bg-white animate-pulse rounded-xl border border-zinc-200 shadow-sm" />

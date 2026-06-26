@@ -95,12 +95,12 @@ export default function Settings() {
 
   return (
     <div className="max-w-2xl mx-auto space-y-8 animate-in fade-in duration-500">
-      <div className="flex flex-col gap-1">
+      <div data-tour="set-header" className="flex flex-col gap-1">
         <h2 className="text-2xl font-bold tracking-tight text-zinc-900">Configurações</h2>
         <p className="text-zinc-500 text-sm">Gerencie suas preferências de sistema e notificações.</p>
       </div>
 
-      <div className="bg-white rounded-2xl border border-zinc-200 shadow-sm overflow-hidden">
+      <div data-tour="set-notif" className="bg-white rounded-2xl border border-zinc-200 shadow-sm overflow-hidden">
         <div className="p-6 border-b border-zinc-100 bg-zinc-50/50">
           <div className="flex items-center gap-3">
             <Bell className="w-5 h-5 text-zinc-400" />
@@ -147,7 +147,7 @@ export default function Settings() {
         </button>
       </div>
 
-      <div className="bg-white rounded-2xl border border-zinc-200 shadow-sm overflow-hidden">
+      <div data-tour="set-senha" className="bg-white rounded-2xl border border-zinc-200 shadow-sm overflow-hidden">
         <div className="p-6 border-b border-zinc-100 bg-zinc-50/50">
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-3">

@@ -218,7 +218,7 @@ export default function ChecklistPage() {
 
   return (
     <div className="max-w-4xl mx-auto space-y-5 pb-24 animate-in fade-in duration-500">
-      <div className="flex items-center justify-between border-b border-zinc-200 pb-4">
+      <div data-tour="check-header" className="flex items-center justify-between border-b border-zinc-200 pb-4">
         <div className="flex items-center gap-3 min-w-0">
           <div className="w-9 h-9 sm:w-12 sm:h-12 bg-zinc-900 rounded-xl flex items-center justify-center text-white shadow-lg shrink-0">
             <ClipboardCheck className="w-4 h-4 sm:w-6 sm:h-6" />
@@ -245,7 +245,7 @@ export default function ChecklistPage() {
 
       {activeStep === 1 && (
         <section className="space-y-4 animate-in slide-in-from-right duration-300">
-          <div className="bg-white p-4 sm:p-8 rounded-2xl border border-zinc-200 shadow-sm space-y-4">
+          <div data-tour="check-obra" className="bg-white p-4 sm:p-8 rounded-2xl border border-zinc-200 shadow-sm space-y-4">
             <div className="text-center space-y-1">
               <h3 className="text-base sm:text-xl font-bold text-zinc-900 tracking-tight">Qual obra estamos acompanhando hoje?</h3>
               <p className="text-zinc-500 text-xs sm:text-sm">Selecione a obra para carregar os materiais e atividades.</p>

@@ -184,7 +184,7 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-8 animate-in fade-in duration-700">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div data-tour="dash-header" className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-bold tracking-tight text-zinc-900">
             {saudacaoPorHorario()}, {userProfile?.nome || user?.email?.split('@')[0] || 'Usuário'}
@@ -198,7 +198,7 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div data-tour="dash-kpis" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {loading ? (
           Array(4).fill(0).map((_, i) => (
             <div key={i} className="bg-white p-5 rounded-xl border border-zinc-200 shadow-sm flex items-start gap-4 animate-pulse">
@@ -222,7 +222,7 @@ export default function Dashboard() {
         ))}
       </div>
 
-      <div className="grid lg:grid-cols-2 gap-6">
+      <div data-tour="dash-charts" className="grid lg:grid-cols-2 gap-6">
         <div className="bg-white p-6 rounded-xl border border-zinc-200 shadow-sm">
           <div className="flex items-center justify-between mb-6">
             <h3 className="font-semibold text-zinc-900">Entregas da Semana</h3>
@@ -280,7 +280,7 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <div className="grid lg:grid-cols-2 gap-6 pb-8">
+      <div data-tour="dash-entregas" className="grid lg:grid-cols-2 gap-6 pb-8">
         <div className="bg-white rounded-xl border border-zinc-200 shadow-sm overflow-hidden flex flex-col">
           <div className="p-5 border-b border-zinc-100 flex items-center justify-between">
             <h3 className="font-semibold text-zinc-900">Últimas Entregas</h3>

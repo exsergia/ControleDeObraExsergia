@@ -450,12 +450,12 @@ export default function Operadores() {
 
   return (
     <div className="space-y-6 pb-20 animate-in fade-in duration-500">
-      <div>
+      <div data-tour="ops-header">
         <h2 className="text-2xl font-bold tracking-tight text-zinc-900">Gerenciar Equipe</h2>
         <p className="text-zinc-500 text-sm">Operadores de campo e encarregados de obra — tabelas separadas.</p>
       </div>
 
-      <div className="flex bg-white p-1 rounded-xl border border-zinc-200 w-full sm:w-fit shadow-sm">
+      <div data-tour="ops-tabs" className="flex bg-white p-1 rounded-xl border border-zinc-200 w-full sm:w-fit shadow-sm">
         {([
           { id: 'operadores', label: 'Operadores', icon: User },
           { id: 'encarregados', label: 'Encarregados', icon: ShieldCheck },

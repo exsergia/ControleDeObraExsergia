@@ -57,12 +57,13 @@ export default function NotasFiscais() {
 
   return (
     <div className="space-y-6 pb-20 animate-in fade-in duration-500">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div data-tour="nf-header" className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-bold tracking-tight text-zinc-900">NF / Cupom Fiscal</h2>
           <p className="text-zinc-500">Lançamento de notas e cupons com foto e cartão utilizado.</p>
         </div>
         <button
+          data-tour="nf-new"
           onClick={() => setShowModal(true)}
           className="flex items-center justify-center gap-2 px-5 py-2.5 bg-zinc-900 text-white rounded-xl text-sm font-bold hover:bg-zinc-800 transition-all shadow-lg active:scale-95"
         >
@@ -71,7 +72,7 @@ export default function NotasFiscais() {
       </div>
 
       <div className="flex flex-col sm:flex-row gap-3">
-        <div className="relative flex-1">
+        <div data-tour="nf-search" className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
           <input
             type="text"
@@ -81,7 +82,7 @@ export default function NotasFiscais() {
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
-        <div className="flex items-center gap-2 px-4 py-2.5 bg-zinc-900 text-white rounded-xl shrink-0">
+        <div data-tour="nf-total" className="flex items-center gap-2 px-4 py-2.5 bg-zinc-900 text-white rounded-xl shrink-0">
           <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">Total</span>
           <span className="text-sm font-black">{brl(total)}</span>
         </div>

@@ -69,7 +69,7 @@ export default function Financeiro() {
 
   return (
     <div className="space-y-8 pb-20 animate-in fade-in duration-500">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div data-tour="fin-header" className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-bold tracking-tight text-zinc-900 uppercase tracking-widest">Painel Financeiro</h2>
           <p className="text-zinc-500 text-sm font-medium">Consolidação de custos e auditoria de entregas.</p>
@@ -77,7 +77,7 @@ export default function Financeiro() {
       </div>
 
       {/* Finance Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div data-tour="fin-stats" className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="bg-white p-4 sm:p-8 rounded-2xl border border-zinc-200 shadow-sm flex items-center gap-4 sm:gap-6">
            <div className="w-12 h-12 sm:w-14 sm:h-14 bg-zinc-900 rounded-2xl flex items-center justify-center text-white shadow-lg shrink-0">
              <DollarSign className="w-6 h-6 sm:w-7 sm:h-7" />

@@ -217,7 +217,7 @@ export default function Ferramentas() {
   return (
     <>
     <div className="space-y-6 pb-20 animate-in fade-in duration-500">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div data-tour="tools-header" className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-bold tracking-tight text-zinc-900">Gestão de Ferramentas</h2>
           <p className="text-zinc-500">Controle de retirada e devolução de equipamentos.</p>
@@ -234,6 +234,7 @@ export default function Ferramentas() {
             </button>
           )}
           <button
+            data-tour="tools-scan"
             onClick={() => setShowScanner(true)}
             className="flex items-center gap-2 px-5 py-2.5 bg-white border border-zinc-200 text-zinc-600 rounded-xl text-sm font-bold hover:bg-zinc-50 transition-all shadow-sm active:scale-95"
           >
@@ -242,6 +243,7 @@ export default function Ferramentas() {
           </button>
           {(isAdmin || isEncarregado) && (
             <button
+              data-tour="tools-add"
               onClick={() => setShowAddTool(true)}
               className="flex items-center gap-2 px-5 py-2.5 bg-zinc-900 text-white rounded-xl text-sm font-bold hover:bg-zinc-800 transition-all shadow-lg active:scale-95"
             >
@@ -254,7 +256,7 @@ export default function Ferramentas() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Tool Inventory */}
-        <div className="lg:col-span-2 space-y-4">
+        <div data-tour="tools-inventory" className="lg:col-span-2 space-y-4">
           <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-widest pl-1">Inventário de Equipamentos</h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {tools.map((tool) => (
@@ -272,7 +274,7 @@ export default function Ferramentas() {
         </div>
 
         {/* Recent History */}
-        <div className="space-y-4">
+        <div data-tour="tools-history" className="space-y-4">
           <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-widest pl-1">Atividade Recente</h3>
           <div className="bg-white rounded-3xl border border-zinc-200 overflow-hidden shadow-sm">
             <div className="p-4 bg-zinc-50 border-b border-zinc-200 flex items-center gap-2">

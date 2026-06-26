@@ -422,7 +422,7 @@ export default function Relatorios() {
   return (
     <div className="space-y-6 pb-20 animate-in fade-in duration-500">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+      <div data-tour="rel-header" className="flex flex-col md:flex-row md:items-center justify-between gap-3">
         <div>
           <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-zinc-900">Relatórios</h2>
           <p className="text-zinc-500 text-sm">Checklists diários, ferramentas, frota e indicadores gerenciais.</p>
@@ -486,7 +486,7 @@ export default function Relatorios() {
       </div>
 
       {/* Tabs */}
-      <div className="flex bg-white p-1 rounded-xl border border-zinc-200 w-full sm:w-fit shadow-sm">
+      <div data-tour="rel-tabs" className="flex bg-white p-1 rounded-xl border border-zinc-200 w-full sm:w-fit shadow-sm">
         {([
           { id: 'diarios', label: 'Relatórios Diários', labelMobile: 'Diários', icon: FileText },
           { id: 'ferramentas', label: 'Ferramentas', labelMobile: 'Ferramentas', icon: Hammer },
