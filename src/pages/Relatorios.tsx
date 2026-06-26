@@ -3,7 +3,7 @@ import { usePersistedTab } from '../hooks/usePersistedTab';
 import { useCollection } from '../lib/supabaseHooks';
 import { collection, query, orderBy, addDoc, serverTimestamp, updateDoc, doc, arrayUnion, arrayRemove } from '../lib/supabaseDb';
 import { db, handleFirestoreError, OperationType } from '../lib/supabase';
-import { Attachment, Checklist, Obra, Material, Atividade, Operator, Tool, ToolLog, Vehicle, VehicleLog } from '../types';
+import { Attachment, Checklist, Obra, Material, Atividade, Operator, Tool, ToolLog, Vehicle, VehicleLog, FiscalDoc } from '../types';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   LineChart, Line, PieChart, Pie, Cell, Legend
@@ -33,7 +33,8 @@ import {
   CheckCircle2,
   TrendingUp,
   AlertTriangle,
-  MapPin
+  MapPin,
+  Receipt,
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { format } from 'date-fns';
@@ -46,7 +47,7 @@ import { formatGeo, mapsUrl } from '../lib/geo';
 
 import { parseDateSafe as parseDate } from '../lib/dateUtils';
 
-type RelatorioTab = 'diarios' | 'ferramentas' | 'frota' | 'bi';
+type RelatorioTab = 'diarios' | 'ferramentas' | 'frota' | 'fiscal' | 'bi';
 
 export default function Relatorios() {
   const { isAdmin, notify } = useAuth();
@@ -69,6 +70,7 @@ export default function Relatorios() {
     query(collection(db, 'vehicleLogs'), orderBy('dataSaida', 'desc'))
   );
   const [progressoDiarioSnap] = useCollection(collection(db, 'progresso_diario'));
+  const [fiscalSnap] = useCollection(query(collection(db, 'fiscal_docs'), orderBy('data', 'desc')));
 
   const [search, setSearch] = useState('');
   const [selectedDate, setSelectedDate] = useState('');
@@ -84,6 +86,7 @@ export default function Relatorios() {
   const vehicles = (vehiclesSnap?.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Vehicle[]) || [];
   const vehicleLogs = (vehicleLogsSnap?.docs.map(doc => ({ id: doc.id, ...doc.data() })) as VehicleLog[]) || [];
   const progressoDiario = (progressoDiarioSnap?.docs.map(doc => ({ id: doc.id, ...doc.data() }))) || [];
+  const fiscalDocs = (fiscalSnap?.docs.map(doc => ({ id: doc.id, ...doc.data() })) as FiscalDoc[]) || [];
 
   const filteredTools = tools.filter(t => {
     if (!search) return true;
@@ -146,6 +149,45 @@ export default function Relatorios() {
     }
     return true;
   });
+
+  const filteredFiscal = fiscalDocs.filter(f => {
+    if (search) {
+      const q = search.toLowerCase();
+      if (!(
+        (f.fornecedor || '').toLowerCase().includes(q) ||
+        (f.cartaoFinal || '').toLowerCase().includes(q) ||
+        (f.tipo || '').toLowerCase().includes(q) ||
+        (f.obraNome || '').toLowerCase().includes(q) ||
+        (f.criadoPorNome || '').toLowerCase().includes(q) ||
+        (f.operadoresPresentes || []).some(o => (o.nome || '').toLowerCase().includes(q))
+      )) return false;
+    }
+    if (selectedDate) {
+      const d = parseDate(f.data);
+      if (format(d, 'yyyy-MM-dd') !== selectedDate) return false;
+    }
+    return true;
+  });
+
+  const totalFiscal = filteredFiscal.reduce((acc, f) => acc + (f.valor || 0), 0);
+
+  const handleExportFiscal = () => {
+    const wb = utils.book_new();
+    const data = filteredFiscal.map(f => ({
+      'Tipo': f.tipo === 'NF' ? 'Nota Fiscal' : 'Cupom Fiscal',
+      'Data': f.data ? parseDate(f.data).toLocaleDateString('pt-BR') : '---',
+      'Valor (R$)': typeof f.valor === 'number' ? f.valor.toFixed(2).replace('.', ',') : '---',
+      'Fornecedor': f.fornecedor || '---',
+      'Cartão (final)': f.cartaoFinal || '---',
+      'Obra': f.obraNome || '---',
+      'Presentes': (f.operadoresPresentes || []).map(o => o.nome).join(', ') || '---',
+      'Lançado por': f.criadoPorNome || '---',
+      'Documento (foto)': f.fotoUrl || '---',
+    }));
+    const ws = utils.json_to_sheet(data);
+    utils.book_append_sheet(wb, ws, 'NF e Cupons');
+    writeFile(wb, `relatorio-fiscal-${format(new Date(), 'yyyy-MM-dd')}.xlsx`);
+  };
 
   const handleExportInventario = () => {
     const wb = utils.book_new();
@@ -482,6 +524,15 @@ export default function Relatorios() {
               </button>
             </>
           )}
+          {activeTab === 'fiscal' && isAdmin && filteredFiscal.length > 0 && (
+            <button
+              onClick={handleExportFiscal}
+              className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2.5 bg-zinc-900 text-white rounded-xl text-xs sm:text-sm font-bold hover:bg-zinc-800 transition-all shadow-sm"
+            >
+              <FileDown className="w-4 h-4 shrink-0" />
+              Exportar Excel
+            </button>
+          )}
         </div>
       </div>
 
@@ -491,6 +542,7 @@ export default function Relatorios() {
           { id: 'diarios', label: 'Relatórios Diários', labelMobile: 'Diários', icon: FileText },
           { id: 'ferramentas', label: 'Ferramentas', labelMobile: 'Ferramentas', icon: Hammer },
           { id: 'frota', label: 'Controle de Frota', labelMobile: 'Frota', icon: Truck },
+          { id: 'fiscal', label: 'NF / Cupom Fiscal', labelMobile: 'NF', icon: Receipt },
           { id: 'bi', label: 'Dashboard BI', labelMobile: 'BI', icon: TrendingUp },
         ] as const).map(tab => (
           <button
@@ -536,7 +588,9 @@ export default function Relatorios() {
                 ? 'Buscar por obra ou responsável...'
                 : activeTab === 'frota'
                   ? 'Buscar por placa, modelo, código ou responsável...'
-                  : 'Buscar por ferramenta, obra ou responsável...'
+                  : activeTab === 'fiscal'
+                    ? 'Buscar por fornecedor, cartão, tipo, obra ou presente...'
+                    : 'Buscar por ferramenta, obra ou responsável...'
             }
             className="w-full pl-10 pr-4 py-3 bg-white border border-zinc-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900/10 shadow-sm transition-all"
             value={search}
@@ -565,6 +619,56 @@ export default function Relatorios() {
           )}
         </div>
       </div>}
+
+      {/* ── NF / CUPOM FISCAL TAB ── */}
+      {activeTab === 'fiscal' && (
+        <div className="space-y-3">
+          <div className="flex items-center justify-between gap-2 pl-1">
+            <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-widest">
+              Notas e Cupons ({filteredFiscal.length})
+            </h3>
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-zinc-900 text-white rounded-lg shrink-0">
+              <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">Total</span>
+              <span className="text-sm font-black">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalFiscal)}</span>
+            </div>
+          </div>
+          {filteredFiscal.length === 0 ? (
+            <div className="py-16 text-center bg-white rounded-2xl border-2 border-dashed border-zinc-100">
+              <Receipt className="w-12 h-12 text-zinc-200 mx-auto mb-3" />
+              <p className="text-zinc-400 text-sm font-medium">Nenhum lançamento fiscal encontrado.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {filteredFiscal.map(f => {
+                const dt = parseDate(f.data);
+                return (
+                  <div key={f.id} className="bg-white rounded-2xl border border-zinc-200 shadow-sm overflow-hidden">
+                    <a href={f.fotoUrl} target="_blank" rel="noreferrer" className="block relative aspect-video bg-zinc-100">
+                      {f.fotoUrl
+                        ? <img src={f.fotoUrl} className="w-full h-full object-cover" alt="Documento fiscal" />
+                        : <div className="w-full h-full flex items-center justify-center"><Receipt className="w-8 h-8 text-zinc-300" /></div>}
+                      <span className={cn('absolute top-2 left-2 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider', f.tipo === 'NF' ? 'bg-blue-600 text-white' : 'bg-amber-500 text-white')}>{f.tipo}</span>
+                    </a>
+                    <div className="p-4 space-y-1.5">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-lg font-black text-zinc-900">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(f.valor || 0)}</span>
+                        <span className="text-[11px] text-zinc-400 flex items-center gap-1"><Calendar className="w-3 h-3" />{dt ? format(dt, 'dd/MM/yyyy') : '---'}</span>
+                      </div>
+                      {f.fornecedor && <p className="text-xs text-zinc-600 break-words flex items-center gap-1"><Box className="w-3 h-3 text-zinc-400" />{f.fornecedor}</p>}
+                      {f.obraNome && <p className="text-xs text-zinc-600 break-words flex items-center gap-1"><MapPin className="w-3 h-3 text-zinc-400" />{f.obraNome}</p>}
+                      {(f.operadoresPresentes?.length || 0) > 0 && <p className="text-[11px] text-zinc-500 break-words flex items-center gap-1"><Users className="w-3 h-3 text-zinc-400" />{f.operadoresPresentes!.map(o => o.nome).join(', ')}</p>}
+                      <div className="flex items-center justify-between pt-1 text-[10px] text-zinc-400">
+                        <span className="flex items-center gap-1 truncate"><User className="w-3 h-3" />{f.criadoPorNome || '—'}</span>
+                        {f.cartaoFinal && <span className="font-mono">•••• {f.cartaoFinal}</span>}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* ── FERRAMENTAS TAB ── */}
       {activeTab === 'ferramentas' && (
