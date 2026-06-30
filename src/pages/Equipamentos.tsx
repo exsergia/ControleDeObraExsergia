@@ -14,7 +14,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import {
   Boxes, Plus, X, ArrowLeft, Wrench, DollarSign, TrendingUp, TrendingDown,
   Camera, Images, Trash2, Edit2, Calendar, Building2, AlertCircle, CheckCircle2,
-  Trophy, Activity, Percent, Clock,
+  Trophy, Activity, Percent, Clock, ShieldCheck,
 } from 'lucide-react';
 
 const brl = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v || 0);
@@ -44,10 +44,20 @@ function calcFinance(eq: Equipamento, manuts: EquipamentoManutencao[], locs: Equ
 }
 
 export default function Equipamentos() {
-  const { notify } = useAuth();
-  const [equipSnap, loading, , refetchEquip] = useCollection(query(collection(db, 'equipamentos'), orderBy('nome', 'asc')));
-  const [manutSnap, , , refetchManut] = useCollection(collection(db, 'equipamento_manutencoes'));
-  const [locSnap, , , refetchLoc] = useCollection(collection(db, 'equipamento_locacoes'));
+  const { notify, isAdmin } = useAuth();
+  const equipamentosQuery = useMemo(() => (
+    isAdmin ? query(collection(db, 'equipamentos'), orderBy('nome', 'asc')) : null
+  ), [isAdmin]);
+  const manutencoesQuery = useMemo(() => (
+    isAdmin ? collection(db, 'equipamento_manutencoes') : null
+  ), [isAdmin]);
+  const locacoesQuery = useMemo(() => (
+    isAdmin ? collection(db, 'equipamento_locacoes') : null
+  ), [isAdmin]);
+
+  const [equipSnap, loading, , refetchEquip] = useCollection(equipamentosQuery);
+  const [manutSnap, , , refetchManut] = useCollection(manutencoesQuery);
+  const [locSnap, , , refetchLoc] = useCollection(locacoesQuery);
 
   // Recarrega tudo na hora após uma gravação local (sem esperar o Realtime).
   const reload = useCallback(() => { refetchEquip(); refetchManut(); refetchLoc(); }, [refetchEquip, refetchManut, refetchLoc]);
@@ -85,6 +95,10 @@ export default function Equipamentos() {
   const rankCusto = [...equipamentos].sort((a, b) => (financeById[b.id]?.custoManutencao || 0) - (financeById[a.id]?.custoManutencao || 0)).slice(0, 5);
 
   const handleDelete = async (eq: Equipamento) => {
+    if (!isAdmin) {
+      notify('warning', 'Acesso restrito', 'Somente administradores podem alterar equipamentos.');
+      return;
+    }
     if (!confirm(`Excluir o equipamento "${eq.nome}" e todo o seu histórico financeiro?`)) return;
     try {
       await deleteDoc(doc(db, 'equipamentos', eq.id));
@@ -96,6 +110,8 @@ export default function Equipamentos() {
       handleFirestoreError(err, OperationType.DELETE, 'equipamentos');
     }
   };
+
+  if (!isAdmin) return <AdminOnlyNotice />;
 
   // ── Detalhe de um equipamento ──────────────────────────────────────────────
   if (selected) {
@@ -207,7 +223,7 @@ function EquipamentoDetalhe({ equipamento, manutencoes, locacoes, onBack, onEdit
   equipamento: Equipamento; manutencoes: EquipamentoManutencao[]; locacoes: EquipamentoLocacao[];
   onBack: () => void; onEdit: () => void; onChanged: () => void;
 }) {
-  const { notify } = useAuth();
+  const { notify, isAdmin } = useAuth();
   const [periodo, setPeriodo] = useState<'mes' | 'ano' | 'tudo'>('tudo');
   const [showManut, setShowManut] = useState(false);
   const [showLoc, setShowLoc] = useState(false);
@@ -240,11 +256,19 @@ function EquipamentoDetalhe({ equipamento, manutencoes, locacoes, onBack, onEdit
   }, [manutencoes, locacoes]);
 
   const handleDelManut = async (id: string) => {
+    if (!isAdmin) {
+      notify('warning', 'Acesso restrito', 'Somente administradores podem alterar equipamentos.');
+      return;
+    }
     if (!confirm('Excluir esta manutenção?')) return;
     try { await deleteDoc(doc(db, 'equipamento_manutencoes', id)); onChanged(); notify('success', 'Excluído', 'Manutenção removida.'); }
     catch (err: any) { handleFirestoreError(err, OperationType.DELETE, 'equipamento_manutencoes'); }
   };
   const handleDelLoc = async (id: string) => {
+    if (!isAdmin) {
+      notify('warning', 'Acesso restrito', 'Somente administradores podem alterar equipamentos.');
+      return;
+    }
     if (!confirm('Excluir esta locação?')) return;
     try { await deleteDoc(doc(db, 'equipamento_locacoes', id)); onChanged(); notify('success', 'Excluído', 'Locação removida.'); }
     catch (err: any) { handleFirestoreError(err, OperationType.DELETE, 'equipamento_locacoes'); }
@@ -279,7 +303,7 @@ function EquipamentoDetalhe({ equipamento, manutencoes, locacoes, onBack, onEdit
             {equipamento.dataAquisicao ? ` (${format(new Date(`${equipamento.dataAquisicao}T00:00:00`), 'dd/MM/yyyy')})` : ''}
           </p>
         </div>
-        <button onClick={onEdit} className="p-2 text-zinc-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors shrink-0" title="Editar"><Edit2 className="w-4 h-4" /></button>
+        {isAdmin && <button onClick={onEdit} className="p-2 text-zinc-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors shrink-0" title="Editar"><Edit2 className="w-4 h-4" /></button>}
       </div>
 
       {/* Filtro de período */}
@@ -317,7 +341,7 @@ function EquipamentoDetalhe({ equipamento, manutencoes, locacoes, onBack, onEdit
 
       {/* Manutenções */}
       <Section title={`Manutenções (${manutFiltradas.length})`} icon={<Wrench className="w-4 h-4 text-zinc-400" />}
-        action={<button onClick={() => setShowManut(true)} className="text-xs font-bold text-zinc-900 flex items-center gap-1"><Plus className="w-3.5 h-3.5" />Adicionar</button>}>
+        action={isAdmin ? <button onClick={() => setShowManut(true)} className="text-xs font-bold text-zinc-900 flex items-center gap-1"><Plus className="w-3.5 h-3.5" />Adicionar</button> : undefined}>
         {manutFiltradas.length === 0 ? <Empty texto="Nenhuma manutenção no período." /> : (
           <div className="divide-y divide-zinc-100">
             {manutFiltradas.sort((a, b) => (parseDate(b.data)?.getTime() || 0) - (parseDate(a.data)?.getTime() || 0)).map(m => (
@@ -337,7 +361,7 @@ function EquipamentoDetalhe({ equipamento, manutencoes, locacoes, onBack, onEdit
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
                   <span className="text-sm font-black text-red-500">{brl(m.custoTotal || 0)}</span>
-                  <button onClick={() => handleDelManut(m.id)} className="p-1.5 text-zinc-300 hover:text-red-500 hover:bg-red-50 rounded-lg"><Trash2 className="w-3.5 h-3.5" /></button>
+                  {isAdmin && <button onClick={() => handleDelManut(m.id)} className="p-1.5 text-zinc-300 hover:text-red-500 hover:bg-red-50 rounded-lg"><Trash2 className="w-3.5 h-3.5" /></button>}
                 </div>
               </div>
             ))}
@@ -347,7 +371,7 @@ function EquipamentoDetalhe({ equipamento, manutencoes, locacoes, onBack, onEdit
 
       {/* Locações */}
       <Section title={`Locações / Receitas (${locFiltradas.length})`} icon={<DollarSign className="w-4 h-4 text-zinc-400" />}
-        action={<button onClick={() => setShowLoc(true)} className="text-xs font-bold text-zinc-900 flex items-center gap-1"><Plus className="w-3.5 h-3.5" />Adicionar</button>}>
+        action={isAdmin ? <button onClick={() => setShowLoc(true)} className="text-xs font-bold text-zinc-900 flex items-center gap-1"><Plus className="w-3.5 h-3.5" />Adicionar</button> : undefined}>
         {locFiltradas.length === 0 ? <Empty texto="Nenhuma locação no período." /> : (
           <div className="divide-y divide-zinc-100">
             {locFiltradas.sort((a, b) => (parseDate(b.dataInicio)?.getTime() || 0) - (parseDate(a.dataInicio)?.getTime() || 0)).map(l => (
@@ -363,7 +387,7 @@ function EquipamentoDetalhe({ equipamento, manutencoes, locacoes, onBack, onEdit
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
                   <span className="text-sm font-black text-green-600">{brl(l.valorLocacao || 0)}</span>
-                  <button onClick={() => handleDelLoc(l.id)} className="p-1.5 text-zinc-300 hover:text-red-500 hover:bg-red-50 rounded-lg"><Trash2 className="w-3.5 h-3.5" /></button>
+                  {isAdmin && <button onClick={() => handleDelLoc(l.id)} className="p-1.5 text-zinc-300 hover:text-red-500 hover:bg-red-50 rounded-lg"><Trash2 className="w-3.5 h-3.5" /></button>}
                 </div>
               </div>
             ))}
@@ -393,13 +417,29 @@ function EquipamentoDetalhe({ equipamento, manutencoes, locacoes, onBack, onEdit
         )}
       </Section>
 
-      {showManut && <ManutencaoModal equipamentoId={equipamento.id} onSaved={onChanged} onClose={() => setShowManut(false)} />}
-      {showLoc && <LocacaoModal equipamentoId={equipamento.id} onSaved={onChanged} onClose={() => setShowLoc(false)} />}
+      {isAdmin && showManut && <ManutencaoModal equipamentoId={equipamento.id} onSaved={onChanged} onClose={() => setShowManut(false)} />}
+      {isAdmin && showLoc && <LocacaoModal equipamentoId={equipamento.id} onSaved={onChanged} onClose={() => setShowLoc(false)} />}
     </div>
   );
 }
 
 // ── Componentes auxiliares ──────────────────────────────────────────────────
+function AdminOnlyNotice() {
+  return (
+    <div className="min-h-[calc(100vh-7rem)] flex items-center justify-center p-4">
+      <div className="w-full max-w-md bg-white border border-zinc-200 rounded-2xl shadow-sm p-8 text-center space-y-3">
+        <div className="w-12 h-12 rounded-2xl bg-zinc-900 text-white flex items-center justify-center mx-auto">
+          <ShieldCheck className="w-6 h-6" />
+        </div>
+        <h2 className="text-lg font-bold text-zinc-900">Acesso restrito</h2>
+        <p className="text-sm text-zinc-500">
+          A aba de Equipamentos e seus lancamentos financeiros sao exclusivos para administradores.
+        </p>
+      </div>
+    </div>
+  );
+}
+
 function KPI({ label, value, icon, tone, small }: { label: string; value: string; icon: React.ReactNode; tone: 'green' | 'red' | 'dark' | 'zinc'; small?: boolean }) {
   const toneCls = { green: 'text-green-600', red: 'text-red-500', dark: 'text-zinc-900', zinc: 'text-zinc-600' }[tone];
   return (
@@ -448,7 +488,7 @@ const Empty = ({ texto }: { texto: string }) => <div className="p-8 text-center 
 
 // ── Modal: equipamento ──────────────────────────────────────────────────────
 function EquipamentoModal({ equipamento, onClose, onSaved, onDeleted }: { equipamento?: Equipamento; onClose: () => void; onSaved?: () => void; onDeleted?: () => void }) {
-  const { notify } = useAuth();
+  const { notify, isAdmin } = useAuth();
   const [nome, setNome] = useState(equipamento?.nome || '');
   const [codigo, setCodigo] = useState(equipamento?.codigo || '');
   const [categoria, setCategoria] = useState(equipamento?.categoria || '');
@@ -470,6 +510,11 @@ function EquipamentoModal({ equipamento, onClose, onSaved, onDeleted }: { equipa
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (loading) return;
+    if (!isAdmin) {
+      setError('Somente administradores podem alterar equipamentos.');
+      notify('warning', 'Acesso restrito', 'Somente administradores podem alterar equipamentos.');
+      return;
+    }
     if (!nome.trim()) { setError('Informe o nome do equipamento.'); return; }
     setLoading(true);
     try {
@@ -553,7 +598,7 @@ function EquipamentoModal({ equipamento, onClose, onSaved, onDeleted }: { equipa
 
 // ── Modal: manutenção ───────────────────────────────────────────────────────
 function ManutencaoModal({ equipamentoId, onClose, onSaved }: { equipamentoId: string; onClose: () => void; onSaved?: () => void }) {
-  const { notify } = useAuth();
+  const { notify, isAdmin } = useAuth();
   const [data, setData] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [tipo, setTipo] = useState<ManutencaoTipo>('Preventiva');
   const [horas, setHoras] = useState<number | ''>('');
@@ -572,6 +617,11 @@ function ManutencaoModal({ equipamentoId, onClose, onSaved }: { equipamentoId: s
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (loading) return;
+    if (!isAdmin) {
+      setError('Somente administradores podem alterar equipamentos.');
+      notify('warning', 'Acesso restrito', 'Somente administradores podem alterar equipamentos.');
+      return;
+    }
     if (custoTotal <= 0) { setError('Informe ao menos um custo (mão de obra, peças ou outros).'); return; }
     setLoading(true);
     try {
@@ -666,7 +716,7 @@ function ItemList({ titulo, itens, setItens }: { titulo: string; itens: CustoIte
 
 // ── Modal: locação ──────────────────────────────────────────────────────────
 function LocacaoModal({ equipamentoId, onClose, onSaved }: { equipamentoId: string; onClose: () => void; onSaved?: () => void }) {
-  const { notify } = useAuth();
+  const { notify, isAdmin } = useAuth();
   const [cliente, setCliente] = useState('');
   const [dataInicio, setDataInicio] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [dataFim, setDataFim] = useState('');
@@ -678,6 +728,11 @@ function LocacaoModal({ equipamentoId, onClose, onSaved }: { equipamentoId: stri
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (loading) return;
+    if (!isAdmin) {
+      setError('Somente administradores podem alterar equipamentos.');
+      notify('warning', 'Acesso restrito', 'Somente administradores podem alterar equipamentos.');
+      return;
+    }
     if (!cliente.trim()) { setError('Informe o cliente.'); return; }
     const valorNum = typeof valor === 'number' ? valor : NaN;
     if (!Number.isFinite(valorNum) || valorNum <= 0) { setError('Informe o valor da locação.'); return; }
