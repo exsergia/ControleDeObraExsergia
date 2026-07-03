@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useCollection } from '../lib/supabaseHooks';
-import { collection, addDoc, serverTimestamp, query, where, updateDoc, doc, writeBatch, setDoc, getDocs } from '../lib/supabaseDb';
-import { db, handleFirestoreError, OperationType, auth } from '../lib/supabase';
-import { Attachment, Obra, Material, Atividade, Checklist, Operator } from '../types';
+import { collection, serverTimestamp, query, where, doc, writeBatch, setDoc, getDocs } from '../lib/supabaseDb';
+import { db, auth } from '../lib/supabase';
+import { Obra, Material, Atividade, Operator } from '../types';
 import { useNavigate } from 'react-router-dom';
 import { 
   ClipboardCheck, 
@@ -12,19 +12,16 @@ import {
   User, 
   Package, 
   Activity,
-  ChevronDown,
   AlertCircle,
   Save,
-  ArrowRight,
   Camera,
-  FileText,
   Paperclip,
   X,
   Users,
   UserPlus
 } from 'lucide-react';
 import { cn } from '../lib/utils';
-import { uploadPhoto, uploadFile, sendBrowserNotification } from '../lib/services';
+import { uploadPhoto, sendBrowserNotification } from '../lib/services';
 import { useAuth } from '../App';
 import { useAutoSaveForm } from '../hooks/useAutoSaveForm';
 import { usePhotoCapture } from '../hooks/usePhotoCapture';

@@ -1,11 +1,10 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import { useCollection } from '../lib/supabaseHooks';
 import { collection, addDoc, serverTimestamp, query, orderBy } from '../lib/supabaseDb';
 import { db, handleFirestoreError, OperationType } from '../lib/supabase';
-import { Material, Obra, MaterialStatus } from '../types';
-import { Plus, Package, Truck, Calendar, Hash, Tag, DollarSign, FileText, Search, ChevronDown, Camera, X, Building2, Paperclip, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { Material, Obra } from '../types';
+import { Plus, Package, Calendar, Hash, FileText, Search, ChevronDown, Camera, X, Building2, Paperclip } from 'lucide-react';
 import { format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
 import { cn } from '../lib/utils';
 import { uploadPhoto, sendBrowserNotification } from '../lib/services';
 import { useAuth } from '../App';

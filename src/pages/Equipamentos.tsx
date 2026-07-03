@@ -14,7 +14,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import {
   Boxes, Plus, X, ArrowLeft, Wrench, DollarSign, TrendingUp, TrendingDown,
   Camera, Images, Trash2, Edit2, Calendar, Building2, AlertCircle, CheckCircle2,
-  Trophy, Activity, Percent, Clock, ShieldCheck,
+  Trophy, Percent, Clock, ShieldCheck,
 } from 'lucide-react';
 
 const brl = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v || 0);

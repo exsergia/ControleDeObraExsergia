@@ -12,7 +12,7 @@ import { format } from 'date-fns';
 import { cn } from '../lib/utils';
 import {
   Receipt, Plus, Camera, X, Search, CreditCard, Calendar,
-  Building2, FileText, AlertCircle, Trash2, CheckCircle2, User,
+  Building2, AlertCircle, Trash2, CheckCircle2, User,
   HardHat, Users,
 } from 'lucide-react';
 import { Obra, Operator } from '../types';
@@ -155,7 +155,6 @@ export default function NotasFiscais() {
 }
 
 function FiscalModal({ userName, userId, onClose, onSaved }: { userName: string; userId: string; onClose: () => void; onSaved: () => void }) {
-  const { notify } = useAuth();
   const [obrasSnap] = useCollection(query(collection(db, 'obras'), orderBy('nome', 'asc')));
   const [operadoresSnap] = useCollection(query(collection(db, 'operadores'), orderBy('nome', 'asc')));
   const obras = (obrasSnap?.docs.map(d => ({ id: d.id, ...d.data() })) as Obra[]) || [];

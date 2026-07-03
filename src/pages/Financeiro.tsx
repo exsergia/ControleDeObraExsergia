@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { usePersistedTab } from '../hooks/usePersistedTab';
 import { useCollection } from '../lib/supabaseHooks';
 import { collection, query, orderBy } from '../lib/supabaseDb';
@@ -9,19 +9,16 @@ import {
   TrendingUp,
   DollarSign,
   PieChart,
-  CheckCircle2,
   Search,
   Filter,
-  ArrowRight,
   Activity,
-  Package,
-  Layers
+  Package
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 
 export default function Financeiro() {
   const [obrasSnap] = useCollection(collection(db, 'obras'));
-  const [materiaisSnap, loading] = useCollection(query(collection(db, 'materiais'), orderBy('dataEntrega', 'desc')));
+  const [materiaisSnap] = useCollection(query(collection(db, 'materiais'), orderBy('dataEntrega', 'desc')));
   const [atividadesSnap] = useCollection(collection(db, 'atividades'));
   
   const [search, setSearch] = useState('');
@@ -154,7 +151,7 @@ export default function Financeiro() {
           />
         </div>
         <div className="flex items-center gap-3 min-w-0">
-           <Filter className="w-4 h-4 text-zinc-400 shrink-0" title="Filtrar por Obra" />
+           <Filter className="w-4 h-4 text-zinc-400 shrink-0" aria-hidden="true" />
            <select
             className="bg-white border border-zinc-200 px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider focus:outline-none truncate w-full sm:w-auto sm:max-w-[220px]"
             value={selectedObraId}
@@ -191,7 +188,6 @@ export default function Financeiro() {
               </div>
             </div>
           )) : filteredAtividades.map(ativ => {
-            const orçado = ativ.quantidadePrevista * (ativ.valorUnitario || 0);
             const executado = ativ.quantidadeExecutada * (ativ.valorUnitario || 0);
             return (
               <div key={ativ.id} className="p-4 space-y-2">

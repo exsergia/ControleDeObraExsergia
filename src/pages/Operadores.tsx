@@ -1,14 +1,12 @@
 import React, { useState, useMemo } from 'react';
 import { useCollection } from '../lib/supabaseHooks';
-import { collection, addDoc, updateDoc, deleteDoc, setDoc, doc, serverTimestamp, getDocs } from '../lib/supabaseDb';
+import { collection, addDoc, updateDoc, deleteDoc, setDoc, doc, serverTimestamp } from '../lib/supabaseDb';
 import { db, handleFirestoreError, OperationType } from '../lib/supabase';
 import { Operator, Obra } from '../types';
 import { useAuth } from '../App';
 import {
   Mail,
   UserCircle2,
-  Briefcase,
-  Plus,
   Search,
   Edit2,
   Trash2,

@@ -2,21 +2,15 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useCollection } from '../lib/supabaseHooks';
 import { collection, query, where, addDoc, updateDoc, setDoc, doc, serverTimestamp, deleteDoc } from '../lib/supabaseDb';
 import { db, handleFirestoreError, OperationType } from '../lib/supabase';
-import { Obra, Atividade, Operator } from '../types';
+import { Obra, Atividade } from '../types';
 import {
   Activity,
   Plus,
   Search,
-  ChevronRight,
-  MoreVertical,
-  CheckCircle2,
-  Clock,
-  AlertCircle,
   Building2,
   Users,
   Trash2,
   X,
-  Target,
   DollarSign
 } from 'lucide-react';
 import { cn } from '../lib/utils';
@@ -25,7 +19,7 @@ import { useAuth } from '../App';
 import { useAutoSaveForm } from '../hooks/useAutoSaveForm';
 
 export default function ProgressoFisico() {
-  const { isAdmin, isEncarregado, encarregadoObraIds, notify } = useAuth();
+  const { isAdmin, isEncarregado, notify } = useAuth();
   const [selectedObraId, setSelectedObraId] = useState<string>('all');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [search, setSearch] = useState('');
@@ -33,7 +27,6 @@ export default function ProgressoFisico() {
   const PAGE_SIZE = 20;
 
   const [obrasSnap] = useCollection(collection(db, 'obras'));
-  const [operadoresSnap] = useCollection(collection(db, 'operadores'));
   
   const actividadesQuery = selectedObraId === 'all'
     ? collection(db, 'atividades')
@@ -43,7 +36,6 @@ export default function ProgressoFisico() {
 
   const obras = (obrasSnap?.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Obra[]) || [];
   const atividades = (atividadesSnap?.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Atividade[]) || [];
-  const operadores = (operadoresSnap?.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Operator[]) || [];
 
   const filteredAtividades = atividades.filter(a =>
     a.descricao.toLowerCase().includes(search.toLowerCase())

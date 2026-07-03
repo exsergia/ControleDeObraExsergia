@@ -25,10 +25,9 @@ import {
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
 import { motion, AnimatePresence } from 'motion/react';
 import { uploadPhoto, requestNotificationPermission, sendBrowserNotification } from '../lib/services';
-import { Html5QrcodeScanner, Html5Qrcode } from 'html5-qrcode';
+import { Html5Qrcode } from 'html5-qrcode';
 import { useAuth } from '../App';
 import { registerPushForUser } from '../lib/push';
 import { parseDate } from '../lib/dateUtils';
@@ -63,17 +62,6 @@ const createMovementScopeHash = (parts: any[]) => {
   }
 
   return `mov_${Math.abs(hash).toString(36)}`;
-};
-
-const getMovementScopeKey = (log: ToolLog) => {
-  return log.movementHash || createMovementScopeHash([
-    log.activityId || log.id,
-    log.toolId,
-    log.obraId,
-    log.dataSaida,
-    log.dataDevolucao,
-    log.statusLog
-  ]);
 };
 
 const DIA_MS = 86400000;
@@ -122,7 +110,6 @@ export default function Ferramentas() {
   const tools = (toolsSnap?.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Tool[]) || [];
   const logs = (logsSnap?.docs.map(doc => ({ id: doc.id, ...doc.data() })) as ToolLog[]) || [];
 
-  const renderedMovementScopes = new Set<string>();
   const obras = (obrasSnap?.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Obra[]) || [];
 
   // Inscreve o dispositivo para receber push de atraso (idempotente).

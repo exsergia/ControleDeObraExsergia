@@ -1,4 +1,4 @@
-import React, { useEffect, useLayoutEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, useCallback } from 'react';
 import { useLocation } from 'react-router-dom';
 import { X, HelpCircle, ArrowLeft, ArrowRight, Check } from 'lucide-react';
 

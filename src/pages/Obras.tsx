@@ -4,7 +4,7 @@ import { useCollection } from '../lib/supabaseHooks';
 import { collection, addDoc, serverTimestamp, updateDoc, doc, deleteDoc, query, where } from '../lib/supabaseDb';
 import { db, handleFirestoreError, OperationType } from '../lib/supabase';
 import { useNavigate } from 'react-router-dom';
-import { Obra, ObraStatus, Operator, Atividade, Material } from '../types';
+import { Obra, ObraStatus, Operator, Atividade } from '../types';
 import {
   Plus,
   MapPin,
@@ -15,12 +15,10 @@ import {
   Search,
   CheckCircle2,
   Clock,
-  AlertCircle,
   ChevronDown,
   Activity,
   Users,
   Briefcase,
-  X,
   Trash2,
   ExternalLink,
   ShieldCheck,
@@ -31,9 +29,8 @@ import { useAuth } from '../App';
 import { useAutoSaveForm } from '../hooks/useAutoSaveForm';
 
 export default function Obras() {
-  const { isAdmin, isEncarregado, encarregadoObraIds, notify } = useAuth();
+  const { isAdmin, notify } = useAuth();
   const [obrasSnap, loading] = useCollection(collection(db, 'obras'));
-  const [operadoresSnap] = useCollection(collection(db, 'operadores'));
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedObra, setSelectedObra] = useState<Obra | null>(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
@@ -49,8 +46,6 @@ export default function Obras() {
     centroCusto: '',
     status: 'Ativa',
   });
-
-  const operadores = (operadoresSnap?.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Operator[]) || [];
 
   const handleAddObra = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -349,14 +344,6 @@ function ObraCard({
     'Concluída': 'bg-blue-50 text-blue-600 border-blue-200',
     'Pausada': 'bg-amber-50 text-amber-600 border-amber-200'
   };
-
-  const statusIcons = {
-    'Ativa': CheckCircle2,
-    'Concluída': CheckCircle2,
-    'Pausada': AlertCircle
-  };
-
-  const Icon = statusIcons[obra.status as keyof typeof statusIcons] || Clock;
 
   return (
     <div className="group bg-white rounded-xl border border-zinc-200 shadow-sm hover:shadow-xl hover:shadow-zinc-200 transition-all overflow-hidden flex flex-col relative">

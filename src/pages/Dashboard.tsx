@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import { useCollection } from '../lib/supabaseHooks';
 import { collection, query, limit, orderBy } from '../lib/supabaseDb';
 import { db } from '../lib/supabase';

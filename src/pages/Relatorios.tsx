@@ -442,25 +442,6 @@ export default function Relatorios() {
     }
   };
 
-  const handleImportTemplate = () => {
-    const jsonString = JSON.stringify({
-      obraId: "ID_DA_OBRA",
-      nomeResponsavel: "NOME",
-      materiais: [{ materialId: "ID", qtdConferida: 0 }],
-      progresso: [{ atividadeId: "ID", qtdExecutadaNoDia: 0 }],
-      equipeIds: [],
-      observacoes: "Base de exemplo para replicação."
-    }, null, 2);
-    
-    const blob = new Blob([jsonString], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'base_exemplo_relatorio.json';
-    a.click();
-    notify('info', 'Download Iniciado', 'Use o modelo para organizar dados antes de inserir manualmente.');
-  };
-
   return (
     <div className="space-y-6 pb-20 animate-in fade-in duration-500">
       {/* Header */}
@@ -1093,8 +1074,8 @@ export default function Relatorios() {
                       <div className="flex flex-wrap gap-2">
                         <PhotoLink url={log.fotoPainelSaida} label="Painel saída" />
                         <PhotoLink url={log.fotoPainelDevolucao} label="Painel devolução" />
-                        {(log.fotosAvaria || []).slice(0, 3).map((url, index) => (
-                          <PhotoLink key={url} url={url} label={`Avaria ${index + 1}`} />
+                        {(log.fotosAvaria || []).map((url, index) => (
+                          <PhotoLink key={`${url}-${index}`} url={url} label={`Avaria ${index + 1}`} danger />
                         ))}
                       </div>
                     </div>
@@ -1174,14 +1155,12 @@ export default function Relatorios() {
                             </div>
                           </td>
                           <td className="px-5 py-4">
-                            <div className="flex items-center justify-center gap-2">
+                            <div className="flex flex-wrap items-center justify-center gap-2 min-w-[156px]">
                               <PhotoLink url={log.fotoPainelSaida} label="Painel saída" />
                               <PhotoLink url={log.fotoPainelDevolucao} label="Painel devolução" />
-                              {(log.fotosAvaria || []).length > 0 && (
-                                <span className="text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-100 px-2 py-1 rounded-full">
-                                  {(log.fotosAvaria || []).length} avaria(s)
-                                </span>
-                              )}
+                              {(log.fotosAvaria || []).map((url, index) => (
+                                <PhotoLink key={`${url}-${index}`} url={url} label={`Avaria ${index + 1}`} danger />
+                              ))}
                             </div>
                           </td>
                           <td className="px-5 py-4 text-center">
@@ -1291,12 +1270,24 @@ function VehicleStatusBadge({ status }: { status: Vehicle['status'] }) {
   );
 }
 
-function PhotoLink({ url, label }: { key?: string | number; url?: string; label: string }) {
+function PhotoLink({ url, label, danger = false }: { key?: string | number; url?: string; label: string; danger?: boolean }) {
   if (!url) return <span className="text-[10px] text-zinc-300 font-bold uppercase">—</span>;
 
   return (
-    <a href={url} target="_blank" rel="noopener noreferrer" className="inline-block" title={label}>
-      <img src={url} alt={label} className="w-12 h-12 object-cover rounded-lg border border-zinc-200 hover:opacity-80 transition-opacity mx-auto" />
+    <a href={url} target="_blank" rel="noopener noreferrer" className="relative inline-block group/photo" title={label}>
+      <img
+        src={url}
+        alt={label}
+        className={cn(
+          "w-12 h-12 object-cover rounded-lg border hover:opacity-80 transition-opacity mx-auto",
+          danger ? "border-amber-300 ring-2 ring-amber-100" : "border-zinc-200"
+        )}
+      />
+      {danger && (
+        <span className="absolute inset-x-0 bottom-0 rounded-b-lg bg-amber-600/90 px-1 py-0.5 text-center text-[7px] font-bold uppercase tracking-tight text-white">
+          Avaria
+        </span>
+      )}
     </a>
   );
 }

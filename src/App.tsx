@@ -36,14 +36,13 @@ import {
   AlertOctagon,
   DollarSign,
   Mail,
-  Phone,
   KeyRound,
   ArrowLeft,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from './lib/utils';
 import { ErrorBoundary } from './components/ErrorBoundary';
-import { requestNotificationPermission, sendBrowserNotification } from './lib/services';
+import { sendBrowserNotification } from './lib/services';
 
 const AuthContext = createContext<{
   user: SupabaseUser | null;
@@ -103,7 +102,7 @@ interface Notification {
   message?: string;
 }
 
-function NotificationToast({ notification, onClose, key }: { notification: Notification; onClose: () => void; key?: string }) {
+function NotificationToast({ notification, onClose }: { notification: Notification; onClose: () => void; key?: React.Key }) {
   const bgColor = {
     error: 'bg-red-50 border-red-200 text-red-800',
     success: 'bg-green-50 border-green-200 text-green-800',
@@ -1061,26 +1060,6 @@ function NovaSenhaView({ onComplete, notify }: { onComplete: () => void; notify:
             </button>
           </form>
         </div>
-      </div>
-    </div>
-  );
-}
-
-function ComingSoonPage() {
-  return (
-    <div className="min-h-[calc(100vh-7rem)] flex items-center justify-center p-4">
-      <div className="w-full max-w-xl bg-white border border-slate-200 rounded-3xl shadow-sm p-8 text-center">
-        <img
-          src="/em-breve-exsergia.png"
-          alt="Exsergia"
-          className="w-44 h-44 sm:w-56 sm:h-56 object-cover rounded-3xl mx-auto shadow-lg border border-slate-100"
-        />
-        <h2 className="mt-8 text-3xl font-black tracking-tight text-slate-900">
-          Disponível em Breve
-        </h2>
-        <p className="mt-3 text-sm font-medium text-slate-500 leading-relaxed">
-          Este módulo está em desenvolvimento. Por enquanto, utilize os módulos Dashboard, Obras, Checklist Diário, Operadores, Progresso Físico e Ferramentas.
-        </p>
       </div>
     </div>
   );
