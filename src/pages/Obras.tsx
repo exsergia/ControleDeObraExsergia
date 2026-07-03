@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { usePersistedTab } from '../hooks/usePersistedTab';
 import { useCollection } from '../lib/supabaseHooks';
-import { collection, addDoc, serverTimestamp, updateDoc, doc, deleteDoc, query, where } from '../lib/supabaseDb';
+import { collection, serverTimestamp, updateDoc, doc, deleteDoc, query, where, writeBatch } from '../lib/supabaseDb';
 import { db, handleFirestoreError, OperationType } from '../lib/supabase';
 import { useNavigate } from 'react-router-dom';
 import { Obra, ObraStatus, Operator, Atividade } from '../types';
@@ -28,6 +28,14 @@ import { cn } from '../lib/utils';
 import { useAuth } from '../App';
 import { useAutoSaveForm } from '../hooks/useAutoSaveForm';
 
+const DAILY_ACTIVITY_TEMPLATES = [
+  { id: 'visita-tecnica', descricao: 'Visita tecnica diaria', unidade: 'visita' },
+  { id: 'vistoria-seguranca', descricao: 'Vistoria de seguranca', unidade: 'vistoria' },
+  { id: 'registro-fotografico', descricao: 'Registro fotografico do andamento', unidade: 'registro' },
+  { id: 'limpeza-organizacao', descricao: 'Organizacao e limpeza do canteiro', unidade: 'dia' },
+  { id: 'alinhamento-equipe', descricao: 'Alinhamento diario com equipe', unidade: 'reuniao' },
+];
+
 export default function Obras() {
   const { isAdmin, notify } = useAuth();
   const [obrasSnap, loading] = useCollection(collection(db, 'obras'));
@@ -46,6 +54,19 @@ export default function Obras() {
     centroCusto: '',
     status: 'Ativa',
   });
+  const [dailyActivityIds, setDailyActivityIds, limparRascunhoAtividadesDiarias] = useAutoSaveForm<string[]>(
+    'rascunho-nova-obra-atividades-diarias',
+    ['visita-tecnica', 'vistoria-seguranca', 'registro-fotografico']
+  );
+  const [dailyActivityDays, setDailyActivityDays, limparRascunhoDiasAtividades] = useAutoSaveForm(
+    'rascunho-nova-obra-atividades-dias',
+    30
+  );
+  const [customDailyActivities, setCustomDailyActivities, limparRascunhoAtividadesCustom] = useAutoSaveForm<string[]>(
+    'rascunho-nova-obra-atividades-custom',
+    []
+  );
+  const [customDailyActivity, setCustomDailyActivity] = useState('');
 
   const handleAddObra = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -65,7 +86,21 @@ export default function Obras() {
 
     setIsSavingObra(true);
     try {
-      await addDoc(collection(db, 'obras'), {
+      const obraRef = doc(collection(db, 'obras'));
+      const batch = writeBatch(db);
+      const quantidadePrevista = Math.max(1, Number(dailyActivityDays) || 1);
+      const atividadesIniciais = [
+        ...DAILY_ACTIVITY_TEMPLATES.filter(item => dailyActivityIds.includes(item.id)),
+        ...customDailyActivities.map(descricao => ({
+          id: `custom-${descricao.toLowerCase()}`,
+          descricao,
+          unidade: 'un',
+        })),
+      ].filter((item, index, arr) =>
+        arr.findIndex(other => other.descricao.trim().toLowerCase() === item.descricao.trim().toLowerCase()) === index
+      );
+
+      batch.set(obraRef, {
         ...formData,
         nome: (formData.nome || '').trim(),
         cliente: (formData.cliente || '').trim(),
@@ -73,15 +108,65 @@ export default function Obras() {
         equipe: [],
         createdAt: serverTimestamp()
       });
+
+      atividadesIniciais.forEach(atividade => {
+        batch.set(doc(collection(db, 'atividades')), {
+          obraId: obraRef.id,
+          descricao: atividade.descricao,
+          unidade: atividade.unidade,
+          quantidadePrevista,
+          quantidadeExecutada: 0,
+          percentual: 0,
+          valorUnitario: 0,
+          equipeResponsavel: 'Rotina diaria',
+          createdAt: serverTimestamp()
+        });
+      });
+
+      await batch.commit();
       setIsModalOpen(false);
       limparRascunhoObra();
-      notify('success', 'Sucesso', 'Obra cadastrada com sucesso!');
+      limparRascunhoAtividadesDiarias();
+      limparRascunhoDiasAtividades();
+      limparRascunhoAtividadesCustom();
+      setCustomDailyActivity('');
+      notify(
+        'success',
+        'Sucesso',
+        atividadesIniciais.length > 0
+          ? `Obra cadastrada com ${atividadesIniciais.length} atividade(s) diaria(s).`
+          : 'Obra cadastrada com sucesso!'
+      );
     } catch (err: any) {
       notify('error', 'Erro ao Salvar', err.message || 'Não foi possível cadastrar a obra.');
       handleFirestoreError(err, OperationType.WRITE, 'obras');
     } finally {
       setIsSavingObra(false);
     }
+  };
+
+  const toggleDailyActivity = (id: string) => {
+    setDailyActivityIds(prev =>
+      prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
+    );
+  };
+
+  const addCustomDailyActivity = () => {
+    const descricao = customDailyActivity.trim();
+    if (!descricao) return;
+
+    const alreadyExists = [
+      ...DAILY_ACTIVITY_TEMPLATES.map(item => item.descricao),
+      ...customDailyActivities,
+    ].some(item => item.trim().toLowerCase() === descricao.toLowerCase());
+
+    if (alreadyExists) {
+      notify('warning', 'Atividade repetida', 'Essa atividade diaria ja esta na lista.');
+      return;
+    }
+
+    setCustomDailyActivities(prev => [...prev, descricao]);
+    setCustomDailyActivity('');
   };
 
   const todasObras = (obrasSnap?.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Obra[]) || [];
@@ -205,14 +290,14 @@ export default function Obras() {
       {/* Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white w-full max-w-xl rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+          <div className="bg-white w-full max-w-2xl max-h-[92dvh] rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col">
             <div className="p-6 border-b border-zinc-100 flex items-center justify-between bg-zinc-50">
               <h3 className="text-lg font-bold text-zinc-900 tracking-tight uppercase tracking-wider">Nova Obra</h3>
               <button onClick={() => setIsModalOpen(false)} className="p-2 hover:bg-zinc-200 rounded-full transition-colors">
                 <Plus className="w-6 h-6 rotate-45 text-zinc-500" />
               </button>
             </div>
-            <form onSubmit={handleAddObra} className="p-6 space-y-5">
+            <form onSubmit={handleAddObra} className="p-6 space-y-5 overflow-y-auto">
               <div className="grid sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <label className="text-xs font-bold text-zinc-500 uppercase tracking-widest pl-1">Nome da Obra</label>
@@ -283,6 +368,99 @@ export default function Obras() {
                     <ChevronDown className="absolute right-3 top-3 w-4 h-4 text-zinc-400 pointer-events-none" />
                   </div>
                 </div>
+              </div>
+
+              <div className="rounded-2xl border border-zinc-200 bg-white p-4 text-left space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                  <div className="flex items-start gap-3">
+                    <Activity className="w-5 h-5 text-zinc-900 mt-0.5 shrink-0" />
+                    <div>
+                      <p className="text-sm font-black text-zinc-900">Atividades diarias iniciais</p>
+                      <p className="text-xs font-semibold text-zinc-500 mt-1 leading-relaxed">
+                        Selecione rotinas para ja aparecerem em Progresso e Checklist desta obra.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="w-full sm:w-36">
+                    <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block mb-1">
+                      Dias previstos
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      className="w-full px-3 py-2 bg-zinc-50 border border-zinc-200 rounded-lg text-sm font-bold focus:outline-none focus:ring-2 focus:ring-zinc-900/10"
+                      value={dailyActivityDays || ''}
+                      onKeyDown={(e) => ['-', '+', 'e', 'E'].includes(e.key) && e.preventDefault()}
+                      onChange={(e) => setDailyActivityDays(Math.max(1, parseInt(e.target.value, 10) || 1))}
+                    />
+                  </div>
+                </div>
+
+                <div className="grid sm:grid-cols-2 gap-2">
+                  {DAILY_ACTIVITY_TEMPLATES.map(activity => {
+                    const checked = dailyActivityIds.includes(activity.id);
+                    return (
+                      <label
+                        key={activity.id}
+                        className={cn(
+                          "flex items-center gap-3 rounded-xl border px-3 py-2.5 cursor-pointer transition-all",
+                          checked
+                            ? "bg-zinc-900 border-zinc-900 text-white"
+                            : "bg-zinc-50 border-zinc-200 text-zinc-700 hover:border-zinc-300"
+                        )}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={() => toggleDailyActivity(activity.id)}
+                          className="h-4 w-4 rounded border-zinc-300 accent-zinc-900"
+                        />
+                        <span className="text-xs font-bold leading-tight">{activity.descricao}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <input
+                    type="text"
+                    className="flex-1 px-4 py-2.5 bg-zinc-50 border border-zinc-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900/10"
+                    placeholder="Adicionar outra: visitar cliente, liberar frente..."
+                    value={customDailyActivity}
+                    onChange={(e) => setCustomDailyActivity(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        addCustomDailyActivity();
+                      }
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={addCustomDailyActivity}
+                    className="px-4 py-2.5 bg-zinc-900 text-white rounded-lg text-xs font-bold uppercase tracking-widest hover:bg-zinc-800 transition-colors flex items-center justify-center gap-2"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Adicionar
+                  </button>
+                </div>
+
+                {customDailyActivities.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {customDailyActivities.map(activity => (
+                      <span key={activity} className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-zinc-100 text-zinc-700 text-xs font-bold">
+                        {activity}
+                        <button
+                          type="button"
+                          onClick={() => setCustomDailyActivities(prev => prev.filter(item => item !== activity))}
+                          className="text-zinc-400 hover:text-red-600"
+                        >
+                          <Plus className="w-3.5 h-3.5 rotate-45" />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <div className="rounded-2xl border border-blue-100 bg-blue-50 p-4 text-left">
