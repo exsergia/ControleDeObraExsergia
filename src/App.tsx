@@ -545,7 +545,7 @@ function TermoLGPDModal({ open, onClose, onAccept }: { open: boolean; onClose: (
 
           <p><strong>1. Aceite e Objeto.</strong> Ao criar uma conta e utilizar o aplicativo Controle de Obras Exsergia ("Aplicativo"), você declara ter lido, compreendido e concordado com este Termo de Uso e com a Política de Privacidade, em conformidade com a Lei nº 13.709/2018 (Lei Geral de Proteção de Dados — LGPD).</p>
 
-          <p><strong>2. Dados Coletados.</strong> Para o funcionamento do serviço, coletamos e tratamos dados pessoais como nome, sobrenome, e-mail, telefone e CPF, além de dados operacionais inseridos no uso do Aplicativo (obras, materiais, atividades, fotos, registros de ferramentas e checklists).</p>
+          <p><strong>2. Dados Coletados.</strong> Para o funcionamento do serviço, coletamos e tratamos dados pessoais como nome, sobrenome, e-mail, telefone e CPF, além de dados operacionais inseridos no uso do Aplicativo (obras, materiais, atividades, fotos, registros de ferramentas, checklists e geolocalização).</p>
 
           <p><strong>2.1. Responsabilidade sobre Ferramentas.</strong> Ao aceitar este termo, você declara que leu, compreendeu e assinou junto ao RH a documentação interna referente ao uso, retirada, guarda e devolução de ferramentas, comprometendo-se a cumprir as orientações e responsabilidades ali previstas.</p>
 
