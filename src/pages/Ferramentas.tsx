@@ -1145,6 +1145,10 @@ function CheckOutModal({ tool, obras, onClose }: { tool: Tool, obras: Obra[], on
   const [dias, setDias] = useState<number | ''>(1);
   const diasNum = typeof dias === 'number' ? dias : NaN;
   const [loading, setLoading] = useState(false);
+  const formatObraOption = (obra: Obra) => {
+    const cliente = (obra.cliente || '').trim();
+    return cliente ? `${obra.nome} - Cliente: ${cliente}` : obra.nome;
+  };
 
   const handleCheckOut = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1282,7 +1286,7 @@ function CheckOutModal({ tool, obras, onClose }: { tool: Tool, obras: Obra[], on
                   onChange={e => setObraId(e.target.value)}
                 >
                   <option value="">Selecione a obra...</option>
-                  {obras.map(o => <option key={o.id} value={o.id}>{o.nome}</option>)}
+                  {obras.map(o => <option key={o.id} value={o.id}>{formatObraOption(o)}</option>)}
                 </select>
                 <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none">
                   <ArrowDownLeft className="w-3 h-3 text-zinc-400 rotate-45" />
