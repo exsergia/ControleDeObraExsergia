@@ -1139,6 +1139,7 @@ function AddToolModal({ tool, onClose }: { tool?: Tool, onClose: () => void }) {
 function CheckOutModal({ tool, obras, onClose }: { tool: Tool, obras: Obra[], onClose: () => void }) {
   const { userProfile, notify } = useAuth();
   const [obraId, setObraId] = useState('');
+  const [isObraPickerOpen, setIsObraPickerOpen] = useState(false);
   const [showScanner, setShowScanner] = useState(false);
   const userName = userProfile ? `${userProfile.nome} ${userProfile.sobrenome || ''}`.trim() : ((auth.currentUser?.user_metadata?.name || auth.currentUser?.email) || 'Usuário');
   const [responsavel] = useState(userName);
@@ -1146,10 +1147,7 @@ function CheckOutModal({ tool, obras, onClose }: { tool: Tool, obras: Obra[], on
   const diasNum = typeof dias === 'number' ? dias : NaN;
   const [loading, setLoading] = useState(false);
   const obrasDisponiveis = obras.filter(obra => obra.status !== 'Concluída');
-  const formatObraOption = (obra: Obra) => {
-    const cliente = (obra.cliente || '').trim();
-    return cliente ? `${obra.nome} - Cliente: ${cliente}` : obra.nome;
-  };
+  const selectedObra = obrasDisponiveis.find(obra => obra.id === obraId);
 
   const handleCheckOut = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1215,7 +1213,7 @@ function CheckOutModal({ tool, obras, onClose }: { tool: Tool, obras: Obra[], on
   };
 
   const handleScanObra = (text: string) => {
-    const foundObra = obras.find(o => 
+    const foundObra = obrasDisponiveis.find(o =>
       o.id === text || 
       (o.centroCusto && o.centroCusto.toUpperCase() === text.toUpperCase())
     );
@@ -1280,18 +1278,55 @@ function CheckOutModal({ tool, obras, onClose }: { tool: Tool, obras: Obra[], on
             <div className="flex gap-2">
               <div className="relative flex-1">
                 <Building2 className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
-                <select 
-                  required
-                  className="w-full pl-11 pr-10 py-3 bg-zinc-50 border border-zinc-200 rounded-xl appearance-none focus:ring-2 focus:ring-zinc-900/10 outline-none truncate"
-                  value={obraId}
-                  onChange={e => setObraId(e.target.value)}
+                <button
+                  type="button"
+                  onClick={() => setIsObraPickerOpen(open => !open)}
+                  className="w-full min-h-[50px] pl-11 pr-10 py-2.5 bg-zinc-50 border border-zinc-200 rounded-xl focus:ring-2 focus:ring-zinc-900/10 outline-none text-left"
                 >
-                  <option value="">Selecione a obra...</option>
-                  {obrasDisponiveis.map(o => <option key={o.id} value={o.id}>{formatObraOption(o)}</option>)}
-                </select>
+                  {selectedObra ? (
+                    <span className="block leading-tight">
+                      <span className="block text-sm font-bold text-zinc-900 whitespace-normal break-words">{selectedObra.nome}</span>
+                      <span className="block mt-1 text-xs text-zinc-500 whitespace-normal break-words">
+                        Cliente: {(selectedObra.cliente || '').trim() || 'Não informado'}
+                      </span>
+                    </span>
+                  ) : (
+                    <span className="text-zinc-900">Selecione a obra...</span>
+                  )}
+                </button>
                 <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none">
                   <ArrowDownLeft className="w-3 h-3 text-zinc-400 rotate-45" />
                 </div>
+                {isObraPickerOpen && (
+                  <div className="absolute z-50 left-0 right-0 top-[calc(100%+6px)] max-h-64 overflow-y-auto rounded-xl border border-zinc-200 bg-white shadow-xl">
+                    {obrasDisponiveis.length === 0 ? (
+                      <div className="px-4 py-3 text-sm text-zinc-500">Nenhuma obra ativa disponível.</div>
+                    ) : (
+                      obrasDisponiveis.map(obra => (
+                        <button
+                          key={obra.id}
+                          type="button"
+                          onClick={() => {
+                            setObraId(obra.id);
+                            setIsObraPickerOpen(false);
+                          }}
+                          className={cn(
+                            'w-full px-4 py-3 text-left border-b border-zinc-100 last:border-b-0 hover:bg-zinc-50 transition-colors',
+                            obra.id === obraId && 'bg-zinc-900 text-white hover:bg-zinc-900'
+                          )}
+                        >
+                          <span className="block text-sm font-bold whitespace-normal break-words">{obra.nome}</span>
+                          <span className={cn(
+                            'block mt-1 text-xs whitespace-normal break-words',
+                            obra.id === obraId ? 'text-zinc-300' : 'text-zinc-500'
+                          )}>
+                            Cliente: {(obra.cliente || '').trim() || 'Não informado'}
+                          </span>
+                        </button>
+                      ))
+                    )}
+                  </div>
+                )}
               </div>
               <button 
                 type="button"
