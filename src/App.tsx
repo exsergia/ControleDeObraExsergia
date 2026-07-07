@@ -547,6 +547,8 @@ function TermoLGPDModal({ open, onClose, onAccept }: { open: boolean; onClose: (
 
           <p><strong>2. Dados Coletados.</strong> Para o funcionamento do serviço, coletamos e tratamos dados pessoais como nome, sobrenome, e-mail, telefone e CPF, além de dados operacionais inseridos no uso do Aplicativo (obras, materiais, atividades, fotos, registros de ferramentas e checklists).</p>
 
+          <p><strong>2.1. Responsabilidade sobre Ferramentas.</strong> Ao aceitar este termo, você declara que leu, compreendeu e assinou junto ao RH a documentação interna referente ao uso, retirada, guarda e devolução de ferramentas, comprometendo-se a cumprir as orientações e responsabilidades ali previstas.</p>
+
           <p><strong>3. Finalidade do Tratamento.</strong> Os dados são utilizados exclusivamente para autenticação, identificação do usuário, controle operacional das obras, rastreabilidade das atividades e geração de relatórios gerenciais. Não comercializamos seus dados pessoais.</p>
 
           <p><strong>4. Compartilhamento.</strong> Os dados são armazenados em infraestrutura de nuvem (Supabase) e podem ser acessados por usuários autorizados da organização conforme o nível de permissão. Não há compartilhamento com terceiros para fins de marketing.</p>
