@@ -9,6 +9,17 @@
 -- não há mudança de comportamento para eles.
 
 -- Função espelho de is_app_admin() para identificar encarregado ativo.
+create table if not exists public.encarregados (
+  id text primary key,
+  data jsonb not null default '{}'::jsonb,
+  operador_id text,
+  nome text,
+  email text,
+  created_at timestamptz not null default now()
+);
+
+alter table public.encarregados enable row level security;
+
 create or replace function public.is_app_encarregado()
 returns boolean
 language sql

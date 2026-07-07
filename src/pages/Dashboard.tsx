@@ -25,6 +25,7 @@ import { ptBR } from 'date-fns/locale';
 import { useAuth } from '../App';
 import { Atividade, Checklist, Material } from '../types';
 import { parseDate } from '../lib/dateUtils';
+import { getLocalDateKey } from '../lib/progress';
 
 const DIAS_SEMANA = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 
@@ -125,7 +126,7 @@ export default function Dashboard() {
         // Progresso via snapshots diários: fill-forward com o último valor conhecido
         const dayDate = new Date(inicioSemana);
         dayDate.setDate(inicioSemana.getDate() + index);
-        const dateStr = dayDate.toISOString().split('T')[0];
+        const dateStr = getLocalDateKey(dayDate);
         const snap = snapshotsSemana.find((p: any) => (p.id || p.data) === dateStr);
         if (snap) lastKnown = Number(snap.percentual || 0);
         dia.progresso = lastKnown;

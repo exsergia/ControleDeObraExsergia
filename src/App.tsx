@@ -9,7 +9,7 @@ import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
 } from './lib/supabase';
-import { doc, getDoc, getDocs, setDoc, updateDoc, collection, db, query, where } from './lib/supabaseDb';
+import { doc, getDoc, setDoc, updateDoc, collection, db, query, where } from './lib/supabaseDb';
 import { useCollection } from './lib/supabaseHooks';
 import { PageIntro } from './components/PageIntro';
 import { Operator } from './types';
@@ -94,6 +94,22 @@ const SettingsPage = React.lazy(() => import('./pages/Settings'));
 
 // E-mails autorizados a ver a aba de NF/Cupom Fiscal (financeiro).
 const FISCAL_EMAILS = ['contasapagar@gmail.com', 'nascimentoerick446@gmail.com'];
+
+const isFiscalEmail = (email?: string | null) =>
+  !!email && FISCAL_EMAILS.includes(email.toLowerCase());
+
+async function resolveLoginEmail(input: string) {
+  const value = input.trim().toLowerCase();
+  if (!value) return '';
+  if (value.includes('@')) return value;
+
+  const { data, error } = await supabase.rpc('resolve_login_identifier', {
+    p_identifier: value.replace(/\D/g, ''),
+  });
+
+  if (error) throw error;
+  return typeof data === 'string' ? data : '';
+}
 
 interface Notification {
   id: string;
@@ -313,7 +329,7 @@ function App() {
 
   const isAdmin = userProfile?.role === 'admin';
   const isEncarregado = userProfile?.role === 'encarregado';
-  const canFiscal = userProfile?.role === 'operator' || FISCAL_EMAILS.includes((userProfile?.email || user?.email || '').toLowerCase());
+  const canFiscal = isAdmin || isFiscalEmail(userProfile?.email || user?.email || '');
 
   if (loading) {
     return (
@@ -555,24 +571,7 @@ function LoginView() {
 
     setLoadingRecuperar(true);
     try {
-      let emailTarget = '';
-
-      if (input.includes('@')) {
-        emailTarget = input.toLowerCase();
-      } else {
-        const digits = input.replace(/\D/g, '');
-        const cpfSnap = await getDoc(doc(db, 'cpfs', digits));
-        if (cpfSnap.exists()) {
-          emailTarget = cpfSnap.data()?.email || '';
-        } else {
-          const opSnap = await getDocs(collection(db, 'operadores'));
-          const match = opSnap.docs.find(d => {
-            const data = d.data() as any;
-            return (data.telefone || '').replace(/\D/g, '') === digits;
-          });
-          if (match) emailTarget = (match.data() as any).email;
-        }
-      }
+      const emailTarget = await resolveLoginEmail(input);
 
       if (!emailTarget) {
         alert('Nenhuma conta encontrada com esse dado. Verifique e tente novamente.');
@@ -648,9 +647,9 @@ function LoginView() {
     setLoadingAuth(true);
     try {
       const cpfRef = doc(db, 'cpfs', cpfLimpo);
-      const cpfSnap = await getDoc(cpfRef);
+      const emailJaCadastrado = await resolveLoginEmail(cpfLimpo);
 
-      if (cpfSnap.exists()) {
+      if (emailJaCadastrado) {
         alert('Este CPF já está cadastrado. Faça login ou use outro CPF.');
         return;
       }
@@ -710,26 +709,10 @@ function LoginView() {
       let emailLogin = login.trim().toLowerCase();
 
       if (!emailLogin.includes('@')) {
-        const digits = somenteNumeros(emailLogin);
-
-        // 1. Tabela cpfs (cadastro via app)
-        const cpfSnap = await getDoc(doc(db, 'cpfs', digits));
-        if (cpfSnap.exists()) {
-          emailLogin = cpfSnap.data()?.email || '';
-        } else {
-          // 2. Busca direta em operadores por CPF ou telefone (admin-created users)
-          const opSnap = await getDocs(collection(db, 'operadores'));
-          const match = opSnap.docs.find(d => {
-            const data = d.data() as any;
-            return (data.cpf || '').replace(/\D/g, '') === digits ||
-                   (data.telefone || '').replace(/\D/g, '') === digits;
-          });
-          if (match) {
-            emailLogin = (match.data() as any).email;
-          } else {
-            alert('CPF, celular ou e-mail não encontrado. Verifique os dados ou faça o cadastro.');
-            return;
-          }
+        emailLogin = await resolveLoginEmail(emailLogin);
+        if (!emailLogin) {
+          alert('CPF, celular ou e-mail não encontrado. Verifique os dados ou faça o cadastro.');
+          return;
         }
       }
 
@@ -1080,7 +1063,7 @@ function Layout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
   const { userProfile, user, isAdmin, isEncarregado } = useAuth();
-  const canFiscal = userProfile?.role === 'operator' || FISCAL_EMAILS.includes((userProfile?.email || user?.email || '').toLowerCase());
+  const canFiscal = isAdmin || isFiscalEmail(userProfile?.email || user?.email || '');
 
   const menuItems: {
     label: string; icon: any; path: string;
@@ -1102,7 +1085,7 @@ function Layout({ children }: { children: React.ReactNode }) {
   ];
 
   const filteredMenuItems = menuItems.filter(item => {
-    if (item.fiscalOnly) return canFiscal;     // só os e-mails autorizados (independe do papel)
+    if (item.fiscalOnly) return canFiscal;     // admin ou e-mails financeiros autorizados
     if (isAdmin) return true;
     if (isEncarregado) return !item.soAdmin;  // encarregado vê tudo exceto financeiro e relatórios
     return !item.adminOnly;

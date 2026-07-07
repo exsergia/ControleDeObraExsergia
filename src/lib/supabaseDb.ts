@@ -219,6 +219,17 @@ export async function addDoc(ref: CollectionRef, value: any) {
 }
 
 export async function updateDoc(ref: DocRef, value: any) {
+  const { error } = await supabase.rpc('commit_json_batch', {
+    p_ops: [{
+      type: 'update',
+      table: ref.table,
+      id: ref.id,
+      value,
+    }],
+  });
+  if (!error) return;
+  if (!String(error.message || '').includes('Could not find the function')) throw error;
+
   const current = await getDoc(ref);
   const existing = current.exists() ? current.data() : { id: ref.id };
   const next = { ...existing };
@@ -227,6 +238,7 @@ export async function updateDoc(ref: DocRef, value: any) {
       const op = val as any;
       if (op.__op === 'arrayUnion') next[key] = [...(Array.isArray(next[key]) ? next[key] : []), ...op.values];
       if (op.__op === 'arrayRemove') next[key] = (Array.isArray(next[key]) ? next[key] : []).filter((x: any) => !op.values.some((v: any) => JSON.stringify(v) === JSON.stringify(x)));
+      if (op.__op === 'increment') next[key] = Number(next[key] || 0) + Number(op.value || 0);
     } else {
       next[key] = val;
     }
@@ -247,12 +259,26 @@ export function arrayRemove(...values: any[]) {
   return { __op: 'arrayRemove', values };
 }
 
+export function increment(value: number) {
+  return { __op: 'increment', value };
+}
+
 export function writeBatch(_db: unknown) {
-  const ops: Array<() => Promise<void>> = [];
+  const ops: Array<{ type: 'set' | 'update' | 'delete'; table: string; id: string; value?: any }> = [];
   return {
-    set: (ref: DocRef, value: any) => ops.push(() => setDoc(ref, value)),
-    update: (ref: DocRef, value: any) => ops.push(() => updateDoc(ref, value)),
-    delete: (ref: DocRef) => ops.push(() => deleteDoc(ref)),
-    commit: async () => { for (const op of ops) await op(); },
+    set: (ref: DocRef, value: any) => ops.push({ type: 'set', table: ref.table, id: ref.id, value }),
+    update: (ref: DocRef, value: any) => ops.push({ type: 'update', table: ref.table, id: ref.id, value }),
+    delete: (ref: DocRef) => ops.push({ type: 'delete', table: ref.table, id: ref.id }),
+    commit: async () => {
+      const { error } = await supabase.rpc('commit_json_batch', { p_ops: ops });
+      if (!error) return;
+      if (!String(error.message || '').includes('Could not find the function')) throw error;
+
+      for (const op of ops) {
+        if (op.type === 'set') await setDoc({ table: op.table, id: op.id }, op.value);
+        if (op.type === 'update') await updateDoc({ table: op.table, id: op.id }, op.value);
+        if (op.type === 'delete') await deleteDoc({ table: op.table, id: op.id });
+      }
+    },
   };
 }

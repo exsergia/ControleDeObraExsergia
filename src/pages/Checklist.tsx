@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useCollection } from '../lib/supabaseHooks';
-import { collection, serverTimestamp, query, where, doc, writeBatch, setDoc, getDocs } from '../lib/supabaseDb';
+import { collection, serverTimestamp, query, where, doc, writeBatch, increment } from '../lib/supabaseDb';
 import { db, auth } from '../lib/supabase';
 import { Obra, Material, Atividade, Operator } from '../types';
 import { useNavigate } from 'react-router-dom';
@@ -25,6 +25,7 @@ import { uploadPhoto, sendBrowserNotification } from '../lib/services';
 import { useAuth } from '../App';
 import { useAutoSaveForm } from '../hooks/useAutoSaveForm';
 import { usePhotoCapture } from '../hooks/usePhotoCapture';
+import { refreshDailyProgressSnapshot } from '../lib/progress';
 
 export default function ChecklistPage() {
   const { notify, isAdmin, userProfile } = useAuth();
@@ -152,10 +153,9 @@ export default function ChecklistPage() {
         if (ativ) {
           const ativRef = doc(db, 'atividades', id);
           const addedQty = Number(qty) || 0;
-          const newTotal = (ativ.quantidadeExecutada || 0) + addedQty;
           batch.update(ativRef, {
-            quantidadeExecutada: newTotal,
-            percentual: ativ.quantidadePrevista > 0 ? Math.min(100, (newTotal / ativ.quantidadePrevista) * 100) : 0
+            quantidadeExecutada: increment(addedQty),
+            updatedAt: serverTimestamp()
           });
         }
       });
@@ -164,22 +164,7 @@ export default function ChecklistPage() {
 
       // Atualiza snapshot de progresso diário com os totais já salvos no banco
       try {
-        const allAtivSnap = await getDocs(collection(db, 'atividades'));
-        const allAtiv = allAtivSnap.docs.map(d => ({ id: d.id, ...d.data() })) as Atividade[];
-
-        const totalPrevisto = allAtiv.reduce((s, a) => s + Number(a.quantidadePrevista || 0), 0);
-        const totalExecutado = allAtiv.reduce((s, a) => s + Number(a.quantidadeExecutada || 0), 0);
-        const newPerc = totalPrevisto > 0 ? Math.min(100, (totalExecutado / totalPrevisto) * 100) : 0;
-        const today = new Date().toISOString().split('T')[0];
-
-        await setDoc(doc(db, 'progresso_diario', today), {
-          id: today,
-          data: today,
-          percentual: Number(newPerc.toFixed(4)),
-          totalPrevisto,
-          totalExecutado,
-          updatedAt: serverTimestamp()
-        });
+        await refreshDailyProgressSnapshot();
       } catch (_) {
         // Não-crítico: não falha o checklist se o snapshot falhar
       }

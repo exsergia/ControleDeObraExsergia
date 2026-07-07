@@ -53,6 +53,8 @@ alter table public.operadores add column if not exists funcao text;
 alter table public.operadores add column if not exists role text default 'operator';
 alter table public.operadores add column if not exists lgpd_aceite_versao text;
 alter table public.operadores add column if not exists lgpd_aceite_data timestamptz;
+alter table public.atividades add column if not exists obra_id text;
+alter table public.atividades add column if not exists updated_at timestamptz;
 
 create table if not exists public.cpfs (
   id text primary key,
@@ -90,6 +92,22 @@ create table if not exists public.admin_access (
   created_at timestamptz not null default now()
 );
 
+create table if not exists public.encarregados (
+  id text primary key,
+  data jsonb not null default '{}'::jsonb,
+  operador_id text,
+  nome text,
+  email text,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.progresso_diario (
+  id text primary key,
+  data jsonb not null default '{}'::jsonb,
+  updated_at timestamptz not null default now(),
+  created_at timestamptz not null default now()
+);
+
 -- Índices de performance e bloqueio contra obra duplicada por duplo clique.
 create unique index if not exists obras_nome_cliente_unico
   on public.obras (lower(coalesce(data ->> 'nome', '')), lower(coalesce(data ->> 'cliente', '')))
@@ -103,6 +121,9 @@ create index if not exists idx_vehicles_status on public.vehicles ((data ->> 'st
 create index if not exists idx_vehicles_codigo on public.vehicles ((data ->> 'codigo'));
 create index if not exists idx_vehiclelogs_vehicle on public."vehicleLogs" ((data ->> 'vehicleId'));
 create index if not exists idx_operadores_lgpd_aceite_data on public.operadores (lgpd_aceite_data);
+create index if not exists idx_encarregados_operador on public.encarregados (operador_id);
+create index if not exists idx_atividades_obra_id on public.atividades (obra_id);
+create index if not exists idx_progresso_diario_updated_at on public.progresso_diario (updated_at desc);
 
 -- ZERA DADOS DE TESTE/FICTÍCIOS.
 -- Não apaga auth.users. Usuários do Supabase Auth devem ser controlados em Authentication > Users.
@@ -117,6 +138,8 @@ truncate table
   public."toolLogs",
   public.vehicles,
   public."vehicleLogs",
+  public.encarregados,
+  public.progresso_diario,
   public.admin_access
 restart identity cascade;
 
@@ -151,6 +174,21 @@ as $$
     );
 $$;
 
+create or replace function public.is_app_encarregado()
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1
+    from public.encarregados e
+    where e.id = auth.uid()::text
+      and coalesce((e.data ->> 'ativo')::boolean, true) = true
+  );
+$$;
+
 alter table public.obras enable row level security;
 alter table public.materiais enable row level security;
 alter table public.atividades enable row level security;
@@ -162,6 +200,8 @@ alter table public."toolLogs" enable row level security;
 alter table public.vehicles enable row level security;
 alter table public."vehicleLogs" enable row level security;
 alter table public.admin_access enable row level security;
+alter table public.encarregados enable row level security;
+alter table public.progresso_diario enable row level security;
 
 do $$
 declare
@@ -179,7 +219,7 @@ create policy "select authenticated obras" on public.obras for select to authent
 create policy "select authenticated materiais" on public.materiais for select to authenticated using (true);
 create policy "select authenticated atividades" on public.atividades for select to authenticated using (true);
 create policy "select authenticated checklists" on public.checklists for select to authenticated using (true);
-create policy "select authenticated operadores" on public.operadores for select to authenticated using (true);
+create policy "select operadores scoped" on public.operadores for select to authenticated using (id = auth.uid()::text or public.is_app_admin() or public.is_app_encarregado());
 create policy "select authenticated tools" on public.tools for select to authenticated using (true);
 create policy "select authenticated toolLogs" on public."toolLogs" for select to authenticated using (true);
 create policy "select authenticated vehicles" on public.vehicles for select to authenticated using (true);
@@ -192,25 +232,34 @@ create policy "admin all checklists" on public.checklists for all to authenticat
 create policy "admin all operadores" on public.operadores for all to authenticated using (public.is_app_admin()) with check (public.is_app_admin());
 create policy "admin all admin_access" on public.admin_access for all to authenticated using (public.is_app_admin()) with check (public.is_app_admin());
 
-create policy "authenticated write tools" on public.tools for all to authenticated using (true) with check (true);
-create policy "authenticated write toolLogs" on public."toolLogs" for all to authenticated using (true) with check (true);
-create policy "authenticated write vehicles" on public.vehicles for all to authenticated using (true) with check (true);
-create policy "authenticated write vehicleLogs" on public."vehicleLogs" for all to authenticated using (true) with check (true);
-create policy "authenticated write atividades" on public.atividades for all to authenticated using (true) with check (true);
-create policy "authenticated write checklists" on public.checklists for all to authenticated using (true) with check (true);
-create policy "authenticated write materiais" on public.materiais for all to authenticated using (true) with check (true);
-create policy "authenticated update obras" on public.obras for update to authenticated using (true) with check (true);
+create policy "staff write tools" on public.tools for all to authenticated using (public.is_app_admin() or public.is_app_encarregado()) with check (public.is_app_admin() or public.is_app_encarregado());
+create policy "staff write vehicles" on public.vehicles for all to authenticated using (public.is_app_admin() or public.is_app_encarregado()) with check (public.is_app_admin() or public.is_app_encarregado());
+create policy "staff write atividades" on public.atividades for all to authenticated using (public.is_app_admin() or public.is_app_encarregado()) with check (public.is_app_admin() or public.is_app_encarregado());
+create policy "staff write checklists" on public.checklists for all to authenticated using (public.is_app_admin() or public.is_app_encarregado()) with check (public.is_app_admin() or public.is_app_encarregado());
+create policy "staff write materiais" on public.materiais for all to authenticated using (public.is_app_admin() or public.is_app_encarregado()) with check (public.is_app_admin() or public.is_app_encarregado());
+create policy "staff update obras" on public.obras for update to authenticated using (public.is_app_admin() or public.is_app_encarregado()) with check (public.is_app_admin() or public.is_app_encarregado());
 
-create policy "read cpf map" on public.cpfs for select to anon, authenticated using (true);
-create policy "insert cpf map" on public.cpfs for insert to anon, authenticated with check (true);
+create policy "toolLogs insert owner" on public."toolLogs" for insert to authenticated with check (public.is_app_admin() or public.is_app_encarregado() or data ->> 'responsavelId' = auth.uid()::text);
+create policy "toolLogs update owner" on public."toolLogs" for update to authenticated using (public.is_app_admin() or public.is_app_encarregado() or data ->> 'responsavelId' = auth.uid()::text) with check (public.is_app_admin() or public.is_app_encarregado() or data ->> 'responsavelId' = auth.uid()::text);
+create policy "toolLogs delete staff" on public."toolLogs" for delete to authenticated using (public.is_app_admin() or public.is_app_encarregado());
+create policy "vehicleLogs insert owner" on public."vehicleLogs" for insert to authenticated with check (public.is_app_admin() or public.is_app_encarregado() or data ->> 'responsavelId' = auth.uid()::text);
+create policy "vehicleLogs update owner" on public."vehicleLogs" for update to authenticated using (public.is_app_admin() or public.is_app_encarregado() or data ->> 'responsavelId' = auth.uid()::text) with check (public.is_app_admin() or public.is_app_encarregado() or data ->> 'responsavelId' = auth.uid()::text);
+create policy "vehicleLogs delete staff" on public."vehicleLogs" for delete to authenticated using (public.is_app_admin() or public.is_app_encarregado());
+
+create policy "insert cpf map" on public.cpfs for insert to anon, authenticated with check (id ~ '^[0-9]{11}$' and coalesce(data ->> 'email', '') <> '');
 create policy "update cpf map admin" on public.cpfs for update to authenticated using (public.is_app_admin()) with check (public.is_app_admin());
 create policy "insert operador self" on public.operadores for insert to anon, authenticated with check (true);
 create policy "update operador self or admin" on public.operadores for update to authenticated using (id = auth.uid()::text or public.is_app_admin()) with check (id = auth.uid()::text or public.is_app_admin());
 create policy "read admin registry" on public.admin_access for select to authenticated using (true);
+create policy "admin write admin registry" on public.admin_access for all to authenticated using (public.is_app_admin()) with check (public.is_app_admin());
+create policy "select encarregados scoped" on public.encarregados for select to authenticated using (id = auth.uid()::text or public.is_app_admin() or public.is_app_encarregado());
+create policy "admin write encarregados" on public.encarregados for all to authenticated using (public.is_app_admin()) with check (public.is_app_admin());
+create policy "select progresso diario" on public.progresso_diario for select to authenticated using (true);
+create policy "staff write progresso diario" on public.progresso_diario for all to authenticated using (public.is_app_admin() or public.is_app_encarregado()) with check (public.is_app_admin() or public.is_app_encarregado());
 
 insert into storage.buckets (id, name, public)
-values ('uploads', 'uploads', true)
-on conflict (id) do update set public = true;
+values ('uploads', 'uploads', false)
+on conflict (id) do update set public = false;
 
 drop policy if exists "authenticated read uploads" on storage.objects;
 drop policy if exists "authenticated upload files" on storage.objects;
@@ -220,7 +269,7 @@ drop policy if exists "authenticated delete files" on storage.objects;
 create policy "authenticated read uploads" on storage.objects for select to authenticated using (bucket_id = 'uploads');
 create policy "authenticated upload files" on storage.objects for insert to authenticated with check (bucket_id = 'uploads');
 create policy "authenticated update files" on storage.objects for update to authenticated using (bucket_id = 'uploads') with check (bucket_id = 'uploads');
-create policy "authenticated delete files" on storage.objects for delete to authenticated using (bucket_id = 'uploads');
+create policy "authenticated delete files" on storage.objects for delete to authenticated using (bucket_id = 'uploads' and public.is_app_admin());
 
 -- Ativa Supabase Realtime nas tabelas do aplicativo.
 -- Se aparecer aviso de que já existe na publicação, pode ignorar.
@@ -239,34 +288,3 @@ begin
   begin alter publication supabase_realtime add table public.admin_access; exception when duplicate_object then null; end;
 end $$;
 
--- Endurecimento de RLS: DELETE restrito a admin/encarregado nas tabelas de
--- escrita aberta (insert/update seguem liberados para autenticados).
-create or replace function public.is_app_encarregado()
-returns boolean
-language sql
-stable
-security definer
-set search_path = public
-as $$
-  select exists (
-    select 1
-    from public.encarregados e
-    where e.id = auth.uid()::text
-      and coalesce((e.data ->> 'ativo')::boolean, true) = true
-  );
-$$;
-
-do $$
-declare
-  tbl text;
-begin
-  foreach tbl in array array['tools','toolLogs','vehicles','vehicleLogs','materiais','atividades','checklists'] loop
-    execute format('drop policy if exists %I on public.%I', 'authenticated write ' || tbl, tbl);
-    execute format('drop policy if exists %I on public.%I', tbl || ' insert auth', tbl);
-    execute format('drop policy if exists %I on public.%I', tbl || ' update auth', tbl);
-    execute format('drop policy if exists %I on public.%I', tbl || ' delete admin-enc', tbl);
-    execute format('create policy %I on public.%I for insert to authenticated with check (true)', tbl || ' insert auth', tbl);
-    execute format('create policy %I on public.%I for update to authenticated using (true) with check (true)', tbl || ' update auth', tbl);
-    execute format('create policy %I on public.%I for delete to authenticated using (public.is_app_admin() or public.is_app_encarregado())', tbl || ' delete admin-enc', tbl);
-  end loop;
-end $$;

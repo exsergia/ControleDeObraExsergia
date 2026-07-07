@@ -35,9 +35,16 @@ export const sendBrowserNotification = async (title: string, body: string) => {
   }
 };
 
-const buildPublicUrl = (bucket: string, path: string) => {
-  const { data } = supabase.storage.from(bucket).getPublicUrl(path);
-  return data.publicUrl;
+const UPLOADS_BUCKET = 'uploads';
+const SIGNED_URL_TTL_SECONDS = 60 * 60 * 24 * 365;
+
+const buildAccessUrl = async (bucket: string, path: string) => {
+  const { data, error } = await supabase.storage
+    .from(bucket)
+    .createSignedUrl(path, SIGNED_URL_TTL_SECONDS);
+
+  if (error) throw error;
+  return data.signedUrl;
 };
 
 export const uploadImage = async (file: File, path = 'uploads', onProgress?: (progress: number) => void): Promise<string> => {
@@ -60,7 +67,7 @@ export const uploadImage = async (file: File, path = 'uploads', onProgress?: (pr
   const fileName = `${path}/${Date.now()}-${Math.random().toString(36).slice(2)}.${safeExt}`;
 
   onProgress?.(10);
-  const { error } = await supabase.storage.from('uploads').upload(fileName, body, {
+  const { error } = await supabase.storage.from(UPLOADS_BUCKET).upload(fileName, body, {
     cacheControl: '3600',
     upsert: false,
     contentType,
@@ -69,19 +76,19 @@ export const uploadImage = async (file: File, path = 'uploads', onProgress?: (pr
   if (error) throw error;
 
   onProgress?.(100);
-  return supabase.storage.from('uploads').getPublicUrl(fileName).data.publicUrl;
+  return buildAccessUrl(UPLOADS_BUCKET, fileName);
 };
 
 export const uploadFile = async (file: File, path = 'uploads', onProgress?: (progress: number) => void): Promise<string> => {
   const fileName = `${path}/${Date.now()}-${Math.random().toString(36).slice(2)}-${file.name}`;
   onProgress?.(10);
-  const { error } = await supabase.storage.from('uploads').upload(fileName, file, {
+  const { error } = await supabase.storage.from(UPLOADS_BUCKET).upload(fileName, file, {
     cacheControl: '3600',
     upsert: false,
   });
   if (error) throw error;
   onProgress?.(100);
-  return buildPublicUrl('uploads', fileName);
+  return buildAccessUrl(UPLOADS_BUCKET, fileName);
 };
 
 export const uploadPhoto = uploadImage;

@@ -27,6 +27,7 @@ import {
 import { cn } from '../lib/utils';
 import { useAuth } from '../App';
 import { useAutoSaveForm } from '../hooks/useAutoSaveForm';
+import { refreshDailyProgressSnapshot } from '../lib/progress';
 
 export default function Obras() {
   const { isAdmin, notify } = useAuth();
@@ -109,6 +110,10 @@ export default function Obras() {
     if (!confirm('Deseja realmente excluir esta obra?')) return;
     try {
       await deleteDoc(doc(db, 'obras', obraId));
+      if (selectedObra?.id === obraId) {
+        setSelectedObra(null);
+        setIsDetailsOpen(false);
+      }
       notify('success', 'Obra Excluída', 'O registro da obra foi removido permanentemente.');
     } catch (err: any) {
       notify('error', 'Erro ao Excluir', 'Não foi possível remover o registro da obra.');
@@ -123,6 +128,7 @@ export default function Obras() {
           obra={selectedObra} 
           onBack={() => setIsDetailsOpen(false)} 
           onUpdateStatus={handleUpdateStatus}
+          onDelete={handleDeleteObra}
         />
       ) : (
         <>
@@ -545,11 +551,13 @@ function AtividadeCard({ ativ, onSave, readOnly = false }: { key?: string; ativ:
 function ObraDetails({
   obra,
   onBack,
-  onUpdateStatus
+  onUpdateStatus,
+  onDelete
 }: {
   obra: Obra,
   onBack: () => void,
-  onUpdateStatus: (obraId: string, status: ObraStatus) => void
+  onUpdateStatus: (obraId: string, status: ObraStatus) => void,
+  onDelete: (obraId: string) => void
 }) {
   const { isAdmin, isEncarregado, notify } = useAuth();
   const navigate = useNavigate();
@@ -646,8 +654,10 @@ function ObraDetails({
       const newTotal = Number(qty);
       await updateDoc(doc(db, 'atividades', id), {
         quantidadeExecutada: newTotal,
-        percentual: ativ.quantidadePrevista > 0 ? Math.min(100, (newTotal / ativ.quantidadePrevista) * 100) : 0
+        percentual: ativ.quantidadePrevista > 0 ? Math.min(100, (newTotal / ativ.quantidadePrevista) * 100) : 0,
+        updatedAt: serverTimestamp()
       });
+      await refreshDailyProgressSnapshot();
     } catch (err) {
       handleFirestoreError(err, OperationType.WRITE, 'atividades-update');
     }
@@ -885,7 +895,10 @@ function ObraDetails({
            </div>
            <div className="pt-6 border-t border-zinc-100">
              {isAdmin && (
-               <button className="text-zinc-400 hover:text-red-600 transition-colors text-xs font-bold uppercase tracking-widest flex items-center gap-2">
+               <button
+                 onClick={() => onDelete(obra.id)}
+                 className="text-zinc-400 hover:text-red-600 transition-colors text-xs font-bold uppercase tracking-widest flex items-center gap-2"
+               >
                  <Trash2 className="w-4 h-4" />
                  Excluir registro da obra
                </button>

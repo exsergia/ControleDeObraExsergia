@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useCollection } from '../lib/supabaseHooks';
-import { collection, query, where, addDoc, updateDoc, setDoc, doc, serverTimestamp, deleteDoc } from '../lib/supabaseDb';
+import { collection, query, where, addDoc, updateDoc, doc, serverTimestamp, deleteDoc } from '../lib/supabaseDb';
 import { db, handleFirestoreError, OperationType } from '../lib/supabase';
 import { Obra, Atividade } from '../types';
 import {
@@ -17,6 +17,7 @@ import { cn } from '../lib/utils';
 
 import { useAuth } from '../App';
 import { useAutoSaveForm } from '../hooks/useAutoSaveForm';
+import { refreshDailyProgressSnapshot } from '../lib/progress';
 
 export default function ProgressoFisico() {
   const { isAdmin, isEncarregado, notify } = useAuth();
@@ -73,27 +74,15 @@ export default function ProgressoFisico() {
 
   const handleUpdateProgress = async (id: string, currentVal: number, total: number) => {
     try {
+      const safeTotal = Number(total) || 0;
       await updateDoc(doc(db, 'atividades', id), {
         quantidadeExecutada: currentVal,
-        percentual: Math.min(100, (currentVal / total) * 100),
+        percentual: safeTotal > 0 ? Math.min(100, (currentVal / safeTotal) * 100) : 0,
         updatedAt: serverTimestamp()
       });
 
       // Snapshot diário: calcula % global com o novo valor aplicado ao estado local
-      const totalPrevisto = atividades.reduce((s, a) => s + Number(a.quantidadePrevista || 0), 0);
-      const totalExecutado = atividades.reduce((s, a) =>
-        s + (a.id === id ? currentVal : Number(a.quantidadeExecutada || 0)), 0);
-      const newPerc = totalPrevisto > 0 ? Math.min(100, (totalExecutado / totalPrevisto) * 100) : 0;
-      const today = new Date().toISOString().split('T')[0];
-
-      await setDoc(doc(db, 'progresso_diario', today), {
-        id: today,
-        data: today,
-        percentual: Number(newPerc.toFixed(4)),
-        totalPrevisto,
-        totalExecutado,
-        updatedAt: serverTimestamp()
-      });
+      await refreshDailyProgressSnapshot();
     } catch (err: any) {
       const msg = (err as any)?.message || (err as any)?.details || JSON.stringify(err);
       notify('error', 'Erro ao Salvar', msg);
