@@ -98,6 +98,40 @@ const FISCAL_EMAILS = ['contasapagar@gmail.com', 'nascimentoerick446@gmail.com']
 const isFiscalEmail = (email?: string | null) =>
   !!email && FISCAL_EMAILS.includes(email.toLowerCase());
 
+const isMissingResolveLoginRpc = (error: unknown) => {
+  const err = error as { code?: string; message?: string };
+  return err?.code === 'PGRST202' ||
+    /resolve_login_identifier|schema cache|could not find the function/i.test(err?.message || '');
+};
+
+async function resolveLoginEmailFallback(input: string) {
+  const digits = input.replace(/\D/g, '');
+  if (!digits) return '';
+
+  const { data: cpfRow } = await supabase
+    .from('cpfs')
+    .select('data')
+    .eq('id', digits)
+    .maybeSingle();
+
+  const cpfEmail = (cpfRow?.data as any)?.email;
+  if (cpfEmail) return String(cpfEmail).toLowerCase();
+
+  const { data: operadores } = await supabase
+    .from('operadores')
+    .select('email, cpf, telefone, data')
+    .limit(1000);
+
+  const match = (operadores || []).find((row: any) => {
+    const data = row.data || {};
+    const cpf = String(row.cpf || data.cpf || '').replace(/\D/g, '');
+    const telefone = String(row.telefone || data.telefone || '').replace(/\D/g, '');
+    return cpf === digits || telefone === digits;
+  }) as any;
+
+  return String(match?.email || match?.data?.email || '').toLowerCase();
+}
+
 async function resolveLoginEmail(input: string) {
   const value = input.trim().toLowerCase();
   if (!value) return '';
@@ -107,7 +141,10 @@ async function resolveLoginEmail(input: string) {
     p_identifier: value.replace(/\D/g, ''),
   });
 
-  if (error) throw error;
+  if (error) {
+    if (isMissingResolveLoginRpc(error)) return resolveLoginEmailFallback(value);
+    throw error;
+  }
   return typeof data === 'string' ? data : '';
 }
 
