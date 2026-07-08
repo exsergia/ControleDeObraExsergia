@@ -67,6 +67,7 @@ export interface Tool {
   nome: string;
   codigo?: string;
   modelo?: string;
+  categoria?: string;
   valor?: number;
   dataCompra?: string;
   descricao?: string;

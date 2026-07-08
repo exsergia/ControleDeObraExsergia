@@ -67,6 +67,19 @@ const createMovementScopeHash = (parts: any[]) => {
 
 const DIA_MS = 86400000;
 
+const TOOL_CATEGORY_SUGGESTIONS = [
+  'Medição e Teste',
+  'Ferramentas Manuais',
+  'Ferramentas Elétricas',
+  'SPDA / Aterramento',
+  'Escadas e Acesso',
+  'Segurança / EPI',
+  'Cabos e Extensões',
+  'Solda / Corte',
+  'Limpeza / Apoio',
+  'Outros',
+];
+
 // Previsão de devolução: usa o campo salvo ou calcula a partir de dataSaida + diasUso.
 const getPrevisaoDevolucao = (log?: ToolLog | null): Date | null => {
   if (!log) return null;
@@ -100,6 +113,7 @@ export default function Ferramentas() {
   const [showCheckIn, setShowCheckIn] = useState<ToolLog | null>(null);
   const [showScanner, setShowScanner] = useState(false);
   const [search, setSearch] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('Todas');
 
   // Quando qualquer modal está aberto, congela atualizações do Realtime para não
   // causar re-renders visíveis durante captura de foto no mobile.
@@ -113,13 +127,25 @@ export default function Ferramentas() {
   const logs = (logsSnap?.docs.map(doc => ({ id: doc.id, ...doc.data() })) as ToolLog[]) || [];
 
   const obras = (obrasSnap?.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Obra[]) || [];
+  const toolCategories = useMemo(() => {
+    const values = new Set(TOOL_CATEGORY_SUGGESTIONS);
+    tools.forEach(tool => {
+      const categoria = tool.categoria?.trim();
+      if (categoria) values.add(categoria);
+    });
+    return Array.from(values).sort((a, b) => a.localeCompare(b));
+  }, [tools]);
+
   const filteredTools = tools.filter(tool => {
     const q = search.trim().toLowerCase();
+    const matchesCategory = categoryFilter === 'Todas' || (tool.categoria || '') === categoryFilter;
+    if (!matchesCategory) return false;
     if (!q) return true;
     return [
       tool.nome,
       tool.codigo,
       tool.modelo,
+      tool.categoria,
       tool.descricao,
       tool.status,
     ].some(value => String(value || '').toLowerCase().includes(q));
@@ -217,15 +243,27 @@ export default function Ferramentas() {
         <div data-tour="tools-inventory" className="lg:col-span-2 space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-widest pl-1">Inventário de Equipamentos</h3>
-            <div className="relative w-full sm:w-80">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
-              <input
-                type="text"
-                placeholder="Buscar ferramenta..."
-                className="w-full pl-10 pr-4 py-2.5 bg-white border border-zinc-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900/10 shadow-sm"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-              />
+            <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+              <div className="relative w-full sm:w-72">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
+                <input
+                  type="text"
+                  placeholder="Buscar ferramenta..."
+                  className="w-full pl-10 pr-4 py-2.5 bg-white border border-zinc-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900/10 shadow-sm"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                />
+              </div>
+              <select
+                className="w-full sm:w-56 px-4 py-2.5 bg-white border border-zinc-200 rounded-xl text-sm font-semibold text-zinc-600 focus:outline-none focus:ring-2 focus:ring-zinc-900/10 shadow-sm"
+                value={categoryFilter}
+                onChange={(e) => setCategoryFilter(e.target.value)}
+              >
+                <option value="Todas">Todas as categorias</option>
+                {toolCategories.map(categoria => (
+                  <option key={categoria} value={categoria}>{categoria}</option>
+                ))}
+              </select>
             </div>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -280,6 +318,7 @@ export default function Ferramentas() {
       {(showAddTool || editingTool) && (
         <AddToolModal
           tool={editingTool || undefined}
+          categories={toolCategories}
           onClose={() => { setShowAddTool(false); setEditingTool(null); }}
         />
       )}
@@ -568,6 +607,7 @@ function ToolCard({ tool, onCheckOut, activeLog, onCheckIn, onEdit, onViewHistor
           </p>
         )}
         <div className="mt-3 grid grid-cols-1 gap-1 text-xs text-zinc-600">
+          {tool.categoria && <p className="break-words"><span className="font-bold text-zinc-700">Categoria:</span> {tool.categoria}</p>}
           {tool.modelo && <p className="break-words"><span className="font-bold text-zinc-700">Modelo:</span> {tool.modelo}</p>}
           <p><span className="font-bold text-zinc-700">Valor:</span> {typeof tool.valor === 'number' ? tool.valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : 'Não informado'}</p>
           <p><span className="font-bold text-zinc-700">Compra:</span> {tool.dataCompra ? new Date(`${tool.dataCompra}T00:00:00`).toLocaleDateString('pt-BR') : 'Não informado'}</p>
@@ -847,10 +887,11 @@ const parseBRLCurrencyToNumber = (formattedValue: string): number => {
   return Number(onlyDigits || '0') / 100;
 };
 
-function AddToolModal({ tool, onClose }: { tool?: Tool, onClose: () => void }) {
+function AddToolModal({ tool, categories, onClose }: { tool?: Tool, categories: string[], onClose: () => void }) {
   const [nome, setNome] = useState(tool?.nome || '');
   const [codigo, setCodigo] = useState(tool?.codigo || '');
   const [modelo, setModelo] = useState(tool?.modelo || '');
+  const [categoria, setCategoria] = useState(tool?.categoria || '');
   const [valor, setValor] = useState(formatBRLFromNumber(tool?.valor));
   const [dataCompra, setDataCompra] = useState(tool?.dataCompra || '');
   const [descricao, setDescricao] = useState(tool?.descricao || '');
@@ -873,6 +914,7 @@ function AddToolModal({ tool, onClose }: { tool?: Tool, onClose: () => void }) {
       if (typeof draft.nome === 'string') setNome(draft.nome);
       if (typeof draft.codigo === 'string') setCodigo(draft.codigo);
       if (typeof draft.modelo === 'string') setModelo(draft.modelo);
+      if (typeof draft.categoria === 'string') setCategoria(draft.categoria);
       if (typeof draft.valor === 'string') setValor(draft.valor);
       if (typeof draft.dataCompra === 'string') setDataCompra(draft.dataCompra);
       if (typeof draft.descricao === 'string') setDescricao(draft.descricao);
@@ -887,11 +929,11 @@ function AddToolModal({ tool, onClose }: { tool?: Tool, onClose: () => void }) {
     if (tool || !draftLoadedRef.current) return;
     if (skipFirstSaveRef.current) { skipFirstSaveRef.current = false; return; }
     try {
-      localStorage.setItem('rascunho-nova-ferramenta', JSON.stringify({ nome, codigo, modelo, valor, dataCompra, descricao }));
+      localStorage.setItem('rascunho-nova-ferramenta', JSON.stringify({ nome, codigo, modelo, categoria, valor, dataCompra, descricao }));
     } catch {
       // Ignora bloqueio de localStorage.
     }
-  }, [tool, nome, codigo, modelo, valor, dataCompra, descricao]);
+  }, [tool, nome, codigo, modelo, categoria, valor, dataCompra, descricao]);
 
   useEffect(() => {
     return () => { if (fotoModeloPreview?.startsWith('blob:')) URL.revokeObjectURL(fotoModeloPreview); };
@@ -915,9 +957,10 @@ function AddToolModal({ tool, onClose }: { tool?: Tool, onClose: () => void }) {
     const trimmedNome = nome.trim();
     const trimmedCodigo = codigo.trim();
     const trimmedModelo = modelo.trim();
+    const trimmedCategoria = categoria.trim();
     const parsedValor = parseBRLCurrencyToNumber(valor);
 
-    if (!trimmedNome || !trimmedCodigo || !trimmedModelo || !valor || !dataCompra) {
+    if (!trimmedNome || !trimmedCodigo || !trimmedModelo || !trimmedCategoria || !valor || !dataCompra) {
       setError('Por favor, preencha todos os campos obrigatórios.');
       return;
     }
@@ -958,6 +1001,7 @@ function AddToolModal({ tool, onClose }: { tool?: Tool, onClose: () => void }) {
           nome: trimmedNome,
           codigo: standardizedCodigo,
           modelo: trimmedModelo,
+          categoria: trimmedCategoria,
           valor: parsedValor,
           dataCompra,
           descricao: trimmedDescricao,
@@ -969,6 +1013,7 @@ function AddToolModal({ tool, onClose }: { tool?: Tool, onClose: () => void }) {
           nome: trimmedNome,
           codigo: standardizedCodigo,
           modelo: trimmedModelo,
+          categoria: trimmedCategoria,
           valor: parsedValor,
           dataCompra,
           descricao: trimmedDescricao,
@@ -1052,6 +1097,25 @@ function AddToolModal({ tool, onClose }: { tool?: Tool, onClose: () => void }) {
               value={modelo}
               onChange={e => setModelo(e.target.value)}
             />
+          </div>
+          <div className="space-y-2">
+            <label className="text-xs font-bold text-zinc-500 uppercase tracking-widest">Categoria</label>
+            <input
+              required
+              list="tool-categories"
+              className="w-full px-4 py-3 bg-zinc-50 border border-zinc-200 rounded-xl focus:ring-2 focus:ring-zinc-900/10 outline-none"
+              placeholder="Ex: Medição e Teste"
+              value={categoria}
+              onChange={e => setCategoria(e.target.value)}
+            />
+            <datalist id="tool-categories">
+              {categories.map(item => (
+                <option key={item} value={item} />
+              ))}
+            </datalist>
+            <p className="text-[10px] font-semibold text-zinc-400">
+              Digite uma nova categoria ou selecione uma já cadastrada.
+            </p>
           </div>
           <div className="space-y-2">
             <label className="text-xs font-bold text-zinc-500 uppercase tracking-widest">
