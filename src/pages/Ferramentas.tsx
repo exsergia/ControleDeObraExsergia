@@ -22,6 +22,7 @@ import {
   QrCode,
   Edit2,
   Trash2,
+  Search,
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { format } from 'date-fns';
@@ -98,6 +99,7 @@ export default function Ferramentas() {
   const [showCheckOut, setShowCheckOut] = useState<Tool | null>(null);
   const [showCheckIn, setShowCheckIn] = useState<ToolLog | null>(null);
   const [showScanner, setShowScanner] = useState(false);
+  const [search, setSearch] = useState('');
 
   // Quando qualquer modal está aberto, congela atualizações do Realtime para não
   // causar re-renders visíveis durante captura de foto no mobile.
@@ -111,6 +113,17 @@ export default function Ferramentas() {
   const logs = (logsSnap?.docs.map(doc => ({ id: doc.id, ...doc.data() })) as ToolLog[]) || [];
 
   const obras = (obrasSnap?.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Obra[]) || [];
+  const filteredTools = tools.filter(tool => {
+    const q = search.trim().toLowerCase();
+    if (!q) return true;
+    return [
+      tool.nome,
+      tool.codigo,
+      tool.modelo,
+      tool.descricao,
+      tool.status,
+    ].some(value => String(value || '').toLowerCase().includes(q));
+  });
 
   // Inscreve o dispositivo para receber push de atraso (idempotente).
   useEffect(() => {
@@ -202,9 +215,21 @@ export default function Ferramentas() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Tool Inventory */}
         <div data-tour="tools-inventory" className="lg:col-span-2 space-y-4">
-          <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-widest pl-1">Inventário de Equipamentos</h3>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-widest pl-1">Inventário de Equipamentos</h3>
+            <div className="relative w-full sm:w-80">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
+              <input
+                type="text"
+                placeholder="Buscar ferramenta..."
+                className="w-full pl-10 pr-4 py-2.5 bg-white border border-zinc-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900/10 shadow-sm"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            </div>
+          </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {tools.map((tool) => (
+            {filteredTools.map((tool) => (
               <ToolCard 
                 key={tool.id} 
                 tool={tool} 
@@ -215,6 +240,12 @@ export default function Ferramentas() {
                 onViewHistory={() => setShowHistory(tool)}
               />
             ))}
+            {filteredTools.length === 0 && (
+              <div className="sm:col-span-2 bg-white rounded-2xl border border-dashed border-zinc-200 p-10 text-center">
+                <Hammer className="w-10 h-10 text-zinc-200 mx-auto mb-3" />
+                <p className="text-sm font-semibold text-zinc-400">Nenhuma ferramenta encontrada.</p>
+              </div>
+            )}
           </div>
         </div>
 
