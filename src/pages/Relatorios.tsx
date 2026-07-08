@@ -1758,7 +1758,7 @@ function BIDashboard({ obras, materiais, atividades, checklists, tools, toolLogs
   }).length;
 
   // ── Progresso por obra ────────────────────────────────────────────────────
-  const progressoPorObra = obras.map(obra => {
+  const progressoPorObra = obras.filter(obra => obra.status !== 'Concluída').map(obra => {
     const atvsObra = atividades.filter(a => a.obraId === obra.id);
     const prev = atvsObra.reduce((s, a) => s + Number(a.quantidadePrevista || 0), 0);
     const exec = atvsObra.reduce((s, a) => s + Number(a.quantidadeExecutada || 0), 0);
@@ -1850,7 +1850,7 @@ function BIDashboard({ obras, materiais, atividades, checklists, tools, toolLogs
               </BarChart>
             </ResponsiveContainer>
           ) : (
-            <p className="text-sm text-zinc-400 py-12 text-center">Nenhuma atividade cadastrada nas obras.</p>
+            <p className="text-sm text-zinc-400 py-12 text-center">Nenhuma obra ativa ou pausada com atividade cadastrada.</p>
           )}
         </div>
 
