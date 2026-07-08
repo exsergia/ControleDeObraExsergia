@@ -101,8 +101,8 @@ export default function Obras() {
     e.preventDefault();
     if (isSavingAtividade) return;
 
-    if (!atividadeForm.obraId || !atividadeForm.descricao?.trim()) {
-      notify('warning', 'Campos obrigatórios', 'Selecione uma obra e informe a descrição da atividade.');
+    if (!atividadeForm.descricao?.trim()) {
+      notify('warning', 'Campo obrigatório', 'Informe a descrição da atividade.');
       return;
     }
 
@@ -112,7 +112,7 @@ export default function Obras() {
     setIsSavingAtividade(true);
     try {
       await addDoc(collection(db, 'atividades'), {
-        obraId: atividadeForm.obraId,
+        obraId: atividadeForm.obraId || '',
         descricao: atividadeForm.descricao.trim(),
         unidade: atividadeForm.unidade || 'un',
         quantidadePrevista,
@@ -390,7 +390,7 @@ export default function Obras() {
             <div className="p-6 border-b border-zinc-100 flex items-center justify-between bg-zinc-50">
               <div>
                 <h3 className="text-lg font-bold text-zinc-900 tracking-tight uppercase tracking-wider">Nova Atividade</h3>
-                <p className="text-xs text-zinc-500 mt-1">Cadastro separado da obra, com vínculo escolhido manualmente.</p>
+                <p className="text-xs text-zinc-500 mt-1">Cadastro independente. Vincule a uma obra somente se precisar.</p>
               </div>
               <button onClick={() => setIsAtividadeModalOpen(false)} className="p-2 hover:bg-zinc-200 rounded-full transition-colors">
                 <Plus className="w-6 h-6 rotate-45 text-zinc-500" />
@@ -399,16 +399,15 @@ export default function Obras() {
 
             <form onSubmit={handleAddAtividade} className="p-6 space-y-5">
               <div className="space-y-2">
-                <label className="text-xs font-bold text-zinc-500 uppercase tracking-widest pl-1">Vincular à Obra</label>
+                <label className="text-xs font-bold text-zinc-500 uppercase tracking-widest pl-1">Vincular à Obra (opcional)</label>
                 <div className="relative">
                   <Building2 className="absolute left-3 top-3 w-4 h-4 text-zinc-400" />
                   <select
-                    required
                     className="w-full pl-10 pr-9 py-2.5 bg-zinc-50 border border-zinc-200 rounded-lg text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-zinc-900/10"
                     value={atividadeForm.obraId}
                     onChange={(e) => setAtividadeForm({ ...atividadeForm, obraId: e.target.value })}
                   >
-                    <option value="">Selecione a obra...</option>
+                    <option value="">Sem obra vinculada</option>
                     {obras.filter(o => o.status !== 'Concluída').map(o => (
                       <option key={o.id} value={o.id}>{o.nome}</option>
                     ))}
