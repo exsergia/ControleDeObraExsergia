@@ -107,6 +107,7 @@ export default function Relatorios() {
         (tool?.nome || '').toLowerCase().includes(q) ||
         (tool?.codigo || '').toLowerCase().includes(q) ||
         (obra?.nome || '').toLowerCase().includes(q) ||
+        (obra?.cliente || '').toLowerCase().includes(q) ||
         (l.responsavelNome || '').toLowerCase().includes(q)
       )) return false;
     }
@@ -571,7 +572,7 @@ export default function Relatorios() {
                   ? 'Buscar por placa, modelo, código ou responsável...'
                   : activeTab === 'fiscal'
                     ? 'Buscar por fornecedor, cartão, tipo, obra ou presente...'
-                    : 'Buscar por ferramenta, obra ou responsável...'
+                    : 'Buscar por ferramenta, obra, cliente ou responsável...'
             }
             className="w-full pl-10 pr-4 py-3 bg-white border border-zinc-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900/10 shadow-sm transition-all"
             value={search}
