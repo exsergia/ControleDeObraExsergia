@@ -29,6 +29,12 @@ import { useAuth } from '../App';
 import { useAutoSaveForm } from '../hooks/useAutoSaveForm';
 import { refreshDailyProgressSnapshot } from '../lib/progress';
 
+const ATIVIDADES_INICIAIS = [
+  { descricao: 'Visita técnica', unidade: 'un' },
+  { descricao: 'SPDA', unidade: 'un' },
+  { descricao: 'Manutenção', unidade: 'un' },
+];
+
 export default function Obras() {
   const { isAdmin, notify } = useAuth();
   const [obrasSnap, loading] = useCollection(collection(db, 'obras'));
@@ -38,6 +44,9 @@ export default function Obras() {
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('Todas');
   const [isSavingObra, setIsSavingObra] = useState(false);
+  const [atividadesIniciais, setAtividadesIniciais] = useState<string[]>(
+    ATIVIDADES_INICIAIS.map(a => a.descricao)
+  );
 
   const [formData, setFormData, limparRascunhoObra] = useAutoSaveForm<Partial<Obra>>('rascunho-nova-obra', {
     nome: '',
@@ -66,7 +75,7 @@ export default function Obras() {
 
     setIsSavingObra(true);
     try {
-      await addDoc(collection(db, 'obras'), {
+      const obraRef = await addDoc(collection(db, 'obras'), {
         ...formData,
         nome: (formData.nome || '').trim(),
         cliente: (formData.cliente || '').trim(),
@@ -74,9 +83,32 @@ export default function Obras() {
         equipe: [],
         createdAt: serverTimestamp()
       });
+
+      const atividadesSelecionadas = ATIVIDADES_INICIAIS.filter(a => atividadesIniciais.includes(a.descricao));
+      await Promise.all(atividadesSelecionadas.map(atividade => (
+        addDoc(collection(db, 'atividades'), {
+          obraId: obraRef.id,
+          descricao: atividade.descricao,
+          unidade: atividade.unidade,
+          quantidadePrevista: 1,
+          quantidadeExecutada: 0,
+          percentual: 0,
+          valorUnitario: 0,
+          equipeResponsavel: '',
+          createdAt: serverTimestamp(),
+        })
+      )));
+
       setIsModalOpen(false);
       limparRascunhoObra();
-      notify('success', 'Sucesso', 'Obra cadastrada com sucesso!');
+      setAtividadesIniciais(ATIVIDADES_INICIAIS.map(a => a.descricao));
+      notify(
+        'success',
+        'Sucesso',
+        atividadesSelecionadas.length > 0
+          ? `Obra cadastrada com ${atividadesSelecionadas.length} atividade(s) inicial(is).`
+          : 'Obra cadastrada com sucesso!'
+      );
     } catch (err: any) {
       notify('error', 'Erro ao Salvar', err.message || 'Não foi possível cadastrar a obra.');
       handleFirestoreError(err, OperationType.WRITE, 'obras');
@@ -211,7 +243,7 @@ export default function Obras() {
       {/* Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white w-full max-w-xl rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+          <div className="bg-white w-full max-w-xl rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 max-h-[92dvh] overflow-y-auto">
             <div className="p-6 border-b border-zinc-100 flex items-center justify-between bg-zinc-50">
               <h3 className="text-lg font-bold text-zinc-900 tracking-tight uppercase tracking-wider">Nova Obra</h3>
               <button onClick={() => setIsModalOpen(false)} className="p-2 hover:bg-zinc-200 rounded-full transition-colors">
@@ -288,6 +320,47 @@ export default function Obras() {
                     </select>
                     <ChevronDown className="absolute right-3 top-3 w-4 h-4 text-zinc-400 pointer-events-none" />
                   </div>
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4 text-left space-y-3">
+                <div className="flex items-start gap-3">
+                  <ClipboardCheck className="w-5 h-5 text-zinc-700 mt-0.5 shrink-0" />
+                  <div>
+                    <p className="text-sm font-black text-zinc-900">Atividades iniciais</p>
+                    <p className="text-xs font-semibold text-zinc-500 mt-1 leading-relaxed">
+                      Selecione as atividades que devem nascer junto com esta obra.
+                    </p>
+                  </div>
+                </div>
+                <div className="grid sm:grid-cols-3 gap-2">
+                  {ATIVIDADES_INICIAIS.map(atividade => {
+                    const checked = atividadesIniciais.includes(atividade.descricao);
+                    return (
+                      <label
+                        key={atividade.descricao}
+                        className={cn(
+                          "flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-bold cursor-pointer transition-all",
+                          checked
+                            ? "bg-white border-zinc-900 text-zinc-900 shadow-sm"
+                            : "bg-transparent border-zinc-200 text-zinc-500 hover:bg-white"
+                        )}
+                      >
+                        <input
+                          type="checkbox"
+                          className="w-4 h-4 accent-zinc-900"
+                          checked={checked}
+                          onChange={(e) => {
+                            setAtividadesIniciais(prev => e.target.checked
+                              ? [...prev, atividade.descricao]
+                              : prev.filter(item => item !== atividade.descricao)
+                            );
+                          }}
+                        />
+                        <span>{atividade.descricao}</span>
+                      </label>
+                    );
+                  })}
                 </div>
               </div>
 
