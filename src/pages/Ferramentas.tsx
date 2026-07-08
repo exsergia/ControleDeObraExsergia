@@ -80,6 +80,14 @@ const TOOL_CATEGORY_SUGGESTIONS = [
   'Outros',
 ];
 
+const sortToolCategories = (categories: string[]) => (
+  [...categories].sort((a, b) => {
+    if (a === 'Outros') return 1;
+    if (b === 'Outros') return -1;
+    return a.localeCompare(b);
+  })
+);
+
 // Previsão de devolução: usa o campo salvo ou calcula a partir de dataSaida + diasUso.
 const getPrevisaoDevolucao = (log?: ToolLog | null): Date | null => {
   if (!log) return null;
@@ -133,7 +141,7 @@ export default function Ferramentas() {
       const categoria = tool.categoria?.trim();
       if (categoria) values.add(categoria);
     });
-    return Array.from(values).sort((a, b) => a.localeCompare(b));
+    return sortToolCategories(Array.from(values));
   }, [tools]);
 
   const filteredTools = tools.filter(tool => {
@@ -1100,22 +1108,17 @@ function AddToolModal({ tool, categories, onClose }: { tool?: Tool, categories: 
           </div>
           <div className="space-y-2">
             <label className="text-xs font-bold text-zinc-500 uppercase tracking-widest">Categoria</label>
-            <input
+            <select
               required
-              list="tool-categories"
               className="w-full px-4 py-3 bg-zinc-50 border border-zinc-200 rounded-xl focus:ring-2 focus:ring-zinc-900/10 outline-none"
-              placeholder="Ex: Medição e Teste"
               value={categoria}
               onChange={e => setCategoria(e.target.value)}
-            />
-            <datalist id="tool-categories">
+            >
+              <option value="">Selecione uma categoria...</option>
               {categories.map(item => (
-                <option key={item} value={item} />
+                <option key={item} value={item}>{item}</option>
               ))}
-            </datalist>
-            <p className="text-[10px] font-semibold text-zinc-400">
-              Digite uma nova categoria ou selecione uma já cadastrada.
-            </p>
+            </select>
           </div>
           <div className="space-y-2">
             <label className="text-xs font-bold text-zinc-500 uppercase tracking-widest">
