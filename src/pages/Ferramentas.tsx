@@ -200,6 +200,24 @@ export default function Ferramentas() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Tool Inventory */}
+        <div data-tour="tools-inventory" className="lg:col-span-2 space-y-4">
+          <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-widest pl-1">Inventário de Equipamentos</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {tools.map((tool) => (
+              <ToolCard 
+                key={tool.id} 
+                tool={tool} 
+                onCheckOut={() => setShowCheckOut(tool)} 
+                activeLog={logs.find(l => l.id === tool.lastLogId && l.statusLog === 'Aberta')}
+                onCheckIn={(log) => setShowCheckIn(log)}
+                onEdit={() => setEditingTool(tool)}
+                onViewHistory={() => setShowHistory(tool)}
+              />
+            ))}
+          </div>
+        </div>
+
         {/* Recent History */}
         <div data-tour="tools-history" className="space-y-4">
           <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-widest pl-1">Atividade Recente</h3>
@@ -222,24 +240,6 @@ export default function Ferramentas() {
                 />
               ))}
             </div>
-          </div>
-        </div>
-
-        {/* Tool Inventory */}
-        <div data-tour="tools-inventory" className="lg:col-span-2 space-y-4">
-          <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-widest pl-1">Inventário de Equipamentos</h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {tools.map((tool) => (
-              <ToolCard
-                key={tool.id}
-                tool={tool}
-                onCheckOut={() => setShowCheckOut(tool)}
-                activeLog={logs.find(l => l.id === tool.lastLogId && l.statusLog === 'Aberta')}
-                onCheckIn={(log) => setShowCheckIn(log)}
-                onEdit={() => setEditingTool(tool)}
-                onViewHistory={() => setShowHistory(tool)}
-              />
-            ))}
           </div>
         </div>
       </div>
