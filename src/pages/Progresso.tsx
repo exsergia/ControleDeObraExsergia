@@ -212,14 +212,13 @@ export default function ProgressoFisico() {
 
             <form onSubmit={handleAddAtividade} className="p-6 space-y-5">
               <div className="space-y-1.5">
-                <label className="text-xs font-bold text-zinc-500 uppercase tracking-widest pl-1">Vincular à Obra</label>
+                <label className="text-xs font-bold text-zinc-500 uppercase tracking-widest pl-1">Vincular à Obra (opcional)</label>
                 <select
-                  required
                   className="w-full px-4 py-3 bg-zinc-50 border border-zinc-200 rounded-2xl text-sm focus:outline-none focus:border-zinc-900"
                   value={formData.obraId}
                   onChange={(e) => setFormData({...formData, obraId: e.target.value})}
                 >
-                  <option value="">Selecione a Obra...</option>
+                  <option value="">Sem obra vinculada</option>
                   {obras.map(o => (
                     <option key={o.id} value={o.id}>{o.nome}</option>
                   ))}

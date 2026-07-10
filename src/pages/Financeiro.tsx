@@ -61,7 +61,7 @@ export default function Financeiro() {
     const equipamentosPatrimonio = includeGlobalAssets ? equipamentos.reduce((acc, e) => acc + (e.valorAquisicao || 0), 0) : 0;
     const manutencaoEquipamentos = includeGlobalAssets ? manutencoes.reduce((acc, m) => acc + (m.custoTotal || 0), 0) : 0;
     const receitaLocacoes = includeGlobalAssets ? locacoes.reduce((acc, l) => acc + (l.valorLocacao || 0), 0) : 0;
-    const custoOperacional = matTotal + ativTotalExecutado + fiscalTotal + manutencaoEquipamentos;
+    const custoOperacional = matTotal + ativTotalExecutado + manutencaoEquipamentos;
     const patrimonio = ferramentasPatrimonio + equipamentosPatrimonio;
     const resultadoOperacional = receitaLocacoes - custoOperacional;
     
@@ -191,7 +191,7 @@ export default function Financeiro() {
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
             <SummaryItem icon={<Package className="w-4 h-4" />} label="Materiais" value={stats.matTotal} tone="red" />
             <SummaryItem icon={<Activity className="w-4 h-4" />} label="Atividades Executadas" value={stats.ativTotalExecutado} tone="amber" sub={`orçado: ${brl(stats.ativTotalPrevisto)}`} />
-            <SummaryItem icon={<Receipt className="w-4 h-4" />} label="NF / Cupom Fiscal" value={stats.fiscalTotal} tone="red" />
+            <SummaryItem icon={<Receipt className="w-4 h-4" />} label="NF / Cupom Fiscal" value={stats.fiscalTotal} tone="zinc" sub="referencia fiscal, nao soma no custo" />
             <SummaryItem icon={<Wrench className="w-4 h-4" />} label="Manutenção de Equipamentos" value={stats.manutencaoEquipamentos} tone="red" muted={!stats.includeGlobalAssets} />
             <SummaryItem icon={<Hammer className="w-4 h-4" />} label="Ferramentas + Equipamentos" value={stats.patrimonio} tone="zinc" muted={!stats.includeGlobalAssets} sub="patrimônio, não custo operacional" />
             <SummaryItem icon={<TrendingUp className="w-4 h-4" />} label="Locações de Equipamentos" value={stats.receitaLocacoes} tone="green" muted={!stats.includeGlobalAssets} />

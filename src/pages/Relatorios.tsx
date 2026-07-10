@@ -94,7 +94,8 @@ export default function Relatorios() {
     return (
       (t.nome || '').toLowerCase().includes(q) ||
       (t.codigo || '').toLowerCase().includes(q) ||
-      (t.modelo || '').toLowerCase().includes(q)
+      (t.modelo || '').toLowerCase().includes(q) ||
+      (t.categoria || '').toLowerCase().includes(q)
     );
   });
 
@@ -1759,6 +1760,8 @@ function BIDashboard({ obras, materiais, atividades, checklists, tools, toolLogs
   }).length;
 
   // ── Progresso por obra ────────────────────────────────────────────────────
+  const atividadesSemObra = atividades.filter(a => !a.obraId);
+  const atividadesSemObraPendentes = atividadesSemObra.filter(a => Number(a.percentual || 0) < 100);
   const progressoPorObra = obras.filter(obra => obra.status !== 'Concluída').map(obra => {
     const atvsObra = atividades.filter(a => a.obraId === obra.id);
     const prev = atvsObra.reduce((s, a) => s + Number(a.quantidadePrevista || 0), 0);
@@ -1768,7 +1771,26 @@ function BIDashboard({ obras, materiais, atividades, checklists, tools, toolLogs
     const perc = prev > 0 ? Number(Math.min(100, (exec / prev) * 100).toFixed(1)) : 0;
     const nomeShort = obra.nome.length > 22 ? obra.nome.substring(0, 22) + '…' : obra.nome;
     return { nome: nomeShort, nomeCompleto: obra.nome, progresso: perc, status: obra.status, orcado, executado: executadoVal, centroCusto: (obra as any).centroCusto || 'N/A' };
-  }).sort((a, b) => b.progresso - a.progresso);
+  });
+
+  if (atividadesSemObraPendentes.length > 0) {
+    const prev = atividadesSemObraPendentes.reduce((s, a) => s + Number(a.quantidadePrevista || 0), 0);
+    const exec = atividadesSemObraPendentes.reduce((s, a) => s + Number(a.quantidadeExecutada || 0), 0);
+    const orcado = atividadesSemObraPendentes.reduce((s, a) => s + Number(a.quantidadePrevista || 0) * Number(a.valorUnitario || 0), 0);
+    const executadoVal = atividadesSemObraPendentes.reduce((s, a) => s + Number(a.quantidadeExecutada || 0) * Number(a.valorUnitario || 0), 0);
+    const perc = prev > 0 ? Number(Math.min(100, (exec / prev) * 100).toFixed(1)) : 0;
+    progressoPorObra.push({
+      nome: 'Atividades sem obra',
+      nomeCompleto: 'Atividades sem obra vinculada',
+      progresso: perc,
+      status: 'Ativa',
+      orcado,
+      executado: executadoVal,
+      centroCusto: 'Atividades sem obra',
+    });
+  }
+
+  progressoPorObra.sort((a, b) => b.progresso - a.progresso);
 
   // ── Status das obras ──────────────────────────────────────────────────────
   const statusData = obras.reduce((acc: { name: string; value: number }[], o) => {
@@ -1789,6 +1811,14 @@ function BIDashboard({ obras, materiais, atividades, checklists, tools, toolLogs
     return acc;
   }, []).filter(c => c.obras > 0);
 
+  if (atividadesSemObra.length > 0) {
+    centroCustoData.push({
+      name: 'Atividades sem obra',
+      orcado: atividadesSemObra.reduce((s, a) => s + Number(a.quantidadePrevista || 0) * Number(a.valorUnitario || 0), 0),
+      obras: atividadesSemObra.length,
+    });
+  }
+
   // ── Evolução temporal (últimos 30 dias) ───────────────────────────────────
   const evolucao = [...progressoDiario]
     .filter((p: any) => p.id && p.percentual !== undefined)
@@ -1804,7 +1834,7 @@ function BIDashboard({ obras, materiais, atividades, checklists, tools, toolLogs
     .filter(a => Number(a.quantidadePrevista || 0) > 0 && Number(a.percentual || 0) < 30)
     .sort((a, b) => Number(a.percentual || 0) - Number(b.percentual || 0))
     .slice(0, 6)
-    .map(a => ({ ...a, obraNome: obras.find(o => o.id === a.obraId)?.nome || 'N/A' }));
+    .map(a => ({ ...a, obraNome: obras.find(o => o.id === a.obraId)?.nome || 'Atividade sem obra' }));
 
   // ── Top materiais ─────────────────────────────────────────────────────────
   const topMateriais = materiais
