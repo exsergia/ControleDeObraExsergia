@@ -122,6 +122,7 @@ export default function Ferramentas() {
   const [showScanner, setShowScanner] = useState(false);
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('Todas');
+  const meuId = userProfile?.id || auth.currentUser?.id || '';
 
   // Quando qualquer modal está aberto, congela atualizações do Realtime para não
   // causar re-renders visíveis durante captura de foto no mobile.
@@ -129,10 +130,17 @@ export default function Ferramentas() {
 
   const [toolsSnap] = useCollection(query(collection(db, 'tools'), orderBy('nome', 'asc')), anyModalOpen);
   const [logsSnap] = useCollection(query(collection(db, 'toolLogs'), orderBy('dataSaida', 'desc'), limit(50)), anyModalOpen);
+  const [myOpenLogsSnap] = useCollection(
+    meuId
+      ? query(collection(db, 'toolLogs'), where('responsavelId', '==', meuId), where('statusLog', '==', 'Aberta'), orderBy('dataSaida', 'desc'), limit(100))
+      : null,
+    anyModalOpen
+  );
   const [obrasSnap] = useCollection(query(collection(db, 'obras'), orderBy('nome', 'asc')), anyModalOpen);
 
   const tools = (toolsSnap?.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Tool[]) || [];
   const logs = (logsSnap?.docs.map(doc => ({ id: doc.id, ...doc.data() })) as ToolLog[]) || [];
+  const minhasRetiradas = (myOpenLogsSnap?.docs.map(doc => ({ id: doc.id, ...doc.data() })) as ToolLog[]) || [];
 
   const obras = (obrasSnap?.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Obra[]) || [];
   const toolCategories = useMemo(() => {
@@ -166,8 +174,7 @@ export default function Ferramentas() {
   }, [userProfile?.id]);
 
   // ── Ferramentas atrasadas do usuário logado ──────────────────────────────────
-  const meuId = userProfile?.id || auth.currentUser?.id || '';
-  const meusAtrasados = logs.filter(l => isLogAtrasado(l) && l.responsavelId === meuId);
+  const meusAtrasados = minhasRetiradas.filter(l => isLogAtrasado(l));
   // Assinatura estável: só dispara quando o conjunto de atrasados muda.
   const atrasadosKey = useMemo(
     () => meusAtrasados.map(l => l.id).sort().join(','),
@@ -297,6 +304,37 @@ export default function Ferramentas() {
 
         {/* Recent History */}
         <div data-tour="tools-history" className="space-y-4">
+          <div className="space-y-3">
+            <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-widest pl-1">Ferramentas comigo</h3>
+            <div className="bg-white rounded-3xl border border-zinc-200 overflow-hidden shadow-sm">
+              <div className="p-4 bg-zinc-50 border-b border-zinc-200 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2 min-w-0">
+                  <User className="w-4 h-4 text-zinc-400 shrink-0" />
+                  <span className="text-xs font-bold text-zinc-600 truncate">Retiradas abertas</span>
+                </div>
+                <span className="text-[10px] font-black px-2 py-1 rounded-full bg-zinc-900 text-white">
+                  {minhasRetiradas.length}
+                </span>
+              </div>
+              <div className="divide-y divide-zinc-100 max-h-[36vh] sm:max-h-[360px] overflow-y-auto">
+                {minhasRetiradas.length === 0 ? (
+                  <div className="p-8 text-center">
+                    <Wrench className="w-8 h-8 text-zinc-200 mx-auto mb-3" />
+                    <p className="text-xs font-bold uppercase tracking-widest text-zinc-400">Nenhuma ferramenta com vocÃª</p>
+                  </div>
+                ) : minhasRetiradas.map((log) => (
+                  <MyToolItem
+                    key={log.id}
+                    log={log}
+                    tool={tools.find(t => t.id === log.toolId)}
+                    obra={obras.find(o => o.id === log.obraId)}
+                    onReturn={() => setShowCheckIn(log)}
+                  />
+                ))}
+              </div>
+            </div>
+          </div>
+
           <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-widest pl-1">Atividade Recente</h3>
           <div className="bg-white rounded-3xl border border-zinc-200 overflow-hidden shadow-sm">
             <div className="p-4 bg-zinc-50 border-b border-zinc-200 flex items-center gap-2">
@@ -686,6 +724,56 @@ function ToolCard({ tool, onCheckOut, activeLog, onCheckIn, onEdit, onViewHistor
         </button>
       )}
       </div>
+    </div>
+  );
+}
+
+function MyToolItem({ log, tool, obra, onReturn }: { log: ToolLog, tool?: Tool, obra?: Obra, onReturn: () => void }) {
+  const outDate = parseMovementDateForScope(log.dataSaida) || new Date();
+  const previsao = getPrevisaoDevolucao(log);
+  const atrasado = isLogAtrasado(log);
+
+  return (
+    <div className="p-4 space-y-3">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <div className={cn("w-2 h-2 rounded-full shrink-0", atrasado ? "bg-red-500 animate-pulse" : "bg-orange-500")} />
+            <p className="text-sm font-black text-zinc-900 break-words">{tool?.nome || 'Ferramenta removida'}</p>
+          </div>
+          <p className="text-[11px] text-zinc-500 mt-1 break-words">
+            {tool?.codigo ? `#${tool.codigo} · ` : ''}{obra?.nome || 'Obra removida'}
+          </p>
+        </div>
+        <span className={cn(
+          "text-[9px] font-black px-2 py-1 rounded-full uppercase tracking-tight shrink-0",
+          atrasado ? "bg-red-100 text-red-700" : "bg-orange-100 text-orange-700"
+        )}>
+          {atrasado ? 'Atrasada' : 'Em uso'}
+        </span>
+      </div>
+
+      <div className="grid grid-cols-1 gap-2 text-xs">
+        <div className="flex items-center gap-2 text-zinc-500">
+          <Calendar className="w-3.5 h-3.5 shrink-0" />
+          <span className="font-semibold">Retirada em {format(outDate, "dd/MM/yyyy 'às' HH:mm")}</span>
+        </div>
+        {previsao && (
+          <div className={cn("flex items-center gap-2", atrasado ? "text-red-600" : "text-zinc-500")}>
+            {atrasado ? <AlertCircle className="w-3.5 h-3.5 shrink-0" /> : <Clock className="w-3.5 h-3.5 shrink-0" />}
+            <span className="font-bold">Devolver até {format(previsao, "dd/MM/yyyy 'às' HH:mm")}</span>
+          </div>
+        )}
+      </div>
+
+      <button
+        type="button"
+        onClick={onReturn}
+        className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-zinc-900 text-white text-xs font-black hover:bg-zinc-800 transition-colors"
+      >
+        <ArrowDownLeft className="w-4 h-4" />
+        Devolver
+      </button>
     </div>
   );
 }
