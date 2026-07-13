@@ -253,6 +253,15 @@ export default function Ferramentas() {
         </div>
       </div>
 
+      <div className="lg:hidden">
+        <MyToolsPanel
+          logs={minhasRetiradas}
+          tools={tools}
+          obras={obras}
+          onReturn={(log) => setShowCheckIn(log)}
+        />
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Tool Inventory */}
         <div data-tour="tools-inventory" className="lg:col-span-2 space-y-4">
@@ -304,7 +313,7 @@ export default function Ferramentas() {
 
         {/* Recent History */}
         <div data-tour="tools-history" className="space-y-4">
-          <div className="space-y-3">
+          <div className="hidden lg:block space-y-3">
             <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-widest pl-1">Ferramentas comigo</h3>
             <div className="bg-white rounded-3xl border border-zinc-200 overflow-hidden shadow-sm">
               <div className="p-4 bg-zinc-50 border-b border-zinc-200 flex items-center justify-between gap-3">
@@ -723,6 +732,41 @@ function ToolCard({ tool, onCheckOut, activeLog, onCheckIn, onEdit, onViewHistor
           Retirar
         </button>
       )}
+      </div>
+    </div>
+  );
+}
+
+function MyToolsPanel({ logs, tools, obras, onReturn }: { logs: ToolLog[], tools: Tool[], obras: Obra[], onReturn: (log: ToolLog) => void }) {
+  return (
+    <div className="space-y-3">
+      <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-widest pl-1">Ferramentas comigo</h3>
+      <div className="bg-white rounded-3xl border border-zinc-200 overflow-hidden shadow-sm">
+        <div className="p-4 bg-zinc-50 border-b border-zinc-200 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2 min-w-0">
+            <User className="w-4 h-4 text-zinc-400 shrink-0" />
+            <span className="text-xs font-bold text-zinc-600 truncate">Retiradas abertas</span>
+          </div>
+          <span className="text-[10px] font-black px-2 py-1 rounded-full bg-zinc-900 text-white">
+            {logs.length}
+          </span>
+        </div>
+        <div className="divide-y divide-zinc-100 max-h-[42vh] sm:max-h-[360px] overflow-y-auto">
+          {logs.length === 0 ? (
+            <div className="p-8 text-center">
+              <Wrench className="w-8 h-8 text-zinc-200 mx-auto mb-3" />
+              <p className="text-xs font-bold uppercase tracking-widest text-zinc-400">Nenhuma ferramenta com voce</p>
+            </div>
+          ) : logs.map((log) => (
+            <MyToolItem
+              key={log.id}
+              log={log}
+              tool={tools.find(t => t.id === log.toolId)}
+              obra={obras.find(o => o.id === log.obraId)}
+              onReturn={() => onReturn(log)}
+            />
+          ))}
+        </div>
       </div>
     </div>
   );
