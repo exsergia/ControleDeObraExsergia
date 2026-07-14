@@ -315,7 +315,7 @@ function FiscalModal({
             )}
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-2">
               <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest pl-1">Valor</label>
               <CurrencyInput value={valor} onChange={setValor} required
@@ -328,13 +328,13 @@ function FiscalModal({
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-2">
               <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest pl-1">Despesas</label>
               <select
                 value={fornecedor}
                 onChange={e => setFornecedor(e.target.value)}
-                className="w-full px-4 py-2.5 bg-zinc-50 border border-zinc-200 rounded-xl text-sm focus:outline-none focus:border-zinc-900"
+                className="w-full min-h-12 px-4 py-3 bg-zinc-50 border border-zinc-200 rounded-xl text-sm focus:outline-none focus:border-zinc-900"
               >
                 <option value="">Opcional</option>
                 {fornecedor && !DESPESAS_OPTIONS.includes(fornecedor) && (
