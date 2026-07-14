@@ -3,7 +3,7 @@ import { useCollection } from '../lib/supabaseHooks';
 import { collection, addDoc, serverTimestamp, query, orderBy } from '../lib/supabaseDb';
 import { db, handleFirestoreError, OperationType } from '../lib/supabase';
 import { Material, Obra } from '../types';
-import { Plus, Package, Calendar, Hash, FileText, Search, ChevronDown, Camera, X, Building2, Paperclip } from 'lucide-react';
+import { Plus, Package, Calendar, Hash, FileText, Search, ChevronDown, Camera, X, Building2, Paperclip, AlertCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '../lib/utils';
 import { uploadPhoto, sendBrowserNotification } from '../lib/services';
@@ -17,8 +17,8 @@ import { CurrencyInput } from '../components/CurrencyInput';
 export default function Materiais() {
   const { isAdmin, isEncarregado, notify } = useAuth();
   const canEdit = isAdmin || isEncarregado;
-  const [obrasSnap] = useCollection(collection(db, 'obras'));
-  const [materiaisSnap, loading] = useCollection(query(collection(db, 'materiais'), orderBy('dataEntrega', 'desc')));
+  const [obrasSnap, , obrasError] = useCollection(collection(db, 'obras'));
+  const [materiaisSnap, loading, materiaisError] = useCollection(query(collection(db, 'materiais'), orderBy('dataEntrega', 'desc')));
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [search, setSearch] = useState('');
@@ -45,6 +45,7 @@ export default function Materiais() {
 
   const obras = (obrasSnap?.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Obra[]) || [];
   const materiais = (materiaisSnap?.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Material[]) || [];
+  const loadError = obrasError || materiaisError;
 
   const handleAddMaterial = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -127,6 +128,13 @@ export default function Materiais() {
           </button>
         )}
       </div>
+
+      {loadError && (
+        <MateriaisLoadError
+          title="Erro ao carregar materiais"
+          message={loadError.message}
+        />
+      )}
 
       {/* Search */}
       <div data-tour="mat-search" className="relative w-full sm:max-w-md">
@@ -473,6 +481,18 @@ export default function Materiais() {
       {showCamera && (
         <CameraCapture onCapture={handleCameraCapture} onClose={() => setShowCamera(false)} />
       )}
+    </div>
+  );
+}
+
+function MateriaisLoadError({ title, message }: { title: string; message?: string }) {
+  return (
+    <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-red-700 flex items-start gap-3 shadow-sm">
+      <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
+      <div>
+        <p className="text-sm font-black">{title}</p>
+        <p className="text-xs font-medium text-red-600 break-words">{message || 'Verifique permissoes e conexao com o banco.'}</p>
+      </div>
     </div>
   );
 }

@@ -11,7 +11,8 @@ import {
   Users,
   Trash2,
   X,
-  DollarSign
+  DollarSign,
+  AlertCircle
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 
@@ -27,16 +28,17 @@ export default function ProgressoFisico() {
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 20;
 
-  const [obrasSnap] = useCollection(collection(db, 'obras'));
+  const [obrasSnap, , obrasError] = useCollection(collection(db, 'obras'));
   
   const actividadesQuery = selectedObraId === 'all'
     ? collection(db, 'atividades')
     : query(collection(db, 'atividades'), where('obraId', '==', selectedObraId));
     
-  const [atividadesSnap, loading] = useCollection(actividadesQuery);
+  const [atividadesSnap, loading, atividadesError] = useCollection(actividadesQuery);
 
   const obras = (obrasSnap?.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Obra[]) || [];
   const atividades = (atividadesSnap?.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Atividade[]) || [];
+  const loadError = obrasError || atividadesError;
 
   const filteredAtividades = atividades.filter(a =>
     a.descricao.toLowerCase().includes(search.toLowerCase())
@@ -120,6 +122,13 @@ export default function ProgressoFisico() {
           )}
         </div>
       </div>
+
+      {loadError && (
+        <ProgressoLoadError
+          title="Erro ao carregar progresso"
+          message={loadError.message}
+        />
+      )}
 
       <div data-tour="prog-filters" className="flex flex-col sm:flex-row gap-4">
         <div className="flex-1 relative">
@@ -302,6 +311,18 @@ export default function ProgressoFisico() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function ProgressoLoadError({ title, message }: { title: string; message?: string }) {
+  return (
+    <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-red-700 flex items-start gap-3 shadow-sm">
+      <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
+      <div>
+        <p className="text-sm font-black">{title}</p>
+        <p className="text-xs font-medium text-red-600 break-words">{message || 'Verifique permissoes e conexao com o banco.'}</p>
+      </div>
     </div>
   );
 }

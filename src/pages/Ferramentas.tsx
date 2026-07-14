@@ -128,15 +128,15 @@ export default function Ferramentas() {
   // causar re-renders visíveis durante captura de foto no mobile.
   const anyModalOpen = !!(showAddTool || editingTool || showHistory || showCheckOut || showCheckIn || showScanner);
 
-  const [toolsSnap] = useCollection(query(collection(db, 'tools'), orderBy('nome', 'asc')), anyModalOpen);
-  const [logsSnap] = useCollection(query(collection(db, 'toolLogs'), orderBy('dataSaida', 'desc'), limit(50)), anyModalOpen);
-  const [myOpenLogsSnap] = useCollection(
+  const [toolsSnap, , toolsError] = useCollection(query(collection(db, 'tools'), orderBy('nome', 'asc')), anyModalOpen);
+  const [logsSnap, , logsError] = useCollection(query(collection(db, 'toolLogs'), orderBy('dataSaida', 'desc'), limit(50)), anyModalOpen);
+  const [myOpenLogsSnap, , myOpenLogsError] = useCollection(
     meuId
       ? query(collection(db, 'toolLogs'), where('responsavelId', '==', meuId), where('statusLog', '==', 'Aberta'), orderBy('dataSaida', 'desc'), limit(100))
       : null,
     anyModalOpen
   );
-  const [obrasSnap] = useCollection(query(collection(db, 'obras'), orderBy('nome', 'asc')), anyModalOpen);
+  const [obrasSnap, , obrasError] = useCollection(query(collection(db, 'obras'), orderBy('nome', 'asc')), anyModalOpen);
 
   const tools = (toolsSnap?.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Tool[]) || [];
   const logs = (logsSnap?.docs.map(doc => ({ id: doc.id, ...doc.data() })) as ToolLog[]) || [];
@@ -223,6 +223,8 @@ export default function Ferramentas() {
     }
   }, [tools, logs]);
 
+  const loadError = toolsError || logsError || myOpenLogsError || obrasError;
+
   return (
     <>
     <div className="space-y-6 pb-20 animate-in fade-in duration-500">
@@ -252,6 +254,13 @@ export default function Ferramentas() {
           )}
         </div>
       </div>
+
+      {loadError && (
+        <DataLoadError
+          title="Erro ao carregar ferramentas"
+          message={loadError.message}
+        />
+      )}
 
       <div className="lg:hidden">
         <MyToolsPanel
@@ -411,6 +420,18 @@ export default function Ferramentas() {
       )}
     </AnimatePresence>
     </>
+  );
+}
+
+function DataLoadError({ title, message }: { title: string; message?: string }) {
+  return (
+    <div className="flex items-start gap-3 rounded-2xl border border-red-100 bg-red-50 p-4 text-red-700">
+      <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
+      <div className="min-w-0">
+        <p className="text-sm font-black">{title}</p>
+        {message && <p className="text-xs font-semibold mt-1 break-words opacity-80">{message}</p>}
+      </div>
+    </div>
   );
 }
 

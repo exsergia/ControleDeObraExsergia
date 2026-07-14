@@ -137,6 +137,12 @@ create table if not exists public.progresso_diario (
   created_at timestamptz not null default now()
 );
 
+create table if not exists public.push_subscriptions (
+  id text primary key,
+  data jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now()
+);
+
 -- Índices de performance e bloqueio contra obra duplicada por duplo clique.
 create unique index if not exists obras_nome_cliente_unico
   on public.obras (lower(coalesce(data ->> 'nome', '')), lower(coalesce(data ->> 'cliente', '')))
@@ -146,6 +152,8 @@ create index if not exists idx_obras_created_at on public.obras (created_at desc
 create index if not exists idx_materiais_created_at on public.materiais (created_at desc);
 create index if not exists idx_atividades_created_at on public.atividades (created_at desc);
 create index if not exists idx_tools_status on public.tools ((data ->> 'status'));
+create index if not exists idx_toollogs_responsavel_status_saida on public."toolLogs" ((data ->> 'responsavelId'), (data ->> 'statusLog'), (data ->> 'dataSaida'));
+create index if not exists idx_toollogs_tool_status on public."toolLogs" ((data ->> 'toolId'), (data ->> 'statusLog'));
 create index if not exists idx_vehicles_status on public.vehicles ((data ->> 'status'));
 create index if not exists idx_vehicles_codigo on public.vehicles ((data ->> 'codigo'));
 create index if not exists idx_vehiclelogs_vehicle on public."vehicleLogs" ((data ->> 'vehicleId'));
@@ -158,6 +166,7 @@ create index if not exists idx_encarregados_operador on public.encarregados (ope
 create index if not exists idx_encarregados_email on public.encarregados (lower(email));
 create index if not exists idx_atividades_obra_id on public.atividades (obra_id);
 create index if not exists idx_progresso_diario_updated_at on public.progresso_diario (updated_at desc);
+create index if not exists idx_push_subscriptions_user on public.push_subscriptions ((data ->> 'userId'));
 
 -- ZERA DADOS DE TESTE/FICTÍCIOS.
 -- Não apaga auth.users. Usuários do Supabase Auth devem ser controlados em Authentication > Users.
@@ -178,6 +187,7 @@ truncate table
   public.equipamento_locacoes,
   public.encarregados,
   public.progresso_diario,
+  public.push_subscriptions,
   public.admin_access
 restart identity cascade;
 
@@ -594,13 +604,14 @@ alter table public.equipamento_locacoes enable row level security;
 alter table public.admin_access enable row level security;
 alter table public.encarregados enable row level security;
 alter table public.progresso_diario enable row level security;
+alter table public.push_subscriptions enable row level security;
 
 do $$
 declare
   tbl text;
   pol record;
 begin
-  foreach tbl in array array['obras','materiais','atividades','checklists','operadores','cpfs','tools','toolLogs','vehicles','vehicleLogs','fiscal_docs','equipamentos','equipamento_manutencoes','equipamento_locacoes','admin_access','encarregados','progresso_diario'] loop
+  foreach tbl in array array['obras','materiais','atividades','checklists','operadores','cpfs','tools','toolLogs','vehicles','vehicleLogs','fiscal_docs','equipamentos','equipamento_manutencoes','equipamento_locacoes','admin_access','encarregados','progresso_diario','push_subscriptions'] loop
     for pol in execute format('select policyname from pg_policies where schemaname = ''public'' and tablename = %L', tbl) loop
       execute format('drop policy if exists %I on public.%I', pol.policyname, tbl);
     end loop;
@@ -611,7 +622,7 @@ create policy "select authenticated obras" on public.obras for select to authent
 create policy "select authenticated materiais" on public.materiais for select to authenticated using (true);
 create policy "select authenticated atividades" on public.atividades for select to authenticated using (true);
 create policy "select authenticated checklists" on public.checklists for select to authenticated using (true);
-create policy "select operadores scoped" on public.operadores for select to authenticated using (id = auth.uid()::text or public.is_app_admin() or public.is_app_encarregado());
+create policy "select operadores scoped" on public.operadores for select to authenticated using (id = auth.uid()::text or public.is_app_admin() or public.is_app_encarregado() or public.is_fiscal_user());
 create policy "select authenticated tools" on public.tools for select to authenticated using (true);
 create policy "select authenticated toolLogs" on public."toolLogs" for select to authenticated using (true);
 create policy "select authenticated vehicles" on public.vehicles for select to authenticated using (true);
@@ -658,6 +669,9 @@ create policy "select encarregados scoped" on public.encarregados for select to 
 create policy "admin write encarregados" on public.encarregados for all to authenticated using (public.is_app_admin()) with check (public.is_app_admin());
 create policy "select progresso diario" on public.progresso_diario for select to authenticated using (true);
 create policy "staff write progresso diario" on public.progresso_diario for all to authenticated using (public.is_app_admin() or public.is_app_encarregado()) with check (public.is_app_admin() or public.is_app_encarregado());
+create policy "push subscriptions own" on public.push_subscriptions for all to authenticated
+  using (public.is_app_admin() or coalesce(data ->> 'userId', '') = auth.uid()::text)
+  with check (public.is_app_admin() or coalesce(data ->> 'userId', '') = auth.uid()::text);
 
 insert into storage.buckets (id, name, public)
 values ('uploads', 'uploads', false)
@@ -694,5 +708,6 @@ begin
   begin alter publication supabase_realtime add table public.admin_access; exception when duplicate_object then null; end;
   begin alter publication supabase_realtime add table public.encarregados; exception when duplicate_object then null; end;
   begin alter publication supabase_realtime add table public.progresso_diario; exception when duplicate_object then null; end;
+  begin alter publication supabase_realtime add table public.push_subscriptions; exception when duplicate_object then null; end;
 end $$;
 

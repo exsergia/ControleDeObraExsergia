@@ -18,7 +18,8 @@ import {
   HardHat,
   Package,
   CheckCircle2,
-  ArrowUpRight
+  ArrowUpRight,
+  AlertCircle
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -60,18 +61,19 @@ function saudacaoPorHorario() {
 
 export default function Dashboard() {
   const { user, userProfile } = useAuth();
-  const [obrasSnap, loading] = useCollection(collection(db, 'obras'));
-  const [materiaisSnap] = useCollection(collection(db, 'materiais'));
-  const [atividadesSnap] = useCollection(collection(db, 'atividades'));
-  const [checklistsSnap] = useCollection(collection(db, 'checklists'));
-  const [progressoDiarioSnap] = useCollection(collection(db, 'progresso_diario'));
-  const [ultimasEntregasSnap] = useCollection(query(collection(db, 'materiais'), orderBy('dataEntrega', 'desc'), limit(5)));
-  const [ultimosChecklistsSnap] = useCollection(query(collection(db, 'checklists'), orderBy('data', 'desc'), limit(5)));
+  const [obrasSnap, loading, obrasError] = useCollection(collection(db, 'obras'));
+  const [materiaisSnap, , materiaisError] = useCollection(collection(db, 'materiais'));
+  const [atividadesSnap, , atividadesError] = useCollection(collection(db, 'atividades'));
+  const [checklistsSnap, , checklistsError] = useCollection(collection(db, 'checklists'));
+  const [progressoDiarioSnap, , progressoDiarioError] = useCollection(collection(db, 'progresso_diario'));
+  const [ultimasEntregasSnap, , ultimasEntregasError] = useCollection(query(collection(db, 'materiais'), orderBy('dataEntrega', 'desc'), limit(5)));
+  const [ultimosChecklistsSnap, , ultimosChecklistsError] = useCollection(query(collection(db, 'checklists'), orderBy('data', 'desc'), limit(5)));
 
   const materiais = (materiaisSnap?.docs.map((doc: any) => ({ id: doc.id, ...doc.data() })) as Material[]) || [];
   const atividades = (atividadesSnap?.docs.map((doc: any) => ({ id: doc.id, ...doc.data() })) as Atividade[]) || [];
   const checklists = (checklistsSnap?.docs.map((doc: any) => ({ id: doc.id, ...doc.data() })) as Checklist[]) || [];
   const progressoDiario = (progressoDiarioSnap?.docs.map((doc: any) => ({ id: doc.id, ...doc.data() }))) || [];
+  const loadError = obrasError || materiaisError || atividadesError || checklistsError || progressoDiarioError || ultimasEntregasError || ultimosChecklistsError;
 
   const chartData = useMemo(() => {
     const inicioSemana = inicioDaSemanaAtual();
@@ -198,6 +200,13 @@ export default function Dashboard() {
           {format(new Date(), "eeee, d 'de' MMMM", { locale: ptBR })}
         </div>
       </div>
+
+      {loadError && (
+        <DashboardLoadError
+          title="Erro ao carregar dashboard"
+          message={loadError.message}
+        />
+      )}
 
       <div data-tour="dash-kpis" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {loading ? (
@@ -352,6 +361,18 @@ export default function Dashboard() {
             )}
           </div>
         </div>
+      </div>
+    </div>
+  );
+}
+
+function DashboardLoadError({ title, message }: { title: string; message?: string }) {
+  return (
+    <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-red-700 flex items-start gap-3 shadow-sm">
+      <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
+      <div>
+        <p className="text-sm font-black">{title}</p>
+        <p className="text-xs font-medium text-red-600 break-words">{message || 'Verifique permissoes e conexao com o banco.'}</p>
       </div>
     </div>
   );

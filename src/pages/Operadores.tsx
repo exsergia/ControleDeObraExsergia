@@ -16,6 +16,7 @@ import {
   User,
   HardHat,
   CheckSquare,
+  AlertCircle,
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 
@@ -25,13 +26,14 @@ const OP_DRAFT = 'operador-form-draft';
 const emptyOp = { nome: '', sobrenome: '', funcao: '', email: '', role: 'operator' as 'admin' | 'operator' };
 
 function OperadoresTab({ isAdmin }: { isAdmin: boolean }) {
-  const [operadoresSnap, loading] = useCollection(collection(db, 'operadores'));
-  const [encarregadosSnap] = useCollection(collection(db, 'encarregados'));
+  const [operadoresSnap, loading, operadoresError] = useCollection(collection(db, 'operadores'));
+  const [encarregadosSnap, , encarregadosError] = useCollection(collection(db, 'encarregados'));
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingOp, setEditingOp] = useState<Operator | null>(null);
   const [search, setSearch] = useState('');
   const [formData, setFormData] = useState(emptyOp);
   const { notify } = useAuth();
+  const loadError = operadoresError || encarregadosError;
 
   const encarregadoIds = new Set(
     (encarregadosSnap?.docs.map(d => d.id) || [])
@@ -107,6 +109,13 @@ function OperadoresTab({ isAdmin }: { isAdmin: boolean }) {
           </button>
         )}
       </div>
+
+      {loadError && (
+        <OperadoresLoadError
+          title="Erro ao carregar operadores"
+          message={loadError.message}
+        />
+      )}
 
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {loading ? Array(3).fill(0).map((_, i) => (
@@ -190,12 +199,24 @@ function OperadoresTab({ isAdmin }: { isAdmin: boolean }) {
 
 // ─── Encarregados ────────────────────────────────────────────────────────────
 
+function OperadoresLoadError({ title, message }: { title: string; message?: string }) {
+  return (
+    <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-red-700 flex items-start gap-3 shadow-sm">
+      <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
+      <div>
+        <p className="text-sm font-black">{title}</p>
+        <p className="text-xs font-medium text-red-600 break-words">{message || 'Verifique permissoes e conexao com o banco.'}</p>
+      </div>
+    </div>
+  );
+}
+
 const emptyEnc = { nome: '', sobrenome: '', funcao: 'Encarregado de Obra', email: '', obraIds: [] as string[] };
 
 function EncarregadosTab({ isAdmin }: { isAdmin: boolean }) {
-  const [encarregadosSnap, loading] = useCollection(collection(db, 'encarregados'));
-  const [obrasSnap] = useCollection(collection(db, 'obras'));
-  const [operadoresSnap] = useCollection(collection(db, 'operadores'));
+  const [encarregadosSnap, loading, encarregadosError] = useCollection(collection(db, 'encarregados'));
+  const [obrasSnap, , obrasError] = useCollection(collection(db, 'obras'));
+  const [operadoresSnap, , operadoresError] = useCollection(collection(db, 'operadores'));
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingEnc, setEditingEnc] = useState<any | null>(null);
   const [search, setSearch] = useState('');
@@ -203,6 +224,7 @@ function EncarregadosTab({ isAdmin }: { isAdmin: boolean }) {
   const [submitting, setSubmitting] = useState(false);
   const [optimisticEncs, setOptimisticEncs] = useState<any[]>([]);
   const { notify } = useAuth();
+  const loadError = encarregadosError || obrasError || operadoresError;
 
   // Merge lista real com itens otimistas (aparece instantâneo antes do Realtime confirmar)
   const encarregados = useMemo(() => {
@@ -299,6 +321,13 @@ function EncarregadosTab({ isAdmin }: { isAdmin: boolean }) {
           </button>
         )}
       </div>
+
+      {loadError && (
+        <OperadoresLoadError
+          title="Erro ao carregar encarregados"
+          message={loadError.message}
+        />
+      )}
 
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {loading ? Array(2).fill(0).map((_, i) => (

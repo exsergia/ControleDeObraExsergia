@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Bell, Save, KeyRound, Loader2, Eye, EyeOff, ShieldCheck, UserPlus, Trash2, Shield } from 'lucide-react';
+import { Bell, Save, KeyRound, Loader2, Eye, EyeOff, ShieldCheck, UserPlus, Trash2, Shield, AlertCircle } from 'lucide-react';
 import { requestNotificationPermission, sendBrowserNotification } from '../lib/services';
 import { changePassword, auth, db, handleFirestoreError, OperationType } from '../lib/supabase';
 import { registerPushForUser } from '../lib/push';
@@ -220,9 +220,21 @@ export default function Settings() {
 }
 
 // ── Gestão de administradores (só admin) ────────────────────────────────────
+function SettingsLoadError({ title, message }: { title: string; message?: string }) {
+  return (
+    <div className="m-6 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-red-700 flex items-start gap-3 shadow-sm">
+      <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
+      <div>
+        <p className="text-sm font-black">{title}</p>
+        <p className="text-xs font-medium text-red-600 break-words">{message || 'Verifique permissoes e conexao com o banco.'}</p>
+      </div>
+    </div>
+  );
+}
+
 function AdminManager() {
   const { notify, userProfile } = useAuth();
-  const [adminSnap, loading] = useCollection(collection(db, 'admin_access'));
+  const [adminSnap, loading, adminError] = useCollection(collection(db, 'admin_access'));
   const [novoEmail, setNovoEmail] = useState('');
   const [salvando, setSalvando] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -314,6 +326,13 @@ function AdminManager() {
           Adicionar
         </button>
       </form>
+
+      {adminError && (
+        <SettingsLoadError
+          title="Erro ao carregar administradores"
+          message={adminError.message}
+        />
+      )}
 
       <div className="divide-y divide-zinc-100">
         {loading ? (

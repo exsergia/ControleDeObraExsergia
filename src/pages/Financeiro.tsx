@@ -16,6 +16,7 @@ import {
   Receipt,
   Hammer,
   Wrench,
+  AlertCircle,
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 
@@ -25,14 +26,14 @@ const brl = (value: number) => new Intl.NumberFormat('pt-BR', {
 }).format(value || 0);
 
 export default function Financeiro() {
-  const [obrasSnap] = useCollection(collection(db, 'obras'));
-  const [materiaisSnap] = useCollection(query(collection(db, 'materiais'), orderBy('dataEntrega', 'desc')));
-  const [atividadesSnap] = useCollection(collection(db, 'atividades'));
-  const [fiscalSnap] = useCollection(query(collection(db, 'fiscal_docs'), orderBy('data', 'desc')));
-  const [toolsSnap] = useCollection(query(collection(db, 'tools'), orderBy('nome', 'asc')));
-  const [equipamentosSnap] = useCollection(query(collection(db, 'equipamentos'), orderBy('nome', 'asc')));
-  const [manutencoesSnap] = useCollection(collection(db, 'equipamento_manutencoes'));
-  const [locacoesSnap] = useCollection(collection(db, 'equipamento_locacoes'));
+  const [obrasSnap, , obrasError] = useCollection(collection(db, 'obras'));
+  const [materiaisSnap, , materiaisError] = useCollection(query(collection(db, 'materiais'), orderBy('dataEntrega', 'desc')));
+  const [atividadesSnap, , atividadesError] = useCollection(collection(db, 'atividades'));
+  const [fiscalSnap, , fiscalError] = useCollection(query(collection(db, 'fiscal_docs'), orderBy('data', 'desc')));
+  const [toolsSnap, , toolsError] = useCollection(query(collection(db, 'tools'), orderBy('nome', 'asc')));
+  const [equipamentosSnap, , equipamentosError] = useCollection(query(collection(db, 'equipamentos'), orderBy('nome', 'asc')));
+  const [manutencoesSnap, , manutencoesError] = useCollection(collection(db, 'equipamento_manutencoes'));
+  const [locacoesSnap, , locacoesError] = useCollection(collection(db, 'equipamento_locacoes'));
   
   const [search, setSearch] = useState('');
   const [selectedObraId, setSelectedObraId] = useState('Todas');
@@ -46,6 +47,7 @@ export default function Financeiro() {
   const equipamentos = (equipamentosSnap?.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Equipamento[]) || [];
   const manutencoes = (manutencoesSnap?.docs.map(doc => ({ id: doc.id, ...doc.data() })) as EquipamentoManutencao[]) || [];
   const locacoes = (locacoesSnap?.docs.map(doc => ({ id: doc.id, ...doc.data() })) as EquipamentoLocacao[]) || [];
+  const loadError = obrasError || materiaisError || atividadesError || fiscalError || toolsError || equipamentosError || manutencoesError || locacoesError;
 
   const stats = useMemo(() => {
     const filterMat = materiais.filter(m => selectedObraId === 'Todas' || m.obraId === selectedObraId);
@@ -109,6 +111,13 @@ export default function Financeiro() {
           <p className="text-zinc-500 text-sm font-medium">Consolidação de custos, receitas, patrimônio e auditoria de entregas.</p>
         </div>
       </div>
+
+      {loadError && (
+        <FinanceLoadError
+          title="Erro ao carregar painel financeiro"
+          message={loadError.message}
+        />
+      )}
 
       {/* Finance Stats */}
       <div data-tour="fin-stats" className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
@@ -407,6 +416,18 @@ export default function Financeiro() {
              </table>
            )}
         </div>
+      </div>
+    </div>
+  );
+}
+
+function FinanceLoadError({ title, message }: { title: string; message?: string }) {
+  return (
+    <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-red-700 flex items-start gap-3 shadow-sm">
+      <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
+      <div>
+        <p className="text-sm font-black">{title}</p>
+        <p className="text-xs font-medium text-red-600 break-words">{message || 'Verifique permissoes e conexao com o banco.'}</p>
       </div>
     </div>
   );

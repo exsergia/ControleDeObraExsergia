@@ -33,16 +33,16 @@ export default function ChecklistPage() {
   const [activeStep, setActiveStep, limparRascunhoEtapa] = useAutoSaveForm('rascunho-checklist-etapa', 1);
   const [selectedObraId, setSelectedObraId, limparRascunhoObraChecklist] = useAutoSaveForm('rascunho-checklist-obra', '');
   
-  const [obrasSnap] = useCollection(collection(db, 'obras'));
-  const [operadoresSnap] = useCollection(collection(db, 'operadores'));
-  const [adminAccessSnap] = useCollection(collection(db, 'admin_access'));
-  const [encarregadosSnap] = useCollection(collection(db, 'encarregados'));
-  const [materiaisSnap] = useCollection(
+  const [obrasSnap, , obrasError] = useCollection(collection(db, 'obras'));
+  const [operadoresSnap, , operadoresError] = useCollection(collection(db, 'operadores'));
+  const [adminAccessSnap, , adminAccessError] = useCollection(collection(db, 'admin_access'));
+  const [encarregadosSnap, , encarregadosError] = useCollection(collection(db, 'encarregados'));
+  const [materiaisSnap, , materiaisError] = useCollection(
     selectedObraId 
       ? query(collection(db, 'materiais'), where('obraId', '==', selectedObraId), where('statusConferencia', '==', 'Pendente'))
       : null
   );
-  const [atividadesSnap] = useCollection(
+  const [atividadesSnap, , atividadesError] = useCollection(
     selectedObraId 
       ? query(collection(db, 'atividades'), where('obraId', '==', selectedObraId))
       : null
@@ -65,6 +65,7 @@ export default function ChecklistPage() {
   const atividades = (atividadesSnap?.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Atividade[]) || [];
   const todosOperadores = (operadoresSnap?.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Operator[]) || [];
   const encarregados = (encarregadosSnap?.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Operator[]) || [];
+  const loadError = obrasError || operadoresError || adminAccessError || encarregadosError || materiaisError || atividadesError;
 
   const adminEmails = new Set(
     (adminAccessSnap?.docs || [])
@@ -224,6 +225,13 @@ export default function ChecklistPage() {
           ))}
         </div>
       </div>
+
+      {loadError && (
+        <ChecklistLoadError
+          title="Erro ao carregar checklist"
+          message={loadError.message}
+        />
+      )}
 
       {activeStep === 1 && (
         <section className="space-y-4 animate-in slide-in-from-right duration-300">
@@ -555,6 +563,18 @@ export default function ChecklistPage() {
           </div>
         </section>
       )}
+    </div>
+  );
+}
+
+function ChecklistLoadError({ title, message }: { title: string; message?: string }) {
+  return (
+    <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-red-700 flex items-start gap-3 shadow-sm">
+      <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
+      <div>
+        <p className="text-sm font-black">{title}</p>
+        <p className="text-xs font-medium text-red-600 break-words">{message || 'Verifique permissoes e conexao com o banco.'}</p>
+      </div>
     </div>
   );
 }

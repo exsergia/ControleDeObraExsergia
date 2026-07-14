@@ -22,7 +22,8 @@ import {
   Trash2,
   ExternalLink,
   ShieldCheck,
-  ClipboardCheck
+  ClipboardCheck,
+  AlertCircle
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useAuth } from '../App';
@@ -31,7 +32,7 @@ import { refreshDailyProgressSnapshot } from '../lib/progress';
 
 export default function Obras() {
   const { isAdmin, notify } = useAuth();
-  const [obrasSnap, loading] = useCollection(collection(db, 'obras'));
+  const [obrasSnap, loading, obrasError] = useCollection(collection(db, 'obras'));
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isAtividadeModalOpen, setIsAtividadeModalOpen] = useState(false);
   const [selectedObra, setSelectedObra] = useState<Obra | null>(null);
@@ -205,6 +206,13 @@ export default function Obras() {
               </div>
             )}
           </div>
+
+          {obrasError && (
+            <ObrasLoadError
+              title="Erro ao carregar obras"
+              message={obrasError.message}
+            />
+          )}
 
           {/* Filters */}
           <div data-tour="obras-filters" className="flex flex-col gap-3 bg-white p-4 rounded-xl border border-zinc-200 shadow-sm">
@@ -750,6 +758,18 @@ function AtividadeCard({ ativ, onSave, readOnly = false }: { key?: string; ativ:
   );
 }
 
+function ObrasLoadError({ title, message }: { title: string; message?: string }) {
+  return (
+    <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-red-700 flex items-start gap-3 shadow-sm">
+      <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
+      <div>
+        <p className="text-sm font-black">{title}</p>
+        <p className="text-xs font-medium text-red-600 break-words">{message || 'Verifique permissoes e conexao com o banco.'}</p>
+      </div>
+    </div>
+  );
+}
+
 function ObraDetails({
   obra,
   onBack,
@@ -763,12 +783,13 @@ function ObraDetails({
 }) {
   const { isAdmin, isEncarregado, notify } = useAuth();
   const navigate = useNavigate();
-  const [atividadesSnap] = useCollection(query(collection(db, 'atividades'), where('obraId', '==', obra.id)));
-  const [operadoresSnap] = useCollection(collection(db, 'operadores'));
+  const [atividadesSnap, , atividadesError] = useCollection(query(collection(db, 'atividades'), where('obraId', '==', obra.id)));
+  const [operadoresSnap, , operadoresError] = useCollection(collection(db, 'operadores'));
   const [activeTab, setActiveTab] = usePersistedTab<'progresso' | 'equipe' | 'informacoes'>('tab-obra-detalhes', 'progresso');
 
   const atividades = (atividadesSnap?.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Atividade[]) || [];
   const todosOperadores = (operadoresSnap?.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Operator[]) || [];
+  const loadError = atividadesError || operadoresError;
 
   // Estado local otimista para equipe — UI responde na hora sem esperar Realtime
   const [equipeLocal, setEquipeLocal] = useState(obra.equipe || []);
@@ -918,6 +939,13 @@ function ObraDetails({
           )}
         </div>
       </div>
+
+      {loadError && (
+        <ObrasLoadError
+          title="Erro ao carregar detalhes da obra"
+          message={loadError.message}
+        />
+      )}
 
       <div className="flex bg-white p-1 rounded-xl border border-zinc-200 w-full">
         {[

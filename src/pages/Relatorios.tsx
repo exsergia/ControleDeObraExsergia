@@ -54,23 +54,23 @@ export default function Relatorios() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = usePersistedTab<RelatorioTab>('tab-relatorios', 'diarios');
 
-  const [checklistsSnap, loading] = useCollection(
+  const [checklistsSnap, loading, checklistsError] = useCollection(
     query(collection(db, 'checklists'), orderBy('data', 'desc'))
   );
-  const [obrasSnap] = useCollection(collection(db, 'obras'));
-  const [materiaisSnap] = useCollection(collection(db, 'materiais'));
-  const [atividadesSnap] = useCollection(collection(db, 'atividades'));
-  const [operadoresSnap] = useCollection(collection(db, 'operadores'));
-  const [toolsSnap] = useCollection(collection(db, 'tools'));
-  const [toolLogsSnap, loadingLogs] = useCollection(
+  const [obrasSnap, , obrasError] = useCollection(collection(db, 'obras'));
+  const [materiaisSnap, , materiaisError] = useCollection(collection(db, 'materiais'));
+  const [atividadesSnap, , atividadesError] = useCollection(collection(db, 'atividades'));
+  const [operadoresSnap, , operadoresError] = useCollection(collection(db, 'operadores'));
+  const [toolsSnap, , toolsError] = useCollection(collection(db, 'tools'));
+  const [toolLogsSnap, loadingLogs, toolLogsError] = useCollection(
     query(collection(db, 'toolLogs'), orderBy('dataSaida', 'desc'))
   );
-  const [vehiclesSnap] = useCollection(query(collection(db, 'vehicles'), orderBy('placa', 'asc')));
-  const [vehicleLogsSnap, loadingVehicleLogs] = useCollection(
+  const [vehiclesSnap, , vehiclesError] = useCollection(query(collection(db, 'vehicles'), orderBy('placa', 'asc')));
+  const [vehicleLogsSnap, loadingVehicleLogs, vehicleLogsError] = useCollection(
     query(collection(db, 'vehicleLogs'), orderBy('dataSaida', 'desc'))
   );
-  const [progressoDiarioSnap] = useCollection(collection(db, 'progresso_diario'));
-  const [fiscalSnap] = useCollection(query(collection(db, 'fiscal_docs'), orderBy('data', 'desc')));
+  const [progressoDiarioSnap, , progressoDiarioError] = useCollection(collection(db, 'progresso_diario'));
+  const [fiscalSnap, , fiscalError] = useCollection(query(collection(db, 'fiscal_docs'), orderBy('data', 'desc')));
 
   const [search, setSearch] = useState('');
   const [selectedDate, setSelectedDate] = useState('');
@@ -87,6 +87,7 @@ export default function Relatorios() {
   const vehicleLogs = (vehicleLogsSnap?.docs.map(doc => ({ id: doc.id, ...doc.data() })) as VehicleLog[]) || [];
   const progressoDiario = (progressoDiarioSnap?.docs.map(doc => ({ id: doc.id, ...doc.data() }))) || [];
   const fiscalDocs = (fiscalSnap?.docs.map(doc => ({ id: doc.id, ...doc.data() })) as FiscalDoc[]) || [];
+  const loadError = checklistsError || obrasError || materiaisError || atividadesError || operadoresError || toolsError || toolLogsError || vehiclesError || vehicleLogsError || progressoDiarioError || fiscalError;
 
   const filteredTools = tools.filter(t => {
     if (!search) return true;
@@ -518,6 +519,13 @@ export default function Relatorios() {
           )}
         </div>
       </div>
+
+      {loadError && (
+        <ReportsLoadError
+          title="Erro ao carregar relatórios"
+          message={loadError.message}
+        />
+      )}
 
       {/* Tabs */}
       <div data-tour="rel-tabs" className="flex bg-white p-1 rounded-xl border border-zinc-200 w-full sm:w-fit shadow-sm">
@@ -1252,6 +1260,18 @@ export default function Relatorios() {
         </div>
       </div>}
 
+    </div>
+  );
+}
+
+function ReportsLoadError({ title, message }: { title: string; message?: string }) {
+  return (
+    <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-red-700 flex items-start gap-3 shadow-sm">
+      <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5" />
+      <div>
+        <p className="text-sm font-black">{title}</p>
+        <p className="text-xs font-medium text-red-600 break-words">{message || 'Verifique permissoes e conexao com o banco.'}</p>
+      </div>
     </div>
   );
 }

@@ -55,9 +55,9 @@ export default function Equipamentos() {
     isAdmin ? collection(db, 'equipamento_locacoes') : null
   ), [isAdmin]);
 
-  const [equipSnap, loading, , refetchEquip] = useCollection(equipamentosQuery);
-  const [manutSnap, , , refetchManut] = useCollection(manutencoesQuery);
-  const [locSnap, , , refetchLoc] = useCollection(locacoesQuery);
+  const [equipSnap, loading, equipError, refetchEquip] = useCollection(equipamentosQuery);
+  const [manutSnap, , manutError, refetchManut] = useCollection(manutencoesQuery);
+  const [locSnap, , locError, refetchLoc] = useCollection(locacoesQuery);
 
   // Recarrega tudo na hora após uma gravação local (sem esperar o Realtime).
   const reload = useCallback(() => { refetchEquip(); refetchManut(); refetchLoc(); }, [refetchEquip, refetchManut, refetchLoc]);
@@ -69,6 +69,7 @@ export default function Equipamentos() {
   const equipamentos = (equipSnap?.docs.map(d => ({ id: d.id, ...d.data() })) as Equipamento[]) || [];
   const manutencoes = (manutSnap?.docs.map(d => ({ id: d.id, ...d.data() })) as EquipamentoManutencao[]) || [];
   const locacoes = (locSnap?.docs.map(d => ({ id: d.id, ...d.data() })) as EquipamentoLocacao[]) || [];
+  const loadError = equipError || manutError || locError;
 
   const financeById = useMemo(() => {
     const map: Record<string, Finance> = {};
@@ -151,6 +152,13 @@ export default function Equipamentos() {
           <Plus className="w-4 h-4" /> Novo Equipamento
         </button>
       </div>
+
+      {loadError && (
+        <EquipamentosLoadError
+          title="Erro ao carregar equipamentos"
+          message={loadError.message}
+        />
+      )}
 
       {/* KPIs gerais */}
       <div data-tour="equip-kpis" className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -435,6 +443,18 @@ function AdminOnlyNotice() {
         <p className="text-sm text-zinc-500">
           A aba de Equipamentos e seus lancamentos financeiros sao exclusivos para administradores.
         </p>
+      </div>
+    </div>
+  );
+}
+
+function EquipamentosLoadError({ title, message }: { title: string; message?: string }) {
+  return (
+    <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-red-700 flex items-start gap-3 shadow-sm">
+      <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
+      <div>
+        <p className="text-sm font-black">{title}</p>
+        <p className="text-xs font-medium text-red-600 break-words">{message || 'Verifique permissoes e conexao com o banco.'}</p>
       </div>
     </div>
   );

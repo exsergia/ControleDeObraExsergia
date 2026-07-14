@@ -80,11 +80,12 @@ export default function Frota() {
 
   const anyModalOpen = !!(showAddVehicle || editingVehicle || showHistory || showCheckOut || showCheckIn || showScanner);
 
-  const [vehiclesSnap] = useCollection(query(collection(db, 'vehicles'), orderBy('placa', 'asc')), anyModalOpen);
-  const [logsSnap] = useCollection(query(collection(db, 'vehicleLogs'), orderBy('dataSaida', 'desc'), limit(50)), anyModalOpen);
+  const [vehiclesSnap, , vehiclesError] = useCollection(query(collection(db, 'vehicles'), orderBy('placa', 'asc')), anyModalOpen);
+  const [logsSnap, , logsError] = useCollection(query(collection(db, 'vehicleLogs'), orderBy('dataSaida', 'desc'), limit(50)), anyModalOpen);
 
   const vehicles = (vehiclesSnap?.docs.map(d => ({ id: d.id, ...d.data() })) as Vehicle[]) || [];
   const logs = (logsSnap?.docs.map(d => ({ id: d.id, ...d.data() })) as VehicleLog[]) || [];
+  const loadError = vehiclesError || logsError;
 
   const handleScanSuccess = React.useCallback((decodedText: string) => {
     const code = decodedText.trim();
@@ -140,6 +141,13 @@ export default function Frota() {
           )}
         </div>
       </div>
+
+      {loadError && (
+        <FrotaLoadError
+          title="Erro ao carregar frota"
+          message={loadError.message}
+        />
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Frota */}
@@ -237,6 +245,18 @@ export default function Frota() {
 }
 
 // ── Scanner QR ────────────────────────────────────────────────────────────────
+function FrotaLoadError({ title, message }: { title: string; message?: string }) {
+  return (
+    <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-red-700 flex items-start gap-3 shadow-sm">
+      <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
+      <div>
+        <p className="text-sm font-black">{title}</p>
+        <p className="text-xs font-medium text-red-600 break-words">{message || 'Verifique permissoes e conexao com o banco.'}</p>
+      </div>
+    </div>
+  );
+}
+
 function ScannerModal({ onSuccess, onClose }: { onSuccess: (text: string) => void, onClose: () => void }) {
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const [cameraError, setCameraError] = useState<string | null>(null);
@@ -1345,4 +1365,3 @@ function PhotoPicker({ label, preview, onPick, onClear, disabled, hint, error }:
     </div>
   );
 }
-

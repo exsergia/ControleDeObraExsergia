@@ -26,7 +26,7 @@ const brl = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', c
 
 export default function NotasFiscais() {
   const { userProfile, isAdmin, notify } = useAuth();
-  const [docsSnap, loading] = useCollection(query(collection(db, 'fiscal_docs'), orderBy('createdAt', 'desc')));
+  const [docsSnap, loading, docsError] = useCollection(query(collection(db, 'fiscal_docs'), orderBy('createdAt', 'desc')));
   const [showModal, setShowModal] = useState(false);
   const [search, setSearch] = useState('');
 
@@ -88,7 +88,9 @@ export default function NotasFiscais() {
         </div>
       </div>
 
-      {loading ? (
+      {docsError ? (
+        <FiscalLoadError title="Erro ao carregar documentos fiscais" message={docsError.message} />
+      ) : loading ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {Array(3).fill(0).map((_, i) => <div key={i} className="h-48 bg-white rounded-2xl border border-zinc-100 animate-pulse" />)}
         </div>
@@ -155,8 +157,8 @@ export default function NotasFiscais() {
 }
 
 function FiscalModal({ userName, userId, onClose, onSaved }: { userName: string; userId: string; onClose: () => void; onSaved: () => void }) {
-  const [obrasSnap] = useCollection(query(collection(db, 'obras'), orderBy('nome', 'asc')));
-  const [operadoresSnap] = useCollection(query(collection(db, 'operadores'), orderBy('nome', 'asc')));
+  const [obrasSnap, , obrasError] = useCollection(query(collection(db, 'obras'), orderBy('nome', 'asc')));
+  const [operadoresSnap, , operadoresError] = useCollection(query(collection(db, 'operadores'), orderBy('nome', 'asc')));
   const obras = (obrasSnap?.docs.map(d => ({ id: d.id, ...d.data() })) as Obra[]) || [];
   const operadores = (operadoresSnap?.docs.map(d => ({ id: d.id, ...d.data() })) as Operator[]) || [];
 
@@ -238,6 +240,12 @@ function FiscalModal({ userName, userId, onClose, onSaved }: { userName: string;
             <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-100 text-red-600 rounded-xl text-xs font-bold">
               <AlertCircle className="w-4 h-4 shrink-0" />{error}
             </div>
+          )}
+          {(obrasError || operadoresError) && (
+            <FiscalLoadError
+              title="Erro ao carregar dados do lançamento"
+              message={(obrasError || operadoresError)?.message}
+            />
           )}
 
           {/* Tipo */}
@@ -346,6 +354,18 @@ function FiscalModal({ userName, userId, onClose, onSaved }: { userName: string;
       </div>
 
       {showCamera && <CameraCapture onCapture={setFoto} onClose={() => setShowCamera(false)} />}
+    </div>
+  );
+}
+
+function FiscalLoadError({ title, message }: { title: string; message?: string }) {
+  return (
+    <div className="flex items-start gap-3 rounded-2xl border border-red-100 bg-red-50 p-4 text-red-700">
+      <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
+      <div className="min-w-0">
+        <p className="text-sm font-black">{title}</p>
+        {message && <p className="text-xs font-semibold mt-1 break-words opacity-80">{message}</p>}
+      </div>
     </div>
   );
 }
