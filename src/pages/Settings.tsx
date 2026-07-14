@@ -16,6 +16,7 @@ const ADMIN_MANAGER_EMAILS = [
   'pms.arthur@gmail.com',
   'gilson@exsergia.eng.br',
   'planejamento@exsergia.eng.br',
+  'contasapagar@exsergia.eng.br',
 ];
 
 export default function Settings() {
