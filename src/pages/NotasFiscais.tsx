@@ -12,12 +12,13 @@ import { format } from 'date-fns';
 import { cn } from '../lib/utils';
 import {
   Receipt, Plus, Camera, X, Search, CreditCard, Calendar,
-  Building2, AlertCircle, Trash2, CheckCircle2, User,
+  AlertCircle, Trash2, CheckCircle2, User,
   HardHat, Users, Edit2,
 } from 'lucide-react';
 import { Obra, Operator } from '../types';
 
 const brl = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v || 0);
+const DESPESAS_OPTIONS = ['ALMOÇO', 'JANTA', 'CAFE', 'ESTACIONAMENTO', 'HOSPEDAGEM', 'MATERIAL'];
 
 export default function NotasFiscais() {
   const { userProfile, isAdmin, notify } = useAuth();
@@ -72,7 +73,7 @@ export default function NotasFiscais() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
           <input
             type="text"
-            placeholder="Buscar por fornecedor, cartão, tipo..."
+            placeholder="Buscar por despesa, cartão, tipo..."
             className="w-full pl-10 pr-4 py-2.5 bg-white border border-zinc-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900/10 shadow-sm"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -118,7 +119,7 @@ export default function NotasFiscais() {
                       <Calendar className="w-3 h-3" />{dt ? format(dt, 'dd/MM/yyyy') : '---'}
                     </span>
                   </div>
-                  {d.fornecedor && <p className="text-xs text-zinc-600 break-words flex items-center gap-1"><Building2 className="w-3 h-3 text-zinc-400" />{d.fornecedor}</p>}
+                  {d.fornecedor && <p className="text-xs text-zinc-600 break-words flex items-center gap-1"><Receipt className="w-3 h-3 text-zinc-400" />{d.fornecedor}</p>}
                   {d.cartaoFinal && (
                     <p className="text-xs text-zinc-600 flex items-center gap-1 font-mono"><CreditCard className="w-3 h-3 text-zinc-400" />•••• {d.cartaoFinal}</p>
                   )}
@@ -329,9 +330,20 @@ function FiscalModal({
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
-              <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest pl-1">Fornecedor</label>
-              <input type="text" className="w-full px-4 py-2.5 bg-zinc-50 border border-zinc-200 rounded-xl text-sm focus:outline-none focus:border-zinc-900"
-                placeholder="Opcional" value={fornecedor} onChange={e => setFornecedor(e.target.value)} />
+              <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest pl-1">Despesas</label>
+              <select
+                value={fornecedor}
+                onChange={e => setFornecedor(e.target.value)}
+                className="w-full px-4 py-2.5 bg-zinc-50 border border-zinc-200 rounded-xl text-sm focus:outline-none focus:border-zinc-900"
+              >
+                <option value="">Opcional</option>
+                {fornecedor && !DESPESAS_OPTIONS.includes(fornecedor) && (
+                  <option value={fornecedor}>{fornecedor}</option>
+                )}
+                {DESPESAS_OPTIONS.map(opcao => (
+                  <option key={opcao} value={opcao}>{opcao}</option>
+                ))}
+              </select>
             </div>
             <div className="space-y-2">
               <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest pl-1">Cartão (4 últimos)</label>
