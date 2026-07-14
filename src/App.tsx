@@ -92,6 +92,11 @@ const NotasFiscais = React.lazy(() => import('./pages/NotasFiscais'));
 const Equipamentos = React.lazy(() => import('./pages/Equipamentos'));
 const SettingsPage = React.lazy(() => import('./pages/Settings'));
 
+const REPORTS_EMAILS = ['contasapagar@exsergia.eng.br'];
+
+const canAccessReportsByEmail = (email?: string | null) =>
+  !!email && REPORTS_EMAILS.includes(email.toLowerCase());
+
 const isMissingResolveLoginRpc = (error: unknown) => {
   const err = error as { code?: string; message?: string };
   return err?.code === 'PGRST202' ||
@@ -361,6 +366,7 @@ function App() {
   const isAdmin = userProfile?.role === 'admin';
   const isEncarregado = userProfile?.role === 'encarregado';
   const canFiscal = !!user;
+  const canReports = isAdmin || canAccessReportsByEmail(userProfile?.email || user?.email || '');
 
   if (loading) {
     return (
@@ -413,7 +419,7 @@ function App() {
                     <Route path="/checklist" element={(isAdmin || isEncarregado) ? <Checklist /> : <Navigate to="/" replace />} />
                     <Route path="/operadores" element={(isAdmin || isEncarregado) ? <Operadores /> : <Navigate to="/" replace />} />
                     <Route path="/financeiro" element={isAdmin ? <Financeiro /> : <Navigate to="/" replace />} />
-                    <Route path="/relatorios" element={isAdmin ? <Relatorios /> : <Navigate to="/" replace />} />
+                    <Route path="/relatorios" element={canReports ? <Relatorios /> : <Navigate to="/" replace />} />
                     <Route path="/progresso" element={<Progresso />} />
                     <Route path="/ferramentas" element={<Ferramentas />} />
                     <Route path="/frota" element={<Frota />} />
@@ -1097,6 +1103,7 @@ function Layout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
   const { userProfile, user, isAdmin, isEncarregado } = useAuth();
   const canFiscal = !!user;
+  const canReports = isAdmin || canAccessReportsByEmail(userProfile?.email || user?.email || '');
 
   const menuItems: {
     label: string; icon: any; path: string;
@@ -1119,6 +1126,7 @@ function Layout({ children }: { children: React.ReactNode }) {
 
   const filteredMenuItems = menuItems.filter(item => {
     if (item.fiscalOnly) return canFiscal;     // qualquer usuario autenticado pode lancar NF/Cupom
+    if (item.path === '/relatorios' && canReports) return true;
     if (isAdmin) return true;
     if (isEncarregado) return !item.soAdmin;  // encarregado vê tudo exceto financeiro e relatórios
     return !item.adminOnly;
