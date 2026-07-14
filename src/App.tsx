@@ -92,12 +92,6 @@ const NotasFiscais = React.lazy(() => import('./pages/NotasFiscais'));
 const Equipamentos = React.lazy(() => import('./pages/Equipamentos'));
 const SettingsPage = React.lazy(() => import('./pages/Settings'));
 
-// E-mails autorizados a ver a aba de NF/Cupom Fiscal (financeiro).
-const FISCAL_EMAILS = ['contasapagar@gmail.com', 'nascimentoerick446@gmail.com'];
-
-const isFiscalEmail = (email?: string | null) =>
-  !!email && FISCAL_EMAILS.includes(email.toLowerCase());
-
 const isMissingResolveLoginRpc = (error: unknown) => {
   const err = error as { code?: string; message?: string };
   return err?.code === 'PGRST202' ||
@@ -366,7 +360,7 @@ function App() {
 
   const isAdmin = userProfile?.role === 'admin';
   const isEncarregado = userProfile?.role === 'encarregado';
-  const canFiscal = isAdmin || isFiscalEmail(userProfile?.email || user?.email || '');
+  const canFiscal = !!user;
 
   if (loading) {
     return (
@@ -1102,7 +1096,7 @@ function Layout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
   const { userProfile, user, isAdmin, isEncarregado } = useAuth();
-  const canFiscal = isAdmin || isFiscalEmail(userProfile?.email || user?.email || '');
+  const canFiscal = !!user;
 
   const menuItems: {
     label: string; icon: any; path: string;
@@ -1124,7 +1118,7 @@ function Layout({ children }: { children: React.ReactNode }) {
   ];
 
   const filteredMenuItems = menuItems.filter(item => {
-    if (item.fiscalOnly) return canFiscal;     // admin ou e-mails financeiros autorizados
+    if (item.fiscalOnly) return canFiscal;     // qualquer usuario autenticado pode lancar NF/Cupom
     if (isAdmin) return true;
     if (isEncarregado) return !item.soAdmin;  // encarregado vê tudo exceto financeiro e relatórios
     return !item.adminOnly;

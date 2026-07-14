@@ -17,11 +17,6 @@ import {
 } from 'lucide-react';
 import { Obra, Operator } from '../types';
 
-// E-mails autorizados a usar a aba (financeiro).
-export const FISCAL_EMAILS = ['contasapagar@gmail.com', 'nascimentoerick446@gmail.com'];
-export const podeVerFiscal = (email?: string | null) =>
-  !!email && FISCAL_EMAILS.includes(email.toLowerCase());
-
 const brl = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v || 0);
 
 export default function NotasFiscais() {

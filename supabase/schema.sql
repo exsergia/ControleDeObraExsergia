@@ -196,7 +196,8 @@ restart identity cascade;
 -- id = email:email@dominio.com ou cpf:00000000000
 insert into public.admin_access (id, data) values
   ('email:nascimentoerick446@gmail.com', '{"tipo":"email","valor":"nascimentoerick446@gmail.com","ativo":true}'::jsonb),
-  ('email:exsergiacel7234@gmail.com', '{"tipo":"email","valor":"exsergiacel7234@gmail.com","ativo":true}'::jsonb)
+  ('email:exsergiacel7234@gmail.com', '{"tipo":"email","valor":"exsergiacel7234@gmail.com","ativo":true}'::jsonb),
+  ('email:contasapagar@exsergia.eng.br', '{"tipo":"email","valor":"contasapagar@exsergia.eng.br","ativo":true}'::jsonb)
 on conflict (id) do update set data = excluded.data;
 
 create or replace function public.is_app_admin()
@@ -481,7 +482,7 @@ begin
   end if;
 
   if p_table = 'fiscal_docs' then
-    return public.is_fiscal_user();
+    return p_action in ('insert', 'update');
   end if;
 
   if p_table in ('tools', 'vehicles') then
@@ -627,7 +628,7 @@ create policy "select authenticated tools" on public.tools for select to authent
 create policy "select authenticated toolLogs" on public."toolLogs" for select to authenticated using (true);
 create policy "select authenticated vehicles" on public.vehicles for select to authenticated using (true);
 create policy "select authenticated vehicleLogs" on public."vehicleLogs" for select to authenticated using (true);
-create policy "select fiscal docs fiscal" on public.fiscal_docs for select to authenticated using (public.is_fiscal_user());
+create policy "select fiscal docs auth" on public.fiscal_docs for select to authenticated using (true);
 create policy "select equipamentos admin" on public.equipamentos for select to authenticated using (public.is_app_admin());
 create policy "select equipamento manutencoes admin" on public.equipamento_manutencoes for select to authenticated using (public.is_app_admin());
 create policy "select equipamento locacoes admin" on public.equipamento_locacoes for select to authenticated using (public.is_app_admin());
@@ -638,8 +639,8 @@ create policy "admin all atividades" on public.atividades for all to authenticat
 create policy "admin all checklists" on public.checklists for all to authenticated using (public.is_app_admin()) with check (public.is_app_admin());
 create policy "admin all operadores" on public.operadores for all to authenticated using (public.is_app_admin()) with check (public.is_app_admin());
 create policy "admin all admin_access" on public.admin_access for all to authenticated using (public.is_app_admin()) with check (public.is_app_admin());
-create policy "fiscal docs insert fiscal" on public.fiscal_docs for insert to authenticated with check (public.is_fiscal_user());
-create policy "fiscal docs update fiscal" on public.fiscal_docs for update to authenticated using (public.is_fiscal_user()) with check (public.is_fiscal_user());
+create policy "fiscal docs insert auth" on public.fiscal_docs for insert to authenticated with check (true);
+create policy "fiscal docs update auth" on public.fiscal_docs for update to authenticated using (true) with check (true);
 create policy "fiscal docs delete admin" on public.fiscal_docs for delete to authenticated using (public.is_app_admin());
 create policy "equipamentos admin all" on public.equipamentos for all to authenticated using (public.is_app_admin()) with check (public.is_app_admin());
 create policy "equipamento manutencoes admin all" on public.equipamento_manutencoes for all to authenticated using (public.is_app_admin()) with check (public.is_app_admin());
