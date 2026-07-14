@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useCollection } from '../lib/supabaseHooks';
-import { collection, addDoc, deleteDoc, doc, serverTimestamp, query, orderBy } from '../lib/supabaseDb';
+import { collection, addDoc, deleteDoc, doc, serverTimestamp, query, orderBy, updateDoc } from '../lib/supabaseDb';
 import { db, handleFirestoreError, OperationType, auth } from '../lib/supabase';
 import { FiscalDoc } from '../types';
 import { useAuth } from '../App';
@@ -13,7 +13,7 @@ import { cn } from '../lib/utils';
 import {
   Receipt, Plus, Camera, X, Search, CreditCard, Calendar,
   Building2, AlertCircle, Trash2, CheckCircle2, User,
-  HardHat, Users,
+  HardHat, Users, Edit2,
 } from 'lucide-react';
 import { Obra, Operator } from '../types';
 
@@ -23,6 +23,7 @@ export default function NotasFiscais() {
   const { userProfile, isAdmin, notify } = useAuth();
   const [docsSnap, loading, docsError] = useCollection(query(collection(db, 'fiscal_docs'), orderBy('createdAt', 'desc')));
   const [showModal, setShowModal] = useState(false);
+  const [editingDoc, setEditingDoc] = useState<FiscalDoc | null>(null);
   const [search, setSearch] = useState('');
 
   const docs = (docsSnap?.docs.map(d => ({ id: d.id, ...d.data() })) as FiscalDoc[]) || [];
@@ -124,13 +125,18 @@ export default function NotasFiscais() {
                   {d.obraNome && <p className="text-xs text-zinc-600 break-words flex items-center gap-1"><HardHat className="w-3 h-3 text-zinc-400" />{d.obraNome}</p>}
                   {(d.operadoresPresentes?.length || 0) > 0 && <p className="text-[11px] text-zinc-500 break-words flex items-center gap-1"><Users className="w-3 h-3 text-zinc-400" />{d.operadoresPresentes!.map(p => p.nome).join(', ')}</p>}
                   {d.observacoes && <p className="text-[11px] text-zinc-400 break-words">{d.observacoes}</p>}
-                  <div className="flex items-center justify-between pt-1">
+                  <div className="flex items-center justify-between pt-1 gap-2">
                     <span className="text-[10px] text-zinc-400 flex items-center gap-1 truncate"><User className="w-3 h-3" />{d.criadoPorNome || '—'}</span>
+                    <div className="flex items-center gap-1 shrink-0">
+                      <button onClick={() => setEditingDoc(d)} className="p-1.5 text-zinc-300 hover:text-zinc-900 hover:bg-zinc-100 rounded-lg transition-colors" title="Editar">
+                        <Edit2 className="w-3.5 h-3.5" />
+                      </button>
                     {isAdmin && (
                       <button onClick={() => handleDelete(d.id)} className="p-1.5 text-zinc-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors">
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
                     )}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -139,33 +145,51 @@ export default function NotasFiscais() {
         </div>
       )}
 
-      {showModal && (
+      {(showModal || editingDoc) && (
         <FiscalModal
+          editingDoc={editingDoc}
           userName={userProfile ? `${userProfile.nome} ${userProfile.sobrenome || ''}`.trim() : (auth.currentUser?.email || 'Usuário')}
           userId={userProfile?.id || auth.currentUser?.id || ''}
-          onClose={() => setShowModal(false)}
-          onSaved={() => { setShowModal(false); notify('success', 'Lançado', 'Documento fiscal registrado.'); }}
+          onClose={() => { setShowModal(false); setEditingDoc(null); }}
+          onSaved={(isEdit) => {
+            setShowModal(false);
+            setEditingDoc(null);
+            notify('success', isEdit ? 'Atualizado' : 'Lançado', isEdit ? 'Documento fiscal atualizado.' : 'Documento fiscal registrado.');
+          }}
         />
       )}
     </div>
   );
 }
 
-function FiscalModal({ userName, userId, onClose, onSaved }: { userName: string; userId: string; onClose: () => void; onSaved: () => void }) {
+function FiscalModal({
+  editingDoc,
+  userName,
+  userId,
+  onClose,
+  onSaved,
+}: {
+  editingDoc?: FiscalDoc | null;
+  userName: string;
+  userId: string;
+  onClose: () => void;
+  onSaved: (isEdit?: boolean) => void;
+}) {
   const [obrasSnap, , obrasError] = useCollection(query(collection(db, 'obras'), orderBy('nome', 'asc')));
   const [operadoresSnap, , operadoresError] = useCollection(query(collection(db, 'operadores'), orderBy('nome', 'asc')));
   const obras = (obrasSnap?.docs.map(d => ({ id: d.id, ...d.data() })) as Obra[]) || [];
   const operadores = (operadoresSnap?.docs.map(d => ({ id: d.id, ...d.data() })) as Operator[]) || [];
 
-  const [tipo, setTipo] = useState<'NF' | 'Cupom'>('Cupom');
-  const [valor, setValor] = useState<number | ''>('');
-  const [data, setData] = useState(format(new Date(), 'yyyy-MM-dd'));
-  const [fornecedor, setFornecedor] = useState('');
-  const [cartaoFinal, setCartaoFinal] = useState('');
-  const [obraId, setObraId] = useState('');
-  const [operadoresPresentes, setOperadoresPresentes] = useState<string[]>([]);
-  const [fotoFile, setFotoFile] = useState<File | null>(null);
-  const [fotoPreview, setFotoPreview] = useState<string | null>(null);
+  const editDate = editingDoc ? parseDate(editingDoc.data) : null;
+  const [tipo, setTipo] = useState<'NF' | 'Cupom'>(editingDoc?.tipo || 'Cupom');
+  const [valor, setValor] = useState<number | ''>(editingDoc?.valor || '');
+  const [data, setData] = useState(editDate ? format(editDate, 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd'));
+  const [fornecedor, setFornecedor] = useState(editingDoc?.fornecedor || '');
+  const [cartaoFinal, setCartaoFinal] = useState(editingDoc?.cartaoFinal || '');
+  const [obraId, setObraId] = useState(editingDoc?.obraId || '');
+  const [operadoresPresentes, setOperadoresPresentes] = useState<string[]>((editingDoc?.operadoresPresentes || []).map(op => op.id));
+  const [fotoFile, setFotoFile] = useState<File | null>(() => editingDoc?.fotoUrl ? new File([], 'existing-fiscal-photo') : null);
+  const [fotoPreview, setFotoPreview] = useState<string | null>(editingDoc?.fotoUrl || null);
   const [showCamera, setShowCamera] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -178,7 +202,7 @@ function FiscalModal({ userName, userId, onClose, onSaved }: { userName: string;
   const operadoresDaObra = operadores.filter(o => idsEquipe.includes(o.id));
 
   const setFoto = (file: File) => {
-    if (fotoPreview) URL.revokeObjectURL(fotoPreview);
+    if (fotoPreview?.startsWith('blob:')) URL.revokeObjectURL(fotoPreview);
     setFotoFile(file);
     setFotoPreview(URL.createObjectURL(file));
     setShowCamera(false);
@@ -194,11 +218,30 @@ function FiscalModal({ userName, userId, onClose, onSaved }: { userName: string;
 
     setLoading(true);
     try {
-      const fotoUrl = await uploadPhoto(fotoFile, 'fiscal');
+      const fotoUrl = fotoFile.size > 0 ? await uploadPhoto(fotoFile, 'fiscal') : editingDoc?.fotoUrl || '';
       const obraSel = obras.find(o => o.id === obraId);
       const presentes = operadores
         .filter(o => operadoresPresentes.includes(o.id))
         .map(o => ({ id: o.id, nome: `${o.nome} ${o.sobrenome || ''}`.trim() }));
+
+      if (editingDoc) {
+        await updateDoc(doc(db, 'fiscal_docs', editingDoc.id), {
+          tipo,
+          fotoUrl,
+          valor: valorNum,
+          data: data ? new Date(`${data}T12:00:00`).toISOString() : serverTimestamp(),
+          fornecedor: fornecedor.trim(),
+          cartaoFinal: cartaoFinal.replace(/\D/g, '').slice(-4),
+          obraId: obraId || '',
+          obraNome: obraSel?.nome || '',
+          operadoresPresentes: presentes,
+          updatedAt: serverTimestamp(),
+        });
+        if (fotoPreview?.startsWith('blob:')) URL.revokeObjectURL(fotoPreview);
+        onSaved(true);
+        return;
+      }
+
       await addDoc(collection(db, 'fiscal_docs'), {
         tipo,
         fotoUrl,
@@ -213,8 +256,8 @@ function FiscalModal({ userName, userId, onClose, onSaved }: { userName: string;
         criadoPorId: userId,
         createdAt: serverTimestamp(),
       });
-      if (fotoPreview) URL.revokeObjectURL(fotoPreview);
-      onSaved();
+      if (fotoPreview?.startsWith('blob:')) URL.revokeObjectURL(fotoPreview);
+      onSaved(false);
     } catch (err: any) {
       setError(err?.message || 'Não foi possível salvar.');
       handleFirestoreError(err, OperationType.WRITE, 'fiscal_docs');
@@ -227,7 +270,7 @@ function FiscalModal({ userName, userId, onClose, onSaved }: { userName: string;
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-900/60 backdrop-blur-sm">
       <div className="bg-white w-full sm:max-w-lg rounded-3xl shadow-2xl max-h-[92dvh] overflow-y-auto">
         <div className="p-6 border-b border-zinc-100 flex items-center justify-between sticky top-0 bg-white">
-          <h3 className="text-lg font-bold">Novo Lançamento Fiscal</h3>
+          <h3 className="text-lg font-bold">{editingDoc ? 'Editar Lançamento Fiscal' : 'Novo Lançamento Fiscal'}</h3>
           <button type="button" onClick={onClose} className="p-2 hover:bg-zinc-100 rounded-xl transition-colors"><X className="w-5 h-5" /></button>
         </div>
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
@@ -262,7 +305,7 @@ function FiscalModal({ userName, userId, onClose, onSaved }: { userName: string;
                 <div className="relative w-full aspect-video rounded-2xl overflow-hidden border-2 border-zinc-200">
                   <img src={fotoPreview} className="w-full h-full object-cover" alt="Pré-visualização" />
                 </div>
-                <button type="button" onClick={() => setShowCamera(true)} className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-zinc-200 bg-zinc-50 text-xs font-bold text-zinc-600 hover:bg-zinc-100"><Camera className="w-4 h-4" /> Nova foto</button>
+                <button type="button" onClick={() => setShowCamera(true)} className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-zinc-200 bg-zinc-50 text-xs font-bold text-zinc-600 hover:bg-zinc-100"><Camera className="w-4 h-4" /> Trocar foto</button>
               </div>
             ) : (
               <button type="button" onClick={() => setShowCamera(true)} className="w-full flex flex-col items-center justify-center gap-2 py-6 rounded-2xl border-2 border-dashed border-zinc-200 bg-zinc-50 hover:bg-zinc-100 hover:border-zinc-400 transition-all">
@@ -343,7 +386,7 @@ function FiscalModal({ userName, userId, onClose, onSaved }: { userName: string;
           <button type="submit" disabled={loading}
             className={cn('w-full py-4 rounded-2xl font-bold transition-all flex items-center justify-center gap-2 shadow-lg',
               loading ? 'bg-zinc-100 text-zinc-300' : 'bg-zinc-900 text-white hover:bg-zinc-800')}>
-            {loading ? 'Salvando...' : <>Lançar <CheckCircle2 className="w-5 h-5" /></>}
+            {loading ? 'Salvando...' : <>{editingDoc ? 'Salvar Alterações' : 'Lançar'} <CheckCircle2 className="w-5 h-5" /></>}
           </button>
         </form>
       </div>
