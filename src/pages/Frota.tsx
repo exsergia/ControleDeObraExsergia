@@ -69,7 +69,7 @@ const statusBadgeClass = (status: Vehicle['status']) => {
 };
 
 export default function Frota() {
-  const { isAdmin, isEncarregado, notify } = useAuth();
+  const { isAdmin, notify } = useAuth();
 
   const [showAddVehicle, setShowAddVehicle] = useState(false);
   const [editingVehicle, setEditingVehicle] = useState<Vehicle | null>(null);
@@ -129,7 +129,7 @@ export default function Frota() {
             <QrCode className="w-4 h-4" />
             Escanear QR
           </button>
-          {(isAdmin || isEncarregado) && (
+          {isAdmin && (
             <button
               data-tour="frota-add"
               onClick={() => setShowAddVehicle(true)}
@@ -393,7 +393,7 @@ function VehicleCard({ vehicle, onCheckOut, activeLog, onCheckIn, onEdit, onView
             >
               <History className="w-4 h-4" />
             </button>
-            {(isAdmin || isEncarregado) && (
+            {isAdmin && (
               <button
                 onClick={(e) => { e.stopPropagation(); onEdit?.(); }}
                 className="p-2 text-zinc-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"

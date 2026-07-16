@@ -15,8 +15,8 @@ import { CameraCapture } from '../components/CameraCapture';
 import { CurrencyInput } from '../components/CurrencyInput';
 
 export default function Materiais() {
-  const { isAdmin, isEncarregado, notify } = useAuth();
-  const canEdit = isAdmin || isEncarregado;
+  const { isAdmin, notify } = useAuth();
+  const canEdit = isAdmin;
   const [obrasSnap, , obrasError] = useCollection(collection(db, 'obras'));
   const [materiaisSnap, loading, materiaisError] = useCollection(query(collection(db, 'materiais'), orderBy('dataEntrega', 'desc')));
 

@@ -110,7 +110,7 @@ const isLogAtrasado = (log?: ToolLog | null): boolean => {
 };
 
 export default function Ferramentas() {
-  const { isAdmin, isEncarregado, userProfile, notify } = useAuth();
+  const { isAdmin, userProfile, notify } = useAuth();
 
   // Estado dos modais declarado ANTES dos hooks de coleção para que anyModalOpen
   // esteja disponível ao configurar o Realtime (hooks devem seguir a mesma ordem).
@@ -242,7 +242,7 @@ export default function Ferramentas() {
             <QrCode className="w-4 h-4" />
             Escanear Código
           </button>
-          {(isAdmin || isEncarregado) && (
+          {isAdmin && (
             <button
               data-tour="tools-add"
               onClick={() => setShowAddTool(true)}

@@ -21,7 +21,7 @@ import { useAutoSaveForm } from '../hooks/useAutoSaveForm';
 import { refreshDailyProgressSnapshot } from '../lib/progress';
 
 export default function ProgressoFisico() {
-  const { isAdmin, isEncarregado, notify } = useAuth();
+  const { isAdmin, notify } = useAuth();
   const [selectedObraId, setSelectedObraId] = useState<string>('all');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [search, setSearch] = useState('');
@@ -58,6 +58,10 @@ export default function ProgressoFisico() {
 
   const handleAddAtividade = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isAdmin) {
+      notify('warning', 'Acesso restrito', 'Somente administradores podem cadastrar atividades.');
+      return;
+    }
     try {
       await addDoc(collection(db, 'atividades'), {
         ...formData,
@@ -75,6 +79,10 @@ export default function ProgressoFisico() {
   };
 
   const handleUpdateProgress = async (id: string, currentVal: number, total: number) => {
+    if (!isAdmin) {
+      notify('warning', 'Acesso restrito', 'Somente administradores podem alterar o progresso.');
+      return;
+    }
     try {
       const safeTotal = Number(total) || 0;
       await updateDoc(doc(db, 'atividades', id), {
@@ -92,6 +100,10 @@ export default function ProgressoFisico() {
   };
 
   const handleDelete = async (id: string) => {
+    if (!isAdmin) {
+      notify('warning', 'Acesso restrito', 'Somente administradores podem excluir atividades.');
+      return;
+    }
     if (!confirm('Deseja excluir esta atividade?')) return;
     try {
       await deleteDoc(doc(db, 'atividades', id));
@@ -110,7 +122,7 @@ export default function ProgressoFisico() {
           <p className="text-zinc-500 text-sm">Controle de execução e produtividade em tempo real.</p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          {(isAdmin || isEncarregado) && (
+          {isAdmin && (
             <button
               data-tour="prog-new"
               onClick={() => setIsModalOpen(true)}
@@ -169,7 +181,7 @@ export default function ProgressoFisico() {
               obra={obras.find(o => o.id === ativ.obraId)}
               onUpdate={handleUpdateProgress}
               onDelete={() => handleDelete(ativ.id)}
-              readOnly={!isAdmin && !isEncarregado}
+              readOnly={!isAdmin}
             />
           ))
         ) : (

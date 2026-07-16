@@ -129,14 +129,16 @@ export default function NotasFiscais() {
                   <div className="flex items-center justify-between pt-1 gap-2">
                     <span className="text-[10px] text-zinc-400 flex items-center gap-1 truncate"><User className="w-3 h-3" />{d.criadoPorNome || '—'}</span>
                     <div className="flex items-center gap-1 shrink-0">
-                      <button onClick={() => setEditingDoc(d)} className="p-1.5 text-zinc-300 hover:text-zinc-900 hover:bg-zinc-100 rounded-lg transition-colors" title="Editar">
-                        <Edit2 className="w-3.5 h-3.5" />
-                      </button>
-                    {isAdmin && (
-                      <button onClick={() => handleDelete(d.id)} className="p-1.5 text-zinc-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors">
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    )}
+                      {isAdmin && (
+                        <>
+                          <button onClick={() => setEditingDoc(d)} className="p-1.5 text-zinc-300 hover:text-zinc-900 hover:bg-zinc-100 rounded-lg transition-colors" title="Editar">
+                            <Edit2 className="w-3.5 h-3.5" />
+                          </button>
+                          <button onClick={() => handleDelete(d.id)} className="p-1.5 text-zinc-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors">
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -176,6 +178,7 @@ function FiscalModal({
   onClose: () => void;
   onSaved: (isEdit?: boolean) => void;
 }) {
+  const { isAdmin } = useAuth();
   const [obrasSnap, , obrasError] = useCollection(query(collection(db, 'obras'), orderBy('nome', 'asc')));
   const [operadoresSnap, , operadoresError] = useCollection(query(collection(db, 'operadores'), orderBy('nome', 'asc')));
   const obras = (obrasSnap?.docs.map(d => ({ id: d.id, ...d.data() })) as Obra[]) || [];
@@ -214,6 +217,7 @@ function FiscalModal({
     e.preventDefault();
     if (loading) return;
     if (!fotoFile) { setError('A foto do documento é obrigatória.'); return; }
+    if (editingDoc && !isAdmin) { setError('Somente administradores podem editar lançamentos fiscais.'); return; }
     const valorNum = typeof valor === 'number' ? valor : NaN;
     if (!Number.isFinite(valorNum) || valorNum <= 0) { setError('Informe um valor válido.'); return; }
 

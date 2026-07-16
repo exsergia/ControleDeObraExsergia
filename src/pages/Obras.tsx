@@ -194,6 +194,10 @@ export default function Obras() {
   );
 
   const handleUpdateStatus = async (obraId: string, status: ObraStatus) => {
+    if (!isAdmin) {
+      notify('warning', 'Acesso restrito', 'Somente administradores podem alterar o status da obra.');
+      return;
+    }
     try {
       await updateDoc(doc(db, 'obras', obraId), { status });
       if (selectedObra?.id === obraId) {
@@ -679,29 +683,29 @@ function ObraCard({
                   Abrir Relatórios
                 </button>
                 <div className="h-px bg-zinc-100 my-1" />
-                <button 
-                  onClick={() => { onStatusUpdate('Ativa'); setShowMenu(false); }}
-                  className="w-full flex items-center gap-2 px-3 py-2 text-xs font-bold text-green-600 hover:bg-green-50 rounded-lg transition-colors"
-                >
-                  <CheckCircle2 className="w-4 h-4" />
-                  Marcar como Ativa
-                </button>
-                <button 
-                  onClick={() => { onStatusUpdate('Concluída'); setShowMenu(false); }}
-                  className="w-full flex items-center gap-2 px-3 py-2 text-xs font-bold text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                >
-                  <CheckCircle2 className="w-4 h-4" />
-                  Concluir Obra
-                </button>
-                <button 
-                  onClick={() => { onStatusUpdate('Pausada'); setShowMenu(false); }}
-                  className="w-full flex items-center gap-2 px-3 py-2 text-xs font-bold text-amber-600 hover:bg-amber-50 rounded-lg transition-colors"
-                >
-                  <Clock className="w-4 h-4" />
-                  Pausar Obra
-                </button>
                 {isAdmin && (
                   <>
+                    <button
+                      onClick={() => { onStatusUpdate('Ativa'); setShowMenu(false); }}
+                      className="w-full flex items-center gap-2 px-3 py-2 text-xs font-bold text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                    >
+                      <CheckCircle2 className="w-4 h-4" />
+                      Marcar como Ativa
+                    </button>
+                    <button
+                      onClick={() => { onStatusUpdate('Concluída'); setShowMenu(false); }}
+                      className="w-full flex items-center gap-2 px-3 py-2 text-xs font-bold text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                    >
+                      <CheckCircle2 className="w-4 h-4" />
+                      Concluir Obra
+                    </button>
+                    <button
+                      onClick={() => { onStatusUpdate('Pausada'); setShowMenu(false); }}
+                      className="w-full flex items-center gap-2 px-3 py-2 text-xs font-bold text-amber-600 hover:bg-amber-50 rounded-lg transition-colors"
+                    >
+                      <Clock className="w-4 h-4" />
+                      Pausar Obra
+                    </button>
                     <div className="h-px bg-zinc-100 my-1" />
                     <button
                       onClick={() => { onEdit(); setShowMenu(false); }}
@@ -845,7 +849,7 @@ function ObraDetails({
   onDelete: (obraId: string) => void,
   onEdit: (obra: Obra) => void
 }) {
-  const { isAdmin, isEncarregado, notify } = useAuth();
+  const { isAdmin, notify } = useAuth();
   const navigate = useNavigate();
   const [atividadesSnap, , atividadesError] = useCollection(query(collection(db, 'atividades'), where('obraId', '==', obra.id)));
   const [operadoresSnap, , operadoresError] = useCollection(collection(db, 'operadores'));
@@ -876,6 +880,10 @@ function ObraDetails({
   }, [operadoresSnap]);
 
   const handleToggleOperator = async (opId: string) => {
+    if (!isAdmin) {
+      notify('warning', 'Acesso restrito', 'Somente administradores podem alterar a equipe da obra.');
+      return;
+    }
     const op = todosOperadores.find(o => o.id === opId);
     const prevEquipe = equipeLocal;
     const prevIds = idsLocal;
@@ -902,6 +910,10 @@ function ObraDetails({
   };
 
   const handleUpdateNivel = async (opId: string, nivel: string) => {
+    if (!isAdmin) {
+      notify('warning', 'Acesso restrito', 'Somente administradores podem alterar a equipe da obra.');
+      return;
+    }
     const prevEquipe = equipeLocal;
     const newEquipe = equipeLocal.map(e => e.operatorId === opId ? { ...e, nivel } : e);
     setEquipeLocal(newEquipe);
@@ -915,6 +927,10 @@ function ObraDetails({
 
   const handleToggleAdmin = async (e: React.MouseEvent, opId: string) => {
     e.stopPropagation();
+    if (!isAdmin) {
+      notify('warning', 'Acesso restrito', 'Somente administradores podem alterar permissões.');
+      return;
+    }
     const current = rolesLocal[opId] || 'operator';
     const newRole = current === 'admin' ? 'operator' : 'admin';
     setRolesLocal(prev => ({ ...prev, [opId]: newRole }));
@@ -934,6 +950,10 @@ function ObraDetails({
   };
 
   const handleUpdateAtividade = async (id: string, qty: number) => {
+    if (!isAdmin) {
+      notify('warning', 'Acesso restrito', 'Somente administradores podem alterar o progresso da obra.');
+      return;
+    }
     try {
       const ativ = atividades.find(a => a.id === id);
       if (!ativ) return;
@@ -992,7 +1012,7 @@ function ObraDetails({
             <ClipboardCheck className="w-3.5 h-3.5 shrink-0" />
             <span className="truncate">Fazer Checklist</span>
           </button>
-          {obra.status !== 'Concluída' && (
+          {isAdmin && obra.status !== 'Concluída' && (
             <button
               onClick={() => onUpdateStatus(obra.id, 'Concluída')}
               className="flex-1 px-3 py-2 bg-blue-600 text-white rounded-lg text-xs font-bold uppercase tracking-widest hover:bg-blue-700 transition-all flex items-center justify-center gap-1.5"
@@ -1001,7 +1021,7 @@ function ObraDetails({
               <span className="truncate">Concluir Obra</span>
             </button>
           )}
-          {obra.status === 'Concluída' && (
+          {isAdmin && obra.status === 'Concluída' && (
             <button
               onClick={() => onUpdateStatus(obra.id, 'Ativa')}
               className="flex-1 px-3 py-2 bg-green-600 text-white rounded-lg text-xs font-bold uppercase tracking-widest hover:bg-green-700 transition-all flex items-center justify-center gap-1.5"
@@ -1065,7 +1085,7 @@ function ObraDetails({
                 key={ativ.id}
                 ativ={ativ}
                 onSave={handleUpdateAtividade}
-                readOnly={!isAdmin && !isEncarregado}
+                readOnly={!isAdmin}
               />
             ))}
 
@@ -1103,9 +1123,9 @@ function ObraDetails({
                   key={op.id}
                   role="button"
                   tabIndex={0}
-                  onClick={() => handleToggleOperator(op.id)}
+                  onClick={() => isAdmin && handleToggleOperator(op.id)}
                   onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleToggleOperator(op.id); }
+                    if (isAdmin && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); handleToggleOperator(op.id); }
                   }}
                   className={cn(
                     "p-4 rounded-2xl border transition-all flex items-center gap-3 text-left relative cursor-pointer select-none",
@@ -1130,6 +1150,7 @@ function ObraDetails({
                         className="bg-transparent border-none p-0 text-[10px] uppercase tracking-widest font-bold text-zinc-400 focus:ring-0 w-full cursor-pointer"
                         value={equipeEntry.nivel}
                         onClick={(e) => e.stopPropagation()}
+                        disabled={!isAdmin}
                         onChange={(e) => { e.stopPropagation(); handleUpdateNivel(op.id, e.target.value); }}
                       >
                         <option className="text-zinc-900" value="Operador">Operador</option>

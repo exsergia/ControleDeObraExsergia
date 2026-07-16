@@ -441,8 +441,8 @@ function App() {
                     <Route path="/" element={<Dashboard />} />
                     <Route path="/obras" element={(isAdmin || isEncarregado) ? <Obras /> : <Navigate to="/" replace />} />
                     <Route path="/materiais" element={<Materiais />} />
-                    <Route path="/checklist" element={(isAdmin || isEncarregado) ? <Checklist /> : <Navigate to="/" replace />} />
-                    <Route path="/operadores" element={(isAdmin || isEncarregado) ? <Operadores /> : <Navigate to="/" replace />} />
+                    <Route path="/checklist" element={isAdmin ? <Checklist /> : <Navigate to="/" replace />} />
+                    <Route path="/operadores" element={isAdmin ? <Operadores /> : <Navigate to="/" replace />} />
                     <Route path="/financeiro" element={isAdmin ? <Financeiro /> : <Navigate to="/" replace />} />
                     <Route path="/relatorios" element={canReports ? <Relatorios /> : <Navigate to="/" replace />} />
                     <Route path="/progresso" element={<Progresso />} />
@@ -1153,7 +1153,7 @@ function Layout({ children }: { children: React.ReactNode }) {
     if (item.fiscalOnly) return canFiscal;     // qualquer usuario autenticado pode lancar NF/Cupom
     if (item.path === '/relatorios' && canReports) return true;
     if (isAdmin) return true;
-    if (isEncarregado) return !item.soAdmin;  // encarregado vê tudo exceto financeiro e relatórios
+    if (isEncarregado) return !item.adminOnly && !item.soAdmin;
     return !item.adminOnly;
   });
 
