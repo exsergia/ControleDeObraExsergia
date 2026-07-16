@@ -93,9 +93,15 @@ const Equipamentos = React.lazy(() => import('./pages/Equipamentos'));
 const SettingsPage = React.lazy(() => import('./pages/Settings'));
 
 const REPORTS_EMAILS = ['contasapagar@exsergia.eng.br'];
+const LOGIN_EMAIL_ALIASES: Record<string, string> = {
+  'contasapagar@exsergia.eng.vc': 'contasapagar@exsergia.eng.br',
+};
 
 const canAccessReportsByEmail = (email?: string | null) =>
-  !!email && REPORTS_EMAILS.includes(email.toLowerCase());
+  !!email && REPORTS_EMAILS.includes(email.trim().toLowerCase());
+
+const normalizeLoginEmail = (email: string) =>
+  LOGIN_EMAIL_ALIASES[email.trim().toLowerCase()] || email.trim().toLowerCase();
 
 const isMissingResolveLoginRpc = (error: unknown) => {
   const err = error as { code?: string; message?: string };
@@ -134,7 +140,7 @@ async function resolveLoginEmailFallback(input: string) {
 async function resolveLoginEmail(input: string) {
   const value = input.trim().toLowerCase();
   if (!value) return '';
-  if (value.includes('@')) return value;
+  if (value.includes('@')) return normalizeLoginEmail(value);
 
   const { data, error } = await supabase.rpc('resolve_login_identifier', {
     p_identifier: value.replace(/\D/g, ''),
@@ -227,7 +233,7 @@ function App() {
 
     try {
       const meta = u.user_metadata || {};
-      const emailLower = (u.email || '').toLowerCase();
+      const emailLower = normalizeLoginEmail(u.email || '');
       const cpfLimpo = String(meta.cpf || '').replace(/\D/g, '');
 
       const opRef = doc(db, 'operadores', u.id);
@@ -285,8 +291,9 @@ function App() {
         setEncarregadoObraIds([]);
       } else {
         const data = opSnap.data() as Operator;
-        const nextRole = isAdminByRegistry ? 'admin' : 'operator';
-        const nextProfile = { ...data, role: nextRole } as Operator;
+        const existingRole = data.role || 'operator';
+        const nextRole = isAdminByRegistry || existingRole === 'admin' ? 'admin' : 'operator';
+        const nextProfile = { ...data, email: emailLower || data.email, role: nextRole } as Operator;
         if (data.role !== nextRole) {
           await withTimeout(updateDoc(opRef, { role: nextRole }), 5000, 'Atualização do perfil');
         }
