@@ -305,7 +305,12 @@ function App() {
       setCurrentUser(null);
       setUser(null);
       setUserProfile(null);
-      notify('error', 'Erro de conexão com Supabase', 'Verifique o arquivo .env, a URL, a chave publishable e se você rodou o schema.sql.');
+      const message = e instanceof Error ? e.message : String(e || '');
+      notify(
+        'error',
+        'Erro de conexão com Supabase',
+        message ? `Detalhe: ${message}` : 'Não foi possível carregar seu perfil. Feche o app, abra novamente e tente de novo.'
+      );
     } finally {
       setLoading(false);
     }
