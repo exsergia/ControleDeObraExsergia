@@ -120,7 +120,7 @@ async function resolveLoginEmailFallback(input: string) {
     .maybeSingle();
 
   const cpfEmail = (cpfRow?.data as any)?.email;
-  if (cpfEmail) return String(cpfEmail).toLowerCase();
+  if (cpfEmail) return normalizeLoginEmail(String(cpfEmail));
 
   const { data: operadores } = await supabase
     .from('operadores')
@@ -134,7 +134,7 @@ async function resolveLoginEmailFallback(input: string) {
     return cpf === digits || telefone === digits;
   }) as any;
 
-  return String(match?.email || match?.data?.email || '').toLowerCase();
+  return normalizeLoginEmail(String(match?.email || match?.data?.email || ''));
 }
 
 async function resolveLoginEmail(input: string) {

@@ -274,10 +274,41 @@ export function writeBatch(_db: unknown) {
       if (!error) return;
       if (!String(error.message || '').includes('Could not find the function')) throw error;
 
-      for (const op of ops) {
-        if (op.type === 'set') await setDoc({ table: op.table, id: op.id }, op.value);
-        if (op.type === 'update') await updateDoc({ table: op.table, id: op.id }, op.value);
-        if (op.type === 'delete') await deleteDoc({ table: op.table, id: op.id });
+      const refs = Array.from(new Map(
+        ops.map(op => [`${op.table}/${op.id}`, { table: op.table, id: op.id }])
+      ).values());
+      const before = new Map<string, { exists: boolean; data: any }>();
+
+      for (const ref of refs) {
+        const snap = await getDoc(ref);
+        before.set(`${ref.table}/${ref.id}`, {
+          exists: snap.exists(),
+          data: snap.exists() ? snap.data() : null,
+        });
+      }
+
+      const rollback = async () => {
+        for (const ref of refs.reverse()) {
+          const previous = before.get(`${ref.table}/${ref.id}`);
+          if (!previous) continue;
+          try {
+            if (previous.exists) await setDoc(ref, previous.data);
+            else await deleteDoc(ref);
+          } catch (rollbackError) {
+            console.error('Falha ao desfazer gravação parcial do lote:', rollbackError);
+          }
+        }
+      };
+
+      try {
+        for (const op of ops) {
+          if (op.type === 'set') await setDoc({ table: op.table, id: op.id }, op.value);
+          if (op.type === 'update') await updateDoc({ table: op.table, id: op.id }, op.value);
+          if (op.type === 'delete') await deleteDoc({ table: op.table, id: op.id });
+        }
+      } catch (fallbackError) {
+        await rollback();
+        throw fallbackError;
       }
     },
   };
