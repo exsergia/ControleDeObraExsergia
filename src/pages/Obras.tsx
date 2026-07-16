@@ -35,14 +35,12 @@ export default function Obras() {
   const { isAdmin, notify } = useAuth();
   const [obrasSnap, loading, obrasError] = useCollection(collection(db, 'obras'));
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isAtividadeModalOpen, setIsAtividadeModalOpen] = useState(false);
   const [selectedObra, setSelectedObra] = useState<Obra | null>(null);
   const [editingObra, setEditingObra] = useState<Obra | null>(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('Todas');
   const [isSavingObra, setIsSavingObra] = useState(false);
-  const [isSavingAtividade, setIsSavingAtividade] = useState(false);
 
   const [formData, setFormData, limparRascunhoObra] = useAutoSaveForm<Partial<Obra>>('rascunho-nova-obra', {
     nome: '',
@@ -53,15 +51,6 @@ export default function Obras() {
     status: 'Ativa',
   });
 
-  const [atividadeForm, setAtividadeForm, limparRascunhoAtividade] = useAutoSaveForm('rascunho-nova-atividade-obras', {
-    obraId: '',
-    descricao: '',
-    unidade: 'un',
-    quantidadePrevista: 1,
-    quantidadeExecutada: 0,
-    valorUnitario: 0,
-    equipeResponsavel: ''
-  });
 
   const openCreateObra = () => {
     setEditingObra(null);
@@ -149,41 +138,6 @@ export default function Obras() {
     }
   };
 
-  const handleAddAtividade = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (isSavingAtividade) return;
-
-    if (!atividadeForm.descricao?.trim()) {
-      notify('warning', 'Campo obrigatório', 'Informe a descrição da atividade.');
-      return;
-    }
-
-    const quantidadePrevista = Number(atividadeForm.quantidadePrevista) || 0;
-    const quantidadeExecutada = Number(atividadeForm.quantidadeExecutada) || 0;
-
-    setIsSavingAtividade(true);
-    try {
-      await addDoc(collection(db, 'atividades'), {
-        obraId: atividadeForm.obraId || '',
-        descricao: atividadeForm.descricao.trim(),
-        unidade: atividadeForm.unidade || 'un',
-        quantidadePrevista,
-        quantidadeExecutada,
-        percentual: quantidadePrevista > 0 ? Math.min(100, (quantidadeExecutada / quantidadePrevista) * 100) : 0,
-        valorUnitario: Number(atividadeForm.valorUnitario) || 0,
-        equipeResponsavel: atividadeForm.equipeResponsavel?.trim() || '',
-        createdAt: serverTimestamp()
-      });
-      setIsAtividadeModalOpen(false);
-      limparRascunhoAtividade();
-      notify('success', 'Atividade cadastrada', 'A atividade foi criada de forma independente.');
-    } catch (err: any) {
-      notify('error', 'Erro ao Salvar', err.message || 'Não foi possível cadastrar a atividade.');
-      handleFirestoreError(err, OperationType.WRITE, 'atividades');
-    } finally {
-      setIsSavingAtividade(false);
-    }
-  };
 
   const todasObras = (obrasSnap?.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Obra[]) || [];
   const obras = todasObras;
@@ -251,13 +205,6 @@ export default function Obras() {
                 >
                   <Plus className="w-5 h-5" />
                   Nova Obra
-                </button>
-                <button
-                  onClick={() => setIsAtividadeModalOpen(true)}
-                  className="flex items-center justify-center gap-2 px-5 py-2.5 bg-white text-zinc-900 border border-zinc-200 rounded-lg font-semibold hover:bg-zinc-50 transition-all shadow-sm active:scale-95"
-                >
-                  <Activity className="w-5 h-5" />
-                  Nova Atividade
                 </button>
               </div>
             )}
@@ -449,150 +396,6 @@ export default function Obras() {
         </div>
       )}
 
-      {isAtividadeModalOpen && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white w-full max-w-xl rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 max-h-[92dvh] overflow-y-auto">
-            <div className="p-6 border-b border-zinc-100 flex items-center justify-between bg-zinc-50">
-              <div>
-                <h3 className="text-lg font-bold text-zinc-900 tracking-tight uppercase tracking-wider">Nova Atividade</h3>
-                <p className="text-xs text-zinc-500 mt-1">Cadastro independente. Vincule a uma obra somente se precisar.</p>
-              </div>
-              <button onClick={() => setIsAtividadeModalOpen(false)} className="p-2 hover:bg-zinc-200 rounded-full transition-colors">
-                <Plus className="w-6 h-6 rotate-45 text-zinc-500" />
-              </button>
-            </div>
-
-            <form onSubmit={handleAddAtividade} className="p-6 space-y-5">
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-zinc-500 uppercase tracking-widest pl-1">Vincular à Obra (opcional)</label>
-                <div className="relative">
-                  <Building2 className="absolute left-3 top-3 w-4 h-4 text-zinc-400" />
-                  <select
-                    className="w-full pl-10 pr-9 py-2.5 bg-zinc-50 border border-zinc-200 rounded-lg text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-zinc-900/10"
-                    value={atividadeForm.obraId}
-                    onChange={(e) => setAtividadeForm({ ...atividadeForm, obraId: e.target.value })}
-                  >
-                    <option value="">Sem obra vinculada</option>
-                    {obras.filter(o => o.status !== 'Concluída').map(o => (
-                      <option key={o.id} value={o.id}>{o.nome}</option>
-                    ))}
-                  </select>
-                  <ChevronDown className="absolute right-3 top-3 w-4 h-4 text-zinc-400 pointer-events-none" />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-zinc-500 uppercase tracking-widest pl-1">Tipo / Descrição da Atividade</label>
-                <input
-                  required
-                  type="text"
-                  className="w-full px-4 py-2.5 bg-zinc-50 border border-zinc-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900/10"
-                  placeholder="Ex: Visita técnica, SPDA, Manutenção..."
-                  value={atividadeForm.descricao}
-                  onChange={(e) => setAtividadeForm({ ...atividadeForm, descricao: e.target.value })}
-                />
-                <div className="flex flex-wrap gap-2">
-                  {['Visita técnica', 'SPDA', 'Manutenção'].map(sugestao => (
-                    <button
-                      key={sugestao}
-                      type="button"
-                      onClick={() => setAtividadeForm({ ...atividadeForm, descricao: sugestao, unidade: 'un' })}
-                      className="px-3 py-1.5 rounded-lg bg-zinc-100 text-zinc-700 text-xs font-bold hover:bg-zinc-200 transition-colors"
-                    >
-                      {sugestao}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="grid sm:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <label className="text-xs font-bold text-zinc-500 uppercase tracking-widest pl-1">Quantidade Prevista</label>
-                  <div className="flex gap-2">
-                    <input
-                      required
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      className="flex-1 min-w-0 px-4 py-2.5 bg-zinc-50 border border-zinc-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900/10"
-                      value={!atividadeForm.quantidadePrevista ? '' : atividadeForm.quantidadePrevista}
-                      onKeyDown={(e) => ['-', '+', 'e', 'E'].includes(e.key) && e.preventDefault()}
-                      onChange={(e) => setAtividadeForm({ ...atividadeForm, quantidadePrevista: Math.max(0, parseFloat(e.target.value) || 0) })}
-                    />
-                    <select
-                      className="w-24 px-3 py-2.5 bg-zinc-50 border border-zinc-200 rounded-lg text-sm font-bold focus:outline-none"
-                      value={atividadeForm.unidade}
-                      onChange={(e) => setAtividadeForm({ ...atividadeForm, unidade: e.target.value })}
-                    >
-                      <option value="un">un</option>
-                      <option value="m">m</option>
-                      <option value="m²">m²</option>
-                      <option value="pt">pt</option>
-                    </select>
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <label className="text-xs font-bold text-zinc-500 uppercase tracking-widest pl-1">Quantidade Executada</label>
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    className="w-full px-4 py-2.5 bg-zinc-50 border border-zinc-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900/10"
-                    value={!atividadeForm.quantidadeExecutada ? '' : atividadeForm.quantidadeExecutada}
-                    onKeyDown={(e) => ['-', '+', 'e', 'E'].includes(e.key) && e.preventDefault()}
-                    onChange={(e) => setAtividadeForm({ ...atividadeForm, quantidadeExecutada: Math.max(0, parseFloat(e.target.value) || 0) })}
-                  />
-                </div>
-              </div>
-
-              <div className="grid sm:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <label className="text-xs font-bold text-zinc-500 uppercase tracking-widest pl-1">Valor Unitário (R$)</label>
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    className="w-full px-4 py-2.5 bg-zinc-50 border border-zinc-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900/10"
-                    value={!atividadeForm.valorUnitario ? '' : atividadeForm.valorUnitario}
-                    onKeyDown={(e) => ['-', '+', 'e', 'E'].includes(e.key) && e.preventDefault()}
-                    onChange={(e) => setAtividadeForm({ ...atividadeForm, valorUnitario: Math.max(0, parseFloat(e.target.value) || 0) })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-xs font-bold text-zinc-500 uppercase tracking-widest pl-1">Equipe Responsável</label>
-                  <input
-                    type="text"
-                    className="w-full px-4 py-2.5 bg-zinc-50 border border-zinc-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900/10"
-                    placeholder="Ex: Equipe Alfa"
-                    value={atividadeForm.equipeResponsavel}
-                    onChange={(e) => setAtividadeForm({ ...atividadeForm, equipeResponsavel: e.target.value })}
-                  />
-                </div>
-              </div>
-
-              <div className="pt-4 flex gap-3">
-                <button
-                  type="button"
-                  onClick={() => setIsAtividadeModalOpen(false)}
-                  className="flex-1 py-3 text-sm font-semibold text-zinc-600 hover:bg-zinc-100 rounded-xl transition-colors"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSavingAtividade}
-                  className={cn(
-                    "flex-1 py-3 text-sm font-semibold text-white rounded-xl transition-colors shadow-lg shadow-zinc-200",
-                    isSavingAtividade ? "bg-zinc-400 cursor-not-allowed" : "bg-zinc-900 hover:bg-zinc-800"
-                  )}
-                >
-                  {isSavingAtividade ? 'Criando...' : 'Criar Atividade'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
