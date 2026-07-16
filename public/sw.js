@@ -1,4 +1,10 @@
-const CACHE_NAME = 'exsergia-app-v4';
+const CACHE_NAME = 'exsergia-app-v5';
+
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
+});
 
 // Ao instalar, já coloca o HTML principal no cache
 self.addEventListener('install', (event) => {
@@ -39,7 +45,10 @@ self.addEventListener('fetch', (event) => {
         .then(response => {
           if (response.ok) {
             const clone = response.clone();
-            caches.open(CACHE_NAME).then(c => c.put(event.request, clone));
+            caches.open(CACHE_NAME).then(c => {
+              c.put(event.request, clone);
+              c.put('/', response.clone());
+            });
           }
           return response;
         })
