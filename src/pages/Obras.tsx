@@ -20,6 +20,7 @@ import {
   Users,
   Briefcase,
   Trash2,
+  Pencil,
   ExternalLink,
   ShieldCheck,
   ClipboardCheck,
@@ -36,6 +37,7 @@ export default function Obras() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isAtividadeModalOpen, setIsAtividadeModalOpen] = useState(false);
   const [selectedObra, setSelectedObra] = useState<Obra | null>(null);
+  const [editingObra, setEditingObra] = useState<Obra | null>(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('Todas');
@@ -61,13 +63,46 @@ export default function Obras() {
     equipeResponsavel: ''
   });
 
-  const handleAddObra = async (e: React.FormEvent) => {
+  const openCreateObra = () => {
+    setEditingObra(null);
+    setFormData({
+      nome: '',
+      cliente: '',
+      endereco: '',
+      responsavel: '',
+      centroCusto: '',
+      status: 'Ativa',
+    });
+    setIsModalOpen(true);
+  };
+
+  const openEditObra = (obra: Obra) => {
+    setEditingObra(obra);
+    setFormData({
+      nome: obra.nome || '',
+      cliente: obra.cliente || '',
+      endereco: obra.endereco || '',
+      responsavel: obra.responsavel || '',
+      centroCusto: obra.centroCusto || '',
+      status: obra.status || 'Ativa',
+    });
+    setIsModalOpen(true);
+  };
+
+  const closeObraModal = () => {
+    setIsModalOpen(false);
+    setEditingObra(null);
+    limparRascunhoObra();
+  };
+
+  const handleSaveObra = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isSavingObra) return;
 
     const nomeNormalizado = (formData.nome || '').trim().toLowerCase();
     const clienteNormalizado = (formData.cliente || '').trim().toLowerCase();
     const jaExiste = obras.some(o =>
+      o.id !== editingObra?.id &&
       (o.nome || '').trim().toLowerCase() === nomeNormalizado &&
       (o.cliente || '').trim().toLowerCase() === clienteNormalizado
     );
@@ -79,19 +114,35 @@ export default function Obras() {
 
     setIsSavingObra(true);
     try {
-      await addDoc(collection(db, 'obras'), {
-        ...formData,
+      const payload = {
         nome: (formData.nome || '').trim(),
         cliente: (formData.cliente || '').trim(),
-        operadoresIds: [],
-        equipe: [],
-        createdAt: serverTimestamp()
-      });
+        endereco: (formData.endereco || '').trim(),
+        responsavel: (formData.responsavel || '').trim(),
+        centroCusto: formData.centroCusto || '',
+        status: (formData.status || 'Ativa') as ObraStatus,
+        updatedAt: serverTimestamp(),
+      };
+
+      if (editingObra) {
+        await updateDoc(doc(db, 'obras', editingObra.id), payload);
+        setSelectedObra(prev => prev?.id === editingObra.id ? { ...prev, ...payload } as Obra : prev);
+        notify('success', 'Obra atualizada', 'As informações da obra foram salvas.');
+      } else {
+        await addDoc(collection(db, 'obras'), {
+          ...payload,
+          operadoresIds: [],
+          equipe: [],
+          createdAt: serverTimestamp()
+        });
+        notify('success', 'Sucesso', 'Obra cadastrada com sucesso!');
+      }
+
       setIsModalOpen(false);
+      setEditingObra(null);
       limparRascunhoObra();
-      notify('success', 'Sucesso', 'Obra cadastrada com sucesso!');
     } catch (err: any) {
-      notify('error', 'Erro ao Salvar', err.message || 'Não foi possível cadastrar a obra.');
+      notify('error', 'Erro ao Salvar', err.message || 'Não foi possível salvar a obra.');
       handleFirestoreError(err, OperationType.WRITE, 'obras');
     } finally {
       setIsSavingObra(false);
@@ -178,6 +229,7 @@ export default function Obras() {
           onBack={() => setIsDetailsOpen(false)} 
           onUpdateStatus={handleUpdateStatus}
           onDelete={handleDeleteObra}
+          onEdit={openEditObra}
         />
       ) : (
         <>
@@ -190,7 +242,7 @@ export default function Obras() {
               <div className="flex flex-col sm:flex-row gap-3">
                 <button
                   data-tour="obras-new"
-                  onClick={() => setIsModalOpen(true)}
+                  onClick={openCreateObra}
                   className="flex items-center justify-center gap-2 px-5 py-2.5 bg-zinc-900 text-white rounded-lg font-semibold hover:bg-zinc-800 transition-all shadow-lg shadow-zinc-200 active:scale-95"
                 >
                   <Plus className="w-5 h-5" />
@@ -261,6 +313,7 @@ export default function Obras() {
                   }}
                   onDelete={() => handleDeleteObra(obra.id)}
                   onStatusUpdate={(s) => handleUpdateStatus(obra.id, s)}
+                  onEdit={() => openEditObra(obra)}
                 />
               ))
             ) : (
@@ -278,12 +331,12 @@ export default function Obras() {
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="bg-white w-full max-w-xl rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 max-h-[92dvh] overflow-y-auto">
             <div className="p-6 border-b border-zinc-100 flex items-center justify-between bg-zinc-50">
-              <h3 className="text-lg font-bold text-zinc-900 tracking-tight uppercase tracking-wider">Nova Obra</h3>
-              <button onClick={() => setIsModalOpen(false)} className="p-2 hover:bg-zinc-200 rounded-full transition-colors">
+              <h3 className="text-lg font-bold text-zinc-900 tracking-tight uppercase tracking-wider">{editingObra ? 'Editar Obra' : 'Nova Obra'}</h3>
+              <button onClick={closeObraModal} className="p-2 hover:bg-zinc-200 rounded-full transition-colors">
                 <Plus className="w-6 h-6 rotate-45 text-zinc-500" />
               </button>
             </div>
-            <form onSubmit={handleAddObra} className="p-6 space-y-5">
+            <form onSubmit={handleSaveObra} className="p-6 space-y-5">
               <div className="grid sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <label className="text-xs font-bold text-zinc-500 uppercase tracking-widest pl-1">Nome da Obra</label>
@@ -371,7 +424,7 @@ export default function Obras() {
               <div className="pt-4 flex gap-3">
                 <button 
                   type="button" 
-                  onClick={() => setIsModalOpen(false)}
+                  onClick={closeObraModal}
                   className="flex-1 py-3 text-sm font-semibold text-zinc-600 hover:bg-zinc-100 rounded-xl transition-colors"
                 >
                   Cancelar
@@ -384,7 +437,7 @@ export default function Obras() {
                     isSavingObra ? "bg-zinc-400 cursor-not-allowed" : "bg-zinc-900 hover:bg-zinc-800"
                   )}
                 >
-                  {isSavingObra ? 'Criando...' : 'Criar Obra'}
+                  {isSavingObra ? 'Salvando...' : editingObra ? 'Salvar Alterações' : 'Criar Obra'}
                 </button>
               </div>
             </form>
@@ -544,13 +597,15 @@ function ObraCard({
   obra, 
   onViewDetails, 
   onDelete,
-  onStatusUpdate
+  onStatusUpdate,
+  onEdit
 }: { 
   key?: string | number,
   obra: Obra, 
   onViewDetails: () => void, 
   onDelete: () => void | Promise<void>,
-  onStatusUpdate: (s: ObraStatus) => void | Promise<void>
+  onStatusUpdate: (s: ObraStatus) => void | Promise<void>,
+  onEdit: () => void | Promise<void>
 }) {
   const { isAdmin } = useAuth();
   const [showMenu, setShowMenu] = useState(false);
@@ -648,6 +703,13 @@ function ObraCard({
                 {isAdmin && (
                   <>
                     <div className="h-px bg-zinc-100 my-1" />
+                    <button
+                      onClick={() => { onEdit(); setShowMenu(false); }}
+                      className="w-full flex items-center gap-2 px-3 py-2 text-xs font-bold text-zinc-600 hover:bg-zinc-50 rounded-lg transition-colors"
+                    >
+                      <Pencil className="w-4 h-4" />
+                      Editar Obra
+                    </button>
                     <button 
                       onClick={() => { onDelete(); setShowMenu(false); }}
                       className="w-full flex items-center gap-2 px-3 py-2 text-xs font-bold text-red-600 hover:bg-red-50 rounded-lg transition-colors"
@@ -774,12 +836,14 @@ function ObraDetails({
   obra,
   onBack,
   onUpdateStatus,
-  onDelete
+  onDelete,
+  onEdit
 }: {
   obra: Obra,
   onBack: () => void,
   onUpdateStatus: (obraId: string, status: ObraStatus) => void,
-  onDelete: (obraId: string) => void
+  onDelete: (obraId: string) => void,
+  onEdit: (obra: Obra) => void
 }) {
   const { isAdmin, isEncarregado, notify } = useAuth();
   const navigate = useNavigate();
@@ -912,6 +976,15 @@ function ObraDetails({
           </div>
         </div>
         <div className="flex gap-2">
+          {isAdmin && (
+            <button
+              onClick={() => onEdit(obra)}
+              className="flex-1 px-3 py-2 bg-white text-zinc-900 border border-zinc-200 rounded-lg text-xs font-bold uppercase tracking-widest hover:bg-zinc-50 transition-all flex items-center justify-center gap-1.5"
+            >
+              <Pencil className="w-3.5 h-3.5 shrink-0" />
+              <span className="truncate">Editar</span>
+            </button>
+          )}
           <button
             onClick={handleStartChecklist}
             className="flex-1 px-3 py-2 bg-zinc-900 text-white rounded-lg text-xs font-bold uppercase tracking-widest hover:bg-zinc-700 transition-all flex items-center justify-center gap-1.5"
