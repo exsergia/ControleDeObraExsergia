@@ -239,17 +239,29 @@ function App() {
       const opRef = doc(db, 'operadores', u.id);
       const encRef = doc(db, 'encarregados', u.id);
 
-      // Todas as consultas em paralelo — reduz latência de login de 3 round-trips para 1
-      const [adminEmailSnap, adminCpfSnap, opSnap, encSnap] = await withTimeout(
-        Promise.all([
-          emailLower ? getDoc(doc(db, 'admin_access', `email:${emailLower}`)) : Promise.resolve(null),
-          cpfLimpo ? getDoc(doc(db, 'admin_access', `cpf:${cpfLimpo}`)) : Promise.resolve(null),
-          getDoc(opRef),
-          getDoc(encRef),
-        ]),
-        10000,
-        'Consulta de perfil'
-      );
+      const optionalGetDoc = async (label: string, promise: Promise<any>) => {
+        try {
+          return await withTimeout(promise, 5000, label);
+        } catch (error) {
+          console.warn(`${label} falhou durante o login. Seguindo com perfil principal.`, error);
+          return null;
+        }
+      };
+
+      const adminEmailPromise = emailLower
+        ? optionalGetDoc('Consulta de admin por e-mail', getDoc(doc(db, 'admin_access', `email:${emailLower}`)))
+        : Promise.resolve(null);
+      const adminCpfPromise = cpfLimpo
+        ? optionalGetDoc('Consulta de admin por CPF', getDoc(doc(db, 'admin_access', `cpf:${cpfLimpo}`)))
+        : Promise.resolve(null);
+      const encPromise = optionalGetDoc('Consulta de encarregado', getDoc(encRef));
+
+      const opSnap = await withTimeout(getDoc(opRef), 8000, 'Consulta do perfil principal');
+      const [adminEmailSnap, adminCpfSnap, encSnap] = await Promise.all([
+        adminEmailPromise,
+        adminCpfPromise,
+        encPromise,
+      ]);
 
       const emailAdminAtivo = adminEmailSnap?.exists()
         ? adminEmailSnap.data()?.ativo !== false
@@ -295,7 +307,8 @@ function App() {
         const nextRole = isAdminByRegistry || existingRole === 'admin' ? 'admin' : 'operator';
         const nextProfile = { ...data, email: emailLower || data.email, role: nextRole } as Operator;
         if (data.role !== nextRole) {
-          await withTimeout(updateDoc(opRef, { role: nextRole }), 5000, 'Atualização do perfil');
+          withTimeout(updateDoc(opRef, { role: nextRole }), 5000, 'Atualização do perfil')
+            .catch(error => console.warn('Não foi possível sincronizar a função do perfil agora.', error));
         }
         setUserProfile(nextProfile);
         setEncarregadoObraIds([]);
