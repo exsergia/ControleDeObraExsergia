@@ -26,16 +26,52 @@ export default function NotasFiscais() {
   const [showModal, setShowModal] = useState(false);
   const [editingDoc, setEditingDoc] = useState<FiscalDoc | null>(null);
   const [search, setSearch] = useState('');
+  const [obraFilter, setObraFilter] = useState('Todas');
+  const [pessoaFilter, setPessoaFilter] = useState('Todas');
 
   const docs = (docsSnap?.docs.map(d => ({ id: d.id, ...d.data() })) as FiscalDoc[]) || [];
+  const obraOptions = Array.from(
+    docs.reduce((acc, d) => {
+      const key = d.obraId || d.obraNome || '';
+      const label = d.obraNome || (d.obraId ? 'Obra sem nome' : '');
+      if (key && label) acc.set(key, label);
+      return acc;
+    }, new Map<string, string>())
+  ).sort((a, b) => a[1].localeCompare(b[1], 'pt-BR'));
+
+  const pessoaOptions = Array.from(
+    docs.reduce((acc, d) => {
+      (d.operadoresPresentes || []).forEach(p => {
+        const nome = (p.nome || '').trim();
+        if (nome) acc.add(nome);
+      });
+      const criadoPor = (d.criadoPorNome || '').trim();
+      if (criadoPor) acc.add(criadoPor);
+      return acc;
+    }, new Set<string>())
+  ).sort((a, b) => a.localeCompare(b, 'pt-BR'));
 
   const filtered = docs.filter(d => {
     const q = search.toLowerCase();
-    return (
+    const obraKey = d.obraId || d.obraNome || '';
+    const pessoas = [
+      d.criadoPorNome || '',
+      ...(d.operadoresPresentes || []).map(p => p.nome || '')
+    ];
+    const matchesObra = obraFilter === 'Todas' || obraKey === obraFilter;
+    const matchesPessoa = pessoaFilter === 'Todas' || pessoas.some(nome => nome === pessoaFilter);
+    const matchesSearch = !q || (
       (d.fornecedor || '').toLowerCase().includes(q) ||
       (d.observacoes || '').toLowerCase().includes(q) ||
       (d.cartaoFinal || '').includes(q) ||
-      (d.tipo || '').toLowerCase().includes(q)
+      (d.tipo || '').toLowerCase().includes(q) ||
+      (d.obraNome || '').toLowerCase().includes(q) ||
+      pessoas.some(nome => nome.toLowerCase().includes(q))
+    );
+    return (
+      matchesObra &&
+      matchesPessoa &&
+      matchesSearch
     );
   });
 
@@ -68,16 +104,42 @@ export default function NotasFiscais() {
         </button>
       </div>
 
-      <div className="flex flex-col sm:flex-row gap-3">
+      <div className="grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_220px_220px_auto] gap-3">
         <div data-tour="nf-search" className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
           <input
             type="text"
-            placeholder="Buscar por despesa, cartão, tipo..."
+            placeholder="Buscar por despesa, cartao, tipo, obra ou pessoa..."
             className="w-full pl-10 pr-4 py-2.5 bg-white border border-zinc-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900/10 shadow-sm"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
+        </div>
+        <div className="relative">
+          <HardHat className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400 pointer-events-none" />
+          <select
+            value={obraFilter}
+            onChange={(e) => setObraFilter(e.target.value)}
+            className="w-full pl-10 pr-8 py-2.5 bg-white border border-zinc-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900/10 shadow-sm appearance-none"
+          >
+            <option value="Todas">Todas as obras</option>
+            {obraOptions.map(([key, label]) => (
+              <option key={key} value={key}>{label}</option>
+            ))}
+          </select>
+        </div>
+        <div className="relative">
+          <Users className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400 pointer-events-none" />
+          <select
+            value={pessoaFilter}
+            onChange={(e) => setPessoaFilter(e.target.value)}
+            className="w-full pl-10 pr-8 py-2.5 bg-white border border-zinc-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900/10 shadow-sm appearance-none"
+          >
+            <option value="Todas">Todas as pessoas</option>
+            {pessoaOptions.map(nome => (
+              <option key={nome} value={nome}>{nome}</option>
+            ))}
+          </select>
         </div>
         <div data-tour="nf-total" className="flex items-center gap-2 px-4 py-2.5 bg-zinc-900 text-white rounded-xl shrink-0">
           <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">Total</span>

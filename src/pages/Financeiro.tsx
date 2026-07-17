@@ -48,6 +48,7 @@ export default function Financeiro() {
   const manutencoes = (manutencoesSnap?.docs.map(doc => ({ id: doc.id, ...doc.data() })) as EquipamentoManutencao[]) || [];
   const locacoes = (locacoesSnap?.docs.map(doc => ({ id: doc.id, ...doc.data() })) as EquipamentoLocacao[]) || [];
   const loadError = obrasError || materiaisError || atividadesError || fiscalError || toolsError || equipamentosError || manutencoesError || locacoesError;
+  const selectedObra = selectedObraId === 'Todas' ? null : obras.find(o => o.id === selectedObraId);
 
   const stats = useMemo(() => {
     const filterMat = materiais.filter(m => selectedObraId === 'Todas' || m.obraId === selectedObraId);
@@ -253,6 +254,55 @@ export default function Financeiro() {
            </select>
         </div>
       </div>
+
+      {selectedObra && (
+        <div className="bg-white rounded-2xl border border-zinc-200 shadow-sm overflow-hidden">
+          <div className="p-5 border-b border-zinc-100 flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Resumo financeiro da obra selecionada</p>
+              <h3 className="text-lg sm:text-xl font-black text-zinc-900 tracking-tight break-words mt-1">{selectedObra.nome}</h3>
+              <p className="text-xs text-zinc-500 font-medium break-words">
+                {(selectedObra.cliente || 'Cliente nao informado')} {selectedObra.centroCusto ? `- CC: ${selectedObra.centroCusto}` : ''}
+              </p>
+            </div>
+            <div className={cn(
+              "px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border self-start lg:self-auto",
+              selectedObra.status === 'Ativa' ? "bg-green-50 text-green-700 border-green-200" :
+              selectedObra.status === 'Concluída' ? "bg-blue-50 text-blue-700 border-blue-200" :
+              "bg-amber-50 text-amber-700 border-amber-200"
+            )}>
+              {selectedObra.status}
+            </div>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 p-5">
+            <SummaryItem icon={<Package className="w-4 h-4" />} label="Materiais da Obra" value={stats.matTotal} tone="red" sub={`${filteredMateriais.length} lancamento(s)`} />
+            <SummaryItem icon={<Activity className="w-4 h-4" />} label="Mao de Obra Executada" value={stats.ativTotalExecutado} tone="amber" sub={`orcado: ${brl(stats.ativTotalPrevisto)}`} />
+            <SummaryItem icon={<Receipt className="w-4 h-4" />} label="NF / Cupom Fiscal" value={stats.fiscalTotal} tone="zinc" sub="valor fiscal vinculado" />
+            <SummaryItem icon={<DollarSign className="w-4 h-4" />} label="Custo Operacional" value={stats.custoOperacional} tone="zinc" sub="materiais + mao de obra" />
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 px-5 pb-5">
+            <div className="rounded-xl bg-zinc-50 border border-zinc-100 p-4">
+              <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Saldo mao de obra</p>
+              <p className={cn(
+                "text-lg font-black mt-1",
+                stats.ativTotalPrevisto - stats.ativTotalExecutado >= 0 ? "text-green-700" : "text-red-700"
+              )}>
+                {brl(stats.ativTotalPrevisto - stats.ativTotalExecutado)}
+              </p>
+            </div>
+            <div className="rounded-xl bg-zinc-50 border border-zinc-100 p-4">
+              <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Auditoria</p>
+              <p className="text-sm font-black text-zinc-900 mt-1">
+                {stats.conferidos} conferido(s) / {stats.pendentes} pendente(s)
+              </p>
+            </div>
+            <div className="rounded-xl bg-zinc-50 border border-zinc-100 p-4">
+              <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Lancamentos filtrados</p>
+              <p className="text-lg font-black text-zinc-900 mt-1">{stats.count}</p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Consolidation Table / Cards */}
       <div className="bg-white rounded-2xl border border-zinc-200 shadow-sm overflow-hidden">
