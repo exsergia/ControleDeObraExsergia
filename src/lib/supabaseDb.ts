@@ -1,4 +1,4 @@
-import { supabase } from './supabase';
+import { supabase, withSupabaseRetry } from './supabase';
 
 export type WhereFilter = { type: 'where'; field: string; op: string; value: any };
 export type OrderFilter = { type: 'orderBy'; field: string; direction?: 'asc' | 'desc' };
@@ -110,7 +110,9 @@ function applyConstraints(items: any[], constraints: QueryConstraint[] = []) {
 }
 
 export async function getDoc(ref: DocRef) {
-  const { data, error } = await supabase.from(ref.table).select('*').eq('id', ref.id).maybeSingle();
+  const { data, error } = await withSupabaseRetry(
+    () => supabase.from(ref.table).select('*').eq('id', ref.id).maybeSingle()
+  );
   if (error) throw error;
   return docSnap(ref.id, data ? unwrap(data) : null);
 }
@@ -152,14 +154,14 @@ function buildServerQuery(ref: CollectionRef) {
 
 export async function getDocs(ref: CollectionRef) {
   // Tenta a consulta otimizada (menos payload trafegado).
-  let { data, error } = await buildServerQuery(ref);
+  let { data, error } = await withSupabaseRetry(() => buildServerQuery(ref));
 
   // Fallback seguro: se a consulta otimizada falhar (ex.: sintaxe JSONB não
   // aceita em algum campo), busca tudo e filtra/ordena/limita em JS — exatamente
   // o comportamento anterior. Garante que nada quebra.
   if (error) {
     console.warn('getDocs: consulta otimizada falhou, usando fallback completo:', error.message);
-    ({ data, error } = await supabase.from(ref.table).select('*'));
+    ({ data, error } = await withSupabaseRetry(() => supabase.from(ref.table).select('*')));
     if (error) throw error;
   }
 
@@ -208,7 +210,9 @@ export async function setDoc(ref: DocRef, value: any) {
     if (email !== undefined) row.email = email;
   }
 
-  const { error } = await supabase.from(ref.table).upsert(row);
+  const { error } = await withSupabaseRetry(
+    () => supabase.from(ref.table).upsert(row)
+  );
   if (error) throw error;
 }
 
@@ -219,14 +223,16 @@ export async function addDoc(ref: CollectionRef, value: any) {
 }
 
 export async function updateDoc(ref: DocRef, value: any) {
-  const { error } = await supabase.rpc('commit_json_batch', {
-    p_ops: [{
-      type: 'update',
-      table: ref.table,
-      id: ref.id,
-      value,
-    }],
-  });
+  const { error } = await withSupabaseRetry(
+    () => supabase.rpc('commit_json_batch', {
+      p_ops: [{
+        type: 'update',
+        table: ref.table,
+        id: ref.id,
+        value,
+      }],
+    })
+  );
   if (!error) return;
   if (!String(error.message || '').includes('Could not find the function')) throw error;
 

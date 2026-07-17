@@ -8,6 +8,7 @@ import {
   logOut,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
+  withSupabaseRetry,
 } from './lib/supabase';
 import { doc, getDoc, setDoc, updateDoc, collection, db, query, where } from './lib/supabaseDb';
 import { useCollection } from './lib/supabaseHooks';
@@ -122,19 +123,23 @@ async function resolveLoginEmailFallback(input: string) {
   const digits = input.replace(/\D/g, '');
   if (!digits) return '';
 
-  const { data: cpfRow } = await supabase
-    .from('cpfs')
-    .select('data')
-    .eq('id', digits)
-    .maybeSingle();
+  const { data: cpfRow } = await withSupabaseRetry(
+    () => supabase
+      .from('cpfs')
+      .select('data')
+      .eq('id', digits)
+      .maybeSingle()
+  );
 
   const cpfEmail = (cpfRow?.data as any)?.email;
   if (cpfEmail) return normalizeLoginEmail(String(cpfEmail));
 
-  const { data: operadores } = await supabase
-    .from('operadores')
-    .select('email, cpf, telefone, data')
-    .limit(1000);
+  const { data: operadores } = await withSupabaseRetry(
+    () => supabase
+      .from('operadores')
+      .select('email, cpf, telefone, data')
+      .limit(1000)
+  );
 
   const match = (operadores || []).find((row: any) => {
     const data = row.data || {};
@@ -151,9 +156,11 @@ async function resolveLoginEmail(input: string) {
   if (!value) return '';
   if (value.includes('@')) return normalizeLoginEmail(value);
 
-  const { data, error } = await supabase.rpc('resolve_login_identifier', {
-    p_identifier: value.replace(/\D/g, ''),
-  });
+  const { data, error } = await withSupabaseRetry(
+    () => supabase.rpc('resolve_login_identifier', {
+      p_identifier: value.replace(/\D/g, ''),
+    })
+  );
 
   if (error) {
     if (isMissingResolveLoginRpc(error)) return resolveLoginEmailFallback(value);
@@ -347,7 +354,7 @@ function App() {
   useEffect(() => {
     let mounted = true;
 
-    withTimeout(supabase.auth.getSession(), 5000, 'Inicialização do Supabase')
+    withTimeout(withSupabaseRetry(() => supabase.auth.getSession()), 8000, 'Inicialização do Supabase')
       .then(({ data }) => {
         if (!mounted) return;
         const u = data.session?.user || null;
@@ -688,9 +695,11 @@ function LoginView() {
         return;
       }
 
-      const { error } = await supabase.auth.resetPasswordForEmail(emailTarget, {
-        redirectTo: window.location.origin + window.location.pathname,
-      });
+      const { error } = await withSupabaseRetry(
+        () => supabase.auth.resetPasswordForEmail(emailTarget, {
+          redirectTo: window.location.origin + window.location.pathname,
+        })
+      );
       if (error) throw error;
       setRecuperarEnviado(true);
     } catch (err: any) {

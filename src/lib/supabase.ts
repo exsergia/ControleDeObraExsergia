@@ -33,6 +33,48 @@ export const auth = {
   currentUser: null as User | null,
 };
 
+function sleep(ms: number) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+export function isTransientSupabaseError(error: unknown) {
+  const message = error instanceof Error ? error.message : String((error as any)?.message || error || '');
+  const status = (error as any)?.status;
+  return (
+    status === 408 ||
+    status === 429 ||
+    (typeof status === 'number' && status >= 500) ||
+    /failed to fetch|networkerror|network request failed|fetch failed|timeout|temporarily unavailable/i.test(message)
+  );
+}
+
+export async function withSupabaseRetry<T>(
+  operation: () => PromiseLike<T> | T,
+  attempts = 3,
+  baseDelayMs = 500
+): Promise<T> {
+  let lastError: unknown;
+
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    try {
+      const result = await operation();
+      const responseError = (result as any)?.error;
+      if (responseError && isTransientSupabaseError(responseError) && attempt < attempts) {
+        lastError = responseError;
+        await sleep(baseDelayMs * attempt);
+        continue;
+      }
+      return result;
+    } catch (error) {
+      lastError = error;
+      if (!isTransientSupabaseError(error) || attempt === attempts) break;
+      await sleep(baseDelayMs * attempt);
+    }
+  }
+
+  throw lastError;
+}
+
 export function setCurrentUser(user: User | null) {
   auth.currentUser = user;
 }
@@ -43,7 +85,9 @@ export async function logOut() {
 }
 
 export async function signInWithEmailAndPassword(_auth: unknown, email: string, password: string) {
-  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+  const { data, error } = await withSupabaseRetry(
+    () => supabase.auth.signInWithPassword({ email, password })
+  );
   if (error) throw error;
   return { user: data.user };
 }
@@ -59,12 +103,24 @@ export async function changePassword(currentPassword: string, newPassword: strin
 }
 
 export async function createUserWithEmailAndPassword(_auth: unknown, email: string, password: string, metadata?: Record<string, unknown>) {
-  const { data, error } = await supabase.auth.signUp({
-    email,
-    password,
-    options: { data: metadata || {} },
-  });
-  if (error) throw error;
+  const { data, error } = await withSupabaseRetry(
+    () => supabase.auth.signUp({
+      email,
+      password,
+      options: { data: metadata || {} },
+    })
+  );
+  if (error) {
+    const message = String(error.message || '');
+    const code = String((error as any).code || '');
+    if (/already registered|already exists|email.*registered/i.test(message) || code === 'user_already_exists') {
+      const { data: loginData, error: loginError } = await withSupabaseRetry(
+        () => supabase.auth.signInWithPassword({ email, password })
+      );
+      if (!loginError && loginData.user) return { user: loginData.user };
+    }
+    throw error;
+  }
   if (!data.user) throw new Error('Usuário não foi criado no Supabase Auth.');
   return { user: data.user };
 }
