@@ -1,4 +1,5 @@
-const CACHE_NAME = 'exsergia-app-v5';
+const CACHE_NAME = 'exsergia-app-v6';
+const CACHE_PREFIX = 'exsergia-app';
 
 self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'SKIP_WAITING') {
@@ -21,7 +22,7 @@ self.addEventListener('activate', (event) => {
       self.clients.claim(),
       caches.keys().then(keys =>
         Promise.all(
-          keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k))
+          keys.filter(k => k.startsWith(CACHE_PREFIX) && k !== CACHE_NAME).map(k => caches.delete(k))
         )
       )
     ])

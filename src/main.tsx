@@ -11,6 +11,17 @@ createRoot(document.getElementById('root')!).render(
 
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
+    let refreshingForUpdate = false;
+
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (refreshingForUpdate) return;
+      refreshingForUpdate = true;
+      const reloadKey = 'exsergia-sw-refresh';
+      if (sessionStorage.getItem(reloadKey) === 'done') return;
+      sessionStorage.setItem(reloadKey, 'done');
+      window.location.reload();
+    });
+
     navigator.serviceWorker.register('/sw.js').then((registration) => {
       registration.update().catch(() => {});
 
@@ -19,7 +30,7 @@ if ('serviceWorker' in navigator) {
         if (!worker) return;
         worker.addEventListener('statechange', () => {
           if (worker.state === 'installed' && navigator.serviceWorker.controller) {
-            console.info('Nova versao do app disponivel. Ela sera usada na proxima abertura.');
+            worker.postMessage({ type: 'SKIP_WAITING' });
           }
         });
       });

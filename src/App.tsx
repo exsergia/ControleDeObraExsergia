@@ -325,6 +325,9 @@ function App() {
       }
     } catch (e) {
       console.error('Error fetching/registering user profile', e);
+      if (isNetworkFetchError(e)) {
+        resetAppRuntimeCache();
+      }
       setCurrentUser(null);
       setUser(null);
       setUserProfile(null);
@@ -332,7 +335,9 @@ function App() {
       notify(
         'error',
         'Erro de conexão com Supabase',
-        message ? `Detalhe: ${message}` : 'Não foi possível carregar seu perfil. Feche o app, abra novamente e tente de novo.'
+        isNetworkFetchError(e)
+          ? 'Falha de comunicação com o Supabase. Atualize a página ou feche e abra o app novamente.'
+          : message ? `Detalhe: ${message}` : 'Não foi possível carregar seu perfil. Feche o app, abra novamente e tente de novo.'
       );
     } finally {
       setLoading(false);
@@ -362,7 +367,12 @@ function App() {
         setUser(null);
         setUserProfile(null);
         setLoading(false);
-        notify('error', 'Supabase não respondeu', 'Confira se o .env está correto e reinicie o npm run dev.');
+        if (isNetworkFetchError(error)) {
+          resetAppRuntimeCache();
+          notify('error', 'Supabase não respondeu', 'Falha de comunicação com o Supabase. Atualize a página ou feche e abra o app novamente.');
+        } else {
+          notify('error', 'Supabase não respondeu', 'Não foi possível iniciar sua sessão agora. Tente novamente em instantes.');
+        }
       });
 
     const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
@@ -513,6 +523,32 @@ function OverdueToolsAlert() {
 }
 
 const LAST_ROUTE_KEY = 'last-route';
+const APP_CACHE_PREFIX = 'exsergia-app';
+
+function isNetworkFetchError(error: unknown) {
+  const message = error instanceof Error ? error.message : String((error as any)?.message || error || '');
+  return /failed to fetch|networkerror|network request failed|fetch failed/i.test(message);
+}
+
+async function resetAppRuntimeCache() {
+  try {
+    if ('caches' in window) {
+      const keys = await caches.keys();
+      await Promise.all(
+        keys
+          .filter(key => key.startsWith(APP_CACHE_PREFIX))
+          .map(key => caches.delete(key))
+      );
+    }
+
+    if ('serviceWorker' in navigator) {
+      const registrations = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(registrations.map(registration => registration.update().catch(() => undefined)));
+    }
+  } catch (error) {
+    console.warn('Nao foi possivel limpar o cache local do app.', error);
+  }
+}
 
 function RouteTracker() {
   const location = useLocation();
@@ -658,7 +694,12 @@ function LoginView() {
       if (error) throw error;
       setRecuperarEnviado(true);
     } catch (err: any) {
-      alert(err.message || 'Erro ao enviar link de recuperação.');
+      if (isNetworkFetchError(err)) {
+        await resetAppRuntimeCache();
+        alert('Falha de comunicacao com o Supabase. O cache local do app foi atualizado; feche e abra o app novamente ou atualize a pagina e tente outra vez.');
+      } else {
+        alert(err.message || 'Erro ao enviar link de recuperação.');
+      }
     } finally {
       setLoadingRecuperar(false);
     }
@@ -762,6 +803,9 @@ function LoginView() {
         alert('Informe um e-mail válido.');
       } else if (code === 'auth/weak-password') {
         alert('A senha é muito fraca. Use pelo menos 6 caracteres.');
+      } else if (isNetworkFetchError(error)) {
+        await resetAppRuntimeCache();
+        alert('Falha de comunicacao com o Supabase durante o cadastro. O cache local do app foi atualizado; feche e abra o app novamente ou atualize a pagina e tente outra vez.');
       } else {
         alert(error?.message || 'Erro ao cadastrar usuário.');
       }
@@ -799,6 +843,9 @@ function LoginView() {
         alert('Login ou senha inválidos.');
       } else if (code === 'auth/invalid-email') {
         alert('Informe um e-mail ou CPF válido.');
+      } else if (isNetworkFetchError(error)) {
+        await resetAppRuntimeCache();
+        alert('Falha de comunicacao com o Supabase. O cache local do app foi atualizado; feche e abra o app novamente ou atualize a pagina e tente outra vez.');
       } else {
         alert(error?.message || 'Erro ao fazer login.');
       }
