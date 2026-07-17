@@ -93,6 +93,12 @@ const Equipamentos = React.lazy(() => import('./pages/Equipamentos'));
 const SettingsPage = React.lazy(() => import('./pages/Settings'));
 
 const REPORTS_EMAILS = ['contasapagar@exsergia.eng.br'];
+const BOOTSTRAP_ADMIN_EMAILS = [
+  'nascimentoerick446@gmail.com',
+  'exsergiacel7234@gmail.com',
+  'contasapagar@exsergia.eng.br',
+  'rosangela@exsergia.eng.br',
+];
 const LOGIN_EMAIL_ALIASES: Record<string, string> = {
   'contasapagar@exsergia.eng.vc': 'contasapagar@exsergia.eng.br',
 };
@@ -102,6 +108,9 @@ const canAccessReportsByEmail = (email?: string | null) =>
 
 const normalizeLoginEmail = (email: string) =>
   LOGIN_EMAIL_ALIASES[email.trim().toLowerCase()] || email.trim().toLowerCase();
+
+const isBootstrapAdminEmail = (email?: string | null) =>
+  !!email && BOOTSTRAP_ADMIN_EMAILS.includes(email.trim().toLowerCase());
 
 const isMissingResolveLoginRpc = (error: unknown) => {
   const err = error as { code?: string; message?: string };
@@ -271,7 +280,7 @@ function App() {
         ? adminCpfSnap.data()?.ativo !== false
         : false;
 
-      const isAdminByRegistry = emailAdminAtivo || cpfAdminAtivo;
+      const isAdminByRegistry = emailAdminAtivo || cpfAdminAtivo || isBootstrapAdminEmail(emailLower);
       const isEncarregadoByRegistry = !isAdminByRegistry && encSnap.exists() && encSnap.data()?.ativo !== false;
 
       if (isEncarregadoByRegistry) {
@@ -298,7 +307,8 @@ function App() {
           funcao: isAdminByRegistry ? 'Administrador' : 'Operador de Campo',
           role: isAdminByRegistry ? 'admin' : 'operator',
         };
-        await withTimeout(setDoc(opRef, newProfile), 5000, 'Criação do perfil');
+        withTimeout(setDoc(opRef, newProfile), 5000, 'Criacao do perfil')
+          .catch(error => console.warn('Nao foi possivel gravar o perfil agora. Usando perfil local temporario.', error));
         setUserProfile(newProfile);
         setEncarregadoObraIds([]);
       } else {
