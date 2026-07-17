@@ -17,6 +17,7 @@ import {
   Hammer,
   Wrench,
   AlertCircle,
+  Download,
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 
@@ -108,6 +109,91 @@ export default function Financeiro() {
     return matchesSearch && matchesObra;
   });
 
+  const filteredFiscalDocs = fiscalDocs.filter(f => {
+    const q = search.toLowerCase();
+    const matchesSearch =
+      (f.fornecedor || '').toLowerCase().includes(q) ||
+      (f.observacoes || '').toLowerCase().includes(q) ||
+      (f.criadoPorNome || '').toLowerCase().includes(q) ||
+      (f.operadoresPresentes || []).some(op => (op.nome || '').toLowerCase().includes(q));
+    const matchesObra = selectedObraId === 'Todas' || f.obraId === selectedObraId;
+    return matchesSearch && matchesObra;
+  });
+
+  const handleExportExcel = async () => {
+    const { utils, writeFile } = await import('xlsx');
+    const workbook = utils.book_new();
+    const obraLabel = selectedObra?.nome || 'Todas as Obras';
+    const generatedAt = new Date();
+
+    const resumo = [
+      { Indicador: 'Filtro de obra', Valor: obraLabel },
+      { Indicador: 'Busca aplicada', Valor: search || 'Sem busca' },
+      { Indicador: 'Gerado em', Valor: generatedAt.toLocaleString('pt-BR') },
+      { Indicador: 'Custo operacional', Valor: stats.custoOperacional },
+      { Indicador: 'Receita registrada', Valor: stats.receitaTotal },
+      { Indicador: 'Resultado operacional', Valor: stats.resultadoOperacional },
+      { Indicador: 'Patrimonio cadastrado', Valor: stats.patrimonio },
+      { Indicador: 'Materiais', Valor: stats.matTotal },
+      { Indicador: 'Receita por progresso', Valor: stats.receitaProgressoExecutada },
+      { Indicador: 'Receita prevista por progresso', Valor: stats.receitaProgressoPrevista },
+      { Indicador: 'NF / Cupom fiscal', Valor: stats.fiscalTotal },
+      { Indicador: 'Manutencao de equipamentos', Valor: stats.manutencaoEquipamentos },
+      { Indicador: 'Locacoes de equipamentos', Valor: stats.receitaLocacoes },
+    ];
+
+    const materiaisData = filteredMateriais.map(m => ({
+      Obra: obras.find(o => o.id === m.obraId)?.nome || '',
+      Cliente: obras.find(o => o.id === m.obraId)?.cliente || '',
+      CentroCusto: obras.find(o => o.id === m.obraId)?.centroCusto || '',
+      DataEntrega: m.dataEntrega || '',
+      CodigoEntrega: m.codigoEntrega || '',
+      Descricao: m.descricao || '',
+      Fornecedor: m.fornecedor || '',
+      Quantidade: m.quantidade || 0,
+      Unidade: m.unidade || '',
+      PrecoUnitario: m.precoUnitario || 0,
+      ValorTotal: m.valorTotal || 0,
+      StatusConferencia: m.statusConferencia || '',
+    }));
+
+    const atividadesData = filteredAtividades.map(a => ({
+      Obra: obras.find(o => o.id === a.obraId)?.nome || '',
+      Cliente: obras.find(o => o.id === a.obraId)?.cliente || '',
+      CentroCusto: obras.find(o => o.id === a.obraId)?.centroCusto || '',
+      Descricao: a.descricao || '',
+      Unidade: a.unidade || '',
+      QuantidadePrevista: a.quantidadePrevista || 0,
+      QuantidadeExecutada: a.quantidadeExecutada || 0,
+      Percentual: a.percentual || 0,
+      ValorUnitario: a.valorUnitario || 0,
+      ReceitaPrevista: (a.quantidadePrevista || 0) * (a.valorUnitario || 0),
+      ReceitaExecutada: (a.quantidadeExecutada || 0) * (a.valorUnitario || 0),
+    }));
+
+    const fiscalData = filteredFiscalDocs.map(f => ({
+      Obra: obras.find(o => o.id === f.obraId)?.nome || '',
+      Cliente: obras.find(o => o.id === f.obraId)?.cliente || '',
+      CentroCusto: obras.find(o => o.id === f.obraId)?.centroCusto || '',
+      Data: f.data || '',
+      Tipo: f.tipo || '',
+      CartaoFinal: f.cartaoFinal || '',
+      Despesa: f.fornecedor || '',
+      Valor: f.valor || 0,
+      LancadoPor: f.criadoPorNome || '',
+      Presentes: (f.operadoresPresentes || []).map(op => op.nome).join(', '),
+      Observacoes: f.observacoes || '',
+    }));
+
+    utils.book_append_sheet(workbook, utils.json_to_sheet(resumo), 'Resumo');
+    utils.book_append_sheet(workbook, utils.json_to_sheet(materiaisData), 'Materiais');
+    utils.book_append_sheet(workbook, utils.json_to_sheet(atividadesData), 'Progresso');
+    utils.book_append_sheet(workbook, utils.json_to_sheet(fiscalData), 'NF Cupom');
+
+    const safeObra = obraLabel.replace(/[^a-z0-9]+/gi, '_').slice(0, 40);
+    writeFile(workbook, `Financeiro_${safeObra}_${generatedAt.toISOString().slice(0, 10)}.xlsx`);
+  };
+
   return (
     <div className="space-y-8 pb-20 animate-in fade-in duration-500">
       <div data-tour="fin-header" className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -115,6 +201,14 @@ export default function Financeiro() {
           <h2 className="text-2xl font-bold tracking-tight text-zinc-900 uppercase tracking-widest">Painel Financeiro</h2>
           <p className="text-zinc-500 text-sm font-medium">Consolidação de custos, receitas, patrimônio e auditoria de entregas.</p>
         </div>
+        <button
+          type="button"
+          onClick={handleExportExcel}
+          className="w-full md:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-zinc-900 text-white text-xs font-black uppercase tracking-widest shadow-sm hover:bg-zinc-800 active:scale-[0.99] transition-all"
+        >
+          <Download className="w-4 h-4" />
+          Exportar Excel
+        </button>
       </div>
 
       {loadError && (
