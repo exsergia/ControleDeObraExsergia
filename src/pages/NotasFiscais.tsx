@@ -252,6 +252,7 @@ function FiscalModal({
   const [data, setData] = useState(editDate ? format(editDate, 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd'));
   const [fornecedor, setFornecedor] = useState(editingDoc?.fornecedor || '');
   const [cartaoFinal, setCartaoFinal] = useState(editingDoc?.cartaoFinal || '');
+  const [observacoes, setObservacoes] = useState(editingDoc?.observacoes || '');
   const [obraId, setObraId] = useState(editingDoc?.obraId || '');
   const [operadoresPresentes, setOperadoresPresentes] = useState<string[]>((editingDoc?.operadoresPresentes || []).map(op => op.id));
   const [fotoFile, setFotoFile] = useState<File | null>(() => editingDoc?.fotoUrl ? new File([], 'existing-fiscal-photo') : null);
@@ -299,6 +300,7 @@ function FiscalModal({
           data: data ? new Date(`${data}T12:00:00`).toISOString() : serverTimestamp(),
           fornecedor: fornecedor.trim(),
           cartaoFinal: cartaoFinal.replace(/\D/g, '').slice(-4),
+          observacoes: observacoes.trim(),
           obraId: obraId || '',
           obraNome: obraSel?.nome || '',
           operadoresPresentes: presentes,
@@ -316,6 +318,7 @@ function FiscalModal({
         data: data ? new Date(`${data}T12:00:00`).toISOString() : serverTimestamp(),
         fornecedor: fornecedor.trim(),
         cartaoFinal: cartaoFinal.replace(/\D/g, '').slice(-4),
+        observacoes: observacoes.trim(),
         obraId: obraId || '',
         obraNome: obraSel?.nome || '',
         operadoresPresentes: presentes,
@@ -418,6 +421,17 @@ function FiscalModal({
                 placeholder="1234" value={cartaoFinal}
                 onChange={e => setCartaoFinal(e.target.value.replace(/\D/g, '').slice(0, 4))} />
             </div>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest pl-1">Observacao</label>
+            <textarea
+              rows={3}
+              className="w-full px-4 py-3 bg-zinc-50 border border-zinc-200 rounded-xl text-sm focus:outline-none focus:border-zinc-900 resize-none"
+              placeholder="Ex: motivo da despesa, detalhes da compra ou informacoes complementares..."
+              value={observacoes}
+              onChange={e => setObservacoes(e.target.value)}
+            />
           </div>
 
           {/* Obra vinculada */}
