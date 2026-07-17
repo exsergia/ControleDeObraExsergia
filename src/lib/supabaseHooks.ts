@@ -3,6 +3,8 @@ import { supabase } from './supabase';
 import { CollectionRef, getDocs } from './supabaseDb';
 
 let wasHiddenSinceLastLoad = false;
+const collectionCache = new Map<string, { snap: any; timestamp: number }>();
+const CACHE_TTL_MS = 60_000;
 
 if (typeof document !== 'undefined') {
   document.addEventListener('visibilitychange', () => {
@@ -25,8 +27,10 @@ export function useCollection(
   ref: CollectionRef | null | undefined,
   paused = false
 ): [any | undefined, boolean, Error | undefined, () => Promise<void>] {
-  const [snap, setSnap] = useState<any>();
-  const [loading, setLoading] = useState(!!ref);
+  const refKey = useMemo(() => JSON.stringify(ref || null), [ref]);
+  const cached = refKey ? collectionCache.get(refKey) : undefined;
+  const [snap, setSnap] = useState<any>(cached?.snap);
+  const [loading, setLoading] = useState(!!ref && !cached);
   const [error, setError] = useState<Error>();
 
   const refreshTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -35,13 +39,21 @@ export function useCollection(
   const pausedRef = useRef(paused);
   const pendingRefreshRef = useRef(false);
 
-  const refKey = useMemo(() => JSON.stringify(ref || null), [ref]);
-
   const loadData = useCallback(async (isInitial: boolean) => {
     if (!ref) {
       setSnap(undefined);
       setLoading(false);
       return;
+    }
+
+    const cachedResult = collectionCache.get(refKey);
+    const isCacheFresh = cachedResult && (Date.now() - cachedResult.timestamp) < CACHE_TTL_MS;
+
+    if (isInitial && cachedResult) {
+      setSnap(cachedResult.snap);
+      setLoading(false);
+      hasLoadedRef.current = true;
+      if (isCacheFresh) return;
     }
 
     // Realtime ignorado se: modal aberto OU página em/voltando de background
@@ -56,6 +68,7 @@ export function useCollection(
     try {
       setError(undefined);
       const result = await getDocs(ref);
+      collectionCache.set(refKey, { snap: result, timestamp: Date.now() });
       setSnap(result);
       hasLoadedRef.current = true;
     } catch (err) {
@@ -84,6 +97,15 @@ export function useCollection(
   useEffect(() => {
     let alive = true;
     hasLoadedRef.current = false;
+
+    const cachedResult = collectionCache.get(refKey);
+    if (cachedResult) {
+      setSnap(cachedResult.snap);
+      setLoading(false);
+    } else if (ref) {
+      setSnap(undefined);
+      setLoading(true);
+    }
 
     // Navegação = nova página = libera atualizações para esta sessão de uso
     wasHiddenSinceLastLoad = false;
