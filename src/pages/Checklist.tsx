@@ -581,6 +581,7 @@ function ChecklistLoadError({ title, message }: { title: string; message?: strin
 
 function ChecklistCamera({ onCapture, onClose }: { onCapture: (file: File) => void; onClose: () => void }) {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const [ready, setReady] = useState(false);
   const [camError, setCamError] = useState<string | null>(null);
@@ -589,6 +590,10 @@ function ChecklistCamera({ onCapture, onClose }: { onCapture: (file: File) => vo
 
   useEffect(() => {
     let mounted = true;
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setCamError('Câmera não disponível neste navegador. Use a opção de escolher foto.');
+      return () => { mounted = false; };
+    }
     navigator.mediaDevices.getUserMedia({
       video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } },
       audio: false,
@@ -624,6 +629,12 @@ function ChecklistCamera({ onCapture, onClose }: { onCapture: (file: File) => vo
     if (capturedFile) { onCapture(capturedFile); if (captured) URL.revokeObjectURL(captured); }
   };
 
+  const handleFileFallback = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) onCapture(file);
+    event.target.value = '';
+  };
+
   const handleRetake = () => {
     if (captured) URL.revokeObjectURL(captured);
     setCaptured(null); setCapturedFile(null); setReady(false);
@@ -650,7 +661,16 @@ function ChecklistCamera({ onCapture, onClose }: { onCapture: (file: File) => vo
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 p-8 text-center">
             <AlertCircle className="w-16 h-16 text-red-400" />
             <p className="text-white text-sm">{camError}</p>
-            <button type="button" onClick={handleClose} className="px-6 py-3 bg-white text-black rounded-xl font-bold text-sm">Fechar</button>
+            <button type="button" onClick={() => fileInputRef.current?.click()} className="px-6 py-3 bg-white text-black rounded-xl font-bold text-sm">Escolher Foto</button>
+            <button type="button" onClick={handleClose} className="px-6 py-3 border border-white/20 text-white rounded-xl font-bold text-sm">Fechar</button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              className="hidden"
+              onChange={handleFileFallback}
+            />
           </div>
         ) : captured ? (
           <img src={captured} className="w-full h-full object-contain" alt="Captura" />

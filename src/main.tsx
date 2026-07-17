@@ -17,8 +17,12 @@ if ('serviceWorker' in navigator) {
       if (refreshingForUpdate) return;
       refreshingForUpdate = true;
       const reloadKey = 'exsergia-sw-refresh';
-      if (sessionStorage.getItem(reloadKey) === 'done') return;
-      sessionStorage.setItem(reloadKey, 'done');
+      try {
+        if (sessionStorage.getItem(reloadKey) === 'done') return;
+        sessionStorage.setItem(reloadKey, 'done');
+      } catch {
+        // Safari/iPhone pode bloquear sessionStorage em alguns contextos.
+      }
       window.location.reload();
     });
 

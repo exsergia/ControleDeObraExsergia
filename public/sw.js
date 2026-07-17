@@ -110,7 +110,11 @@ self.addEventListener('push', (event) => {
     data: { url: payload.url || '/' },
   };
 
-  event.waitUntil(self.registration.showNotification(title, options));
+  event.waitUntil(
+    self.registration.showNotification(title, options).catch(error => {
+      console.warn('Notificacao nao exibida neste navegador:', error);
+    })
+  );
 });
 
 // Ao tocar na notificação, foca uma janela aberta ou abre o app.

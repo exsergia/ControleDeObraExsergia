@@ -574,7 +574,12 @@ function RouteTracker() {
   // Ao montar, se o app abriu na raiz mas havia uma rota salva, restaura.
   // Cobre tanto o refresh quanto reabrir o navegador (localStorage persiste).
   useEffect(() => {
-    const saved = localStorage.getItem(LAST_ROUTE_KEY);
+    let saved = '';
+    try {
+      saved = localStorage.getItem(LAST_ROUTE_KEY) || '';
+    } catch {
+      saved = '';
+    }
     if (saved && saved !== '/' && location.pathname === '/') {
       navigate(saved, { replace: true });
     }
@@ -583,7 +588,11 @@ function RouteTracker() {
 
   // Salva a rota atual (incluindo a Dashboard) sempre que ela muda.
   useEffect(() => {
-    localStorage.setItem(LAST_ROUTE_KEY, location.pathname + location.search);
+    try {
+      localStorage.setItem(LAST_ROUTE_KEY, location.pathname + location.search);
+    } catch {
+      // Alguns modos do Safari/iPhone bloqueiam localStorage.
+    }
   }, [location.pathname, location.search]);
 
   return null;

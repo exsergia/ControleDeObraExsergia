@@ -19,10 +19,15 @@ export const sendBrowserNotification = async (title: string, body: string) => {
   // no construtor (desktop) como fallback. Tudo protegido para nunca lançar.
   try {
     if ('serviceWorker' in navigator) {
-      const reg = await navigator.serviceWorker.ready;
+      const timeout = new Promise<never>((_, reject) =>
+        window.setTimeout(() => reject(new Error('Service worker indisponivel')), 1500)
+      );
+      const reg = await Promise.race([navigator.serviceWorker.ready, timeout]);
       // Sem `icon` (ícone grande): no Android ele fica à direita e corta o texto do corpo.
-      await reg.showNotification(title, { body, badge: '/icon-192.png' });
-      return;
+      if ('showNotification' in reg) {
+        await reg.showNotification(title, { body, badge: '/icon-192.png' });
+        return;
+      }
     }
   } catch {
     // ignora e tenta o fallback abaixo

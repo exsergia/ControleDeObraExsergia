@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { ChangeEvent, useEffect, useRef, useState } from 'react';
 import { X, AlertCircle, CheckCircle2 } from 'lucide-react';
 
 // Câmera in-browser (getUserMedia). Abre a câmera direto no app sem sair dele,
@@ -6,6 +6,7 @@ import { X, AlertCircle, CheckCircle2 } from 'lucide-react';
 // Componente compartilhado por Ferramentas, Frota e Materiais.
 export function CameraCapture({ onCapture, onClose }: { onCapture: (file: File) => void; onClose: () => void }) {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const [ready, setReady] = useState(false);
   const [camError, setCamError] = useState<string | null>(null);
@@ -16,6 +17,9 @@ export function CameraCapture({ onCapture, onClose }: { onCapture: (file: File) 
     let mounted = true;
     const startCamera = async () => {
       try {
+        if (!navigator.mediaDevices?.getUserMedia) {
+          throw new Error('getUserMedia indisponivel');
+        }
         const stream = await navigator.mediaDevices.getUserMedia({
           video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } },
           audio: false,
@@ -63,6 +67,12 @@ export function CameraCapture({ onCapture, onClose }: { onCapture: (file: File) 
     if (capturedFile) { onCapture(capturedFile); if (captured) URL.revokeObjectURL(captured); }
   };
 
+  const handleFileFallback = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) onCapture(file);
+    event.target.value = '';
+  };
+
   const handleRetake = () => {
     if (captured) URL.revokeObjectURL(captured);
     setCaptured(null);
@@ -93,7 +103,16 @@ export function CameraCapture({ onCapture, onClose }: { onCapture: (file: File) 
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 p-8 text-center">
             <AlertCircle className="w-16 h-16 text-red-400" />
             <p className="text-white text-sm">{camError}</p>
-            <button type="button" onClick={handleClose} className="px-6 py-3 bg-white text-black rounded-xl font-bold text-sm">Fechar</button>
+            <button type="button" onClick={() => fileInputRef.current?.click()} className="px-6 py-3 bg-white text-black rounded-xl font-bold text-sm">Escolher Foto</button>
+            <button type="button" onClick={handleClose} className="px-6 py-3 border border-white/20 text-white rounded-xl font-bold text-sm">Fechar</button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              className="hidden"
+              onChange={handleFileFallback}
+            />
           </div>
         ) : captured ? (
           <img src={captured} className="w-full h-full object-contain" alt="Captura" />

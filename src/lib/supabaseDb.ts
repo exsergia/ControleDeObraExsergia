@@ -8,7 +8,10 @@ export type CollectionRef = { table: string; constraints: QueryConstraint[] };
 export type DocRef = { table: string; id: string };
 
 const normalizeTable = (table: string) => table;
-const newId = () => crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2);
+const newId = () =>
+  typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+    ? crypto.randomUUID()
+    : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
 export const db = {};
 
