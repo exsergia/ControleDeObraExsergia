@@ -57,16 +57,17 @@ export default function Financeiro() {
     const includeGlobalAssets = selectedObraId === 'Todas';
     
     const matTotal = filterMat.reduce((acc, m) => acc + (m.valorTotal || 0), 0);
-    const ativTotalPrevisto = filterAtiv.reduce((acc, a) => acc + (a.quantidadePrevista * (a.valorUnitario || 0)), 0);
-    const ativTotalExecutado = filterAtiv.reduce((acc, a) => acc + (a.quantidadeExecutada * (a.valorUnitario || 0)), 0);
+    const receitaProgressoPrevista = filterAtiv.reduce((acc, a) => acc + (a.quantidadePrevista * (a.valorUnitario || 0)), 0);
+    const receitaProgressoExecutada = filterAtiv.reduce((acc, a) => acc + (a.quantidadeExecutada * (a.valorUnitario || 0)), 0);
     const fiscalTotal = filterFiscal.reduce((acc, f) => acc + (f.valor || 0), 0);
     const ferramentasPatrimonio = includeGlobalAssets ? tools.reduce((acc, t) => acc + (t.valor || 0), 0) : 0;
     const equipamentosPatrimonio = includeGlobalAssets ? equipamentos.reduce((acc, e) => acc + (e.valorAquisicao || 0), 0) : 0;
     const manutencaoEquipamentos = includeGlobalAssets ? manutencoes.reduce((acc, m) => acc + (m.custoTotal || 0), 0) : 0;
     const receitaLocacoes = includeGlobalAssets ? locacoes.reduce((acc, l) => acc + (l.valorLocacao || 0), 0) : 0;
-    const custoOperacional = matTotal + ativTotalExecutado + manutencaoEquipamentos;
+    const receitaTotal = receitaProgressoExecutada + receitaLocacoes;
+    const custoOperacional = matTotal + manutencaoEquipamentos;
     const patrimonio = ferramentasPatrimonio + equipamentosPatrimonio;
-    const resultadoOperacional = receitaLocacoes - custoOperacional;
+    const resultadoOperacional = receitaTotal - custoOperacional;
     
     const conferidos = filterMat.filter(m => m.statusConferencia === 'Conferido').length;
     const pendentes = filterMat.filter(m => m.statusConferencia === 'Pendente').length;
@@ -74,11 +75,14 @@ export default function Financeiro() {
     
     return { 
       matTotal, 
-      ativTotalPrevisto, 
-      ativTotalExecutado,
+      ativTotalPrevisto: receitaProgressoPrevista,
+      ativTotalExecutado: receitaProgressoExecutada,
       fiscalTotal,
       manutencaoEquipamentos,
       receitaLocacoes,
+      receitaProgressoPrevista,
+      receitaProgressoExecutada,
+      receitaTotal,
       patrimonio,
       custoOperacional,
       resultadoOperacional,
@@ -137,7 +141,7 @@ export default function Financeiro() {
            </div>
            <div className="min-w-0">
               <p className="text-xs font-bold text-zinc-400 uppercase tracking-widest leading-none mb-1">Receita Registrada</p>
-              <p className="text-lg sm:text-3xl font-black text-zinc-900 tracking-tighter truncate">{brl(stats.receitaLocacoes)}</p>
+              <p className="text-lg sm:text-3xl font-black text-zinc-900 tracking-tighter truncate">{brl(stats.receitaTotal)}</p>
            </div>
         </div>
         <div className={cn(
@@ -200,11 +204,11 @@ export default function Financeiro() {
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
             <SummaryItem icon={<Package className="w-4 h-4" />} label="Materiais" value={stats.matTotal} tone="red" />
-            <SummaryItem icon={<Activity className="w-4 h-4" />} label="Atividades Executadas" value={stats.ativTotalExecutado} tone="amber" sub={`orçado: ${brl(stats.ativTotalPrevisto)}`} />
+            <SummaryItem icon={<Activity className="w-4 h-4" />} label="Receita por Progresso" value={stats.receitaProgressoExecutada} tone="green" sub={`prevista: ${brl(stats.receitaProgressoPrevista)}`} />
             <SummaryItem icon={<Receipt className="w-4 h-4" />} label="NF / Cupom Fiscal" value={stats.fiscalTotal} tone="zinc" sub="referencia fiscal, nao soma no custo" />
             <SummaryItem icon={<Wrench className="w-4 h-4" />} label="Manutenção de Equipamentos" value={stats.manutencaoEquipamentos} tone="red" muted={!stats.includeGlobalAssets} />
             <SummaryItem icon={<Hammer className="w-4 h-4" />} label="Ferramentas + Equipamentos" value={stats.patrimonio} tone="zinc" muted={!stats.includeGlobalAssets} sub="patrimônio, não custo operacional" />
-            <SummaryItem icon={<TrendingUp className="w-4 h-4" />} label="Locações de Equipamentos" value={stats.receitaLocacoes} tone="green" muted={!stats.includeGlobalAssets} />
+            <SummaryItem icon={<TrendingUp className="w-4 h-4" />} label="Locações de Equipamentos" value={stats.receitaLocacoes} tone="green" muted={!stats.includeGlobalAssets} sub="tambem soma na receita" />
           </div>
         </div>
       </div>
@@ -276,13 +280,13 @@ export default function Financeiro() {
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 p-5">
             <SummaryItem icon={<Package className="w-4 h-4" />} label="Materiais da Obra" value={stats.matTotal} tone="red" sub={`${filteredMateriais.length} lancamento(s)`} />
-            <SummaryItem icon={<Activity className="w-4 h-4" />} label="Mao de Obra Executada" value={stats.ativTotalExecutado} tone="amber" sub={`orcado: ${brl(stats.ativTotalPrevisto)}`} />
+            <SummaryItem icon={<Activity className="w-4 h-4" />} label="Receita por Progresso" value={stats.receitaProgressoExecutada} tone="green" sub={`prevista: ${brl(stats.receitaProgressoPrevista)}`} />
             <SummaryItem icon={<Receipt className="w-4 h-4" />} label="NF / Cupom Fiscal" value={stats.fiscalTotal} tone="zinc" sub="valor fiscal vinculado" />
-            <SummaryItem icon={<DollarSign className="w-4 h-4" />} label="Custo Operacional" value={stats.custoOperacional} tone="zinc" sub="materiais + mao de obra" />
+            <SummaryItem icon={<DollarSign className="w-4 h-4" />} label="Custo Operacional" value={stats.custoOperacional} tone="zinc" sub="materiais + manutencoes" />
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 px-5 pb-5">
             <div className="rounded-xl bg-zinc-50 border border-zinc-100 p-4">
-              <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Saldo mao de obra</p>
+              <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Receita restante</p>
               <p className={cn(
                 "text-lg font-black mt-1",
                 stats.ativTotalPrevisto - stats.ativTotalExecutado >= 0 ? "text-green-700" : "text-red-700"
@@ -416,8 +420,8 @@ export default function Financeiro() {
                   <tr className="bg-zinc-50 border-b border-zinc-100">
                     <th className="px-6 py-4 text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Obra</th>
                     <th className="px-6 py-4 text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Atividade / Progresso</th>
-                    <th className="px-6 py-4 text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Custo Orçado</th>
-                    <th className="px-6 py-4 text-[10px] font-bold text-zinc-400 uppercase tracking-widest text-right">Custo Executado</th>
+                    <th className="px-6 py-4 text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Receita Prevista</th>
+                    <th className="px-6 py-4 text-[10px] font-bold text-zinc-400 uppercase tracking-widest text-right">Receita Executada</th>
                     <th className="px-6 py-4 text-[10px] font-bold text-zinc-400 uppercase tracking-widest text-center">Percentual</th>
                   </tr>
                 </thead>
