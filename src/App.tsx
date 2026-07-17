@@ -123,6 +123,15 @@ async function resolveLoginEmailFallback(input: string) {
   const digits = input.replace(/\D/g, '');
   if (!digits) return '';
 
+  const matchesIdentifier = (storedValue: string) => {
+    const stored = storedValue.replace(/\D/g, '');
+    if (!stored) return false;
+    if (stored === digits) return true;
+    if (digits.startsWith('55') && digits.slice(2) === stored) return true;
+    if (stored.startsWith('55') && stored.slice(2) === digits) return true;
+    return stored.length >= 10 && digits.length >= 10 && stored.slice(-11) === digits.slice(-11);
+  };
+
   const { data: cpfRow } = await withSupabaseRetry(
     () => supabase
       .from('cpfs')
@@ -143,9 +152,9 @@ async function resolveLoginEmailFallback(input: string) {
 
   const match = (operadores || []).find((row: any) => {
     const data = row.data || {};
-    const cpf = String(row.cpf || data.cpf || '').replace(/\D/g, '');
-    const telefone = String(row.telefone || data.telefone || '').replace(/\D/g, '');
-    return cpf === digits || telefone === digits;
+    const cpf = String(row.cpf || data.cpf || '');
+    const telefone = String(row.telefone || data.telefone || '');
+    return matchesIdentifier(cpf) || matchesIdentifier(telefone);
   }) as any;
 
   return normalizeLoginEmail(String(match?.email || match?.data?.email || ''));
@@ -166,7 +175,8 @@ async function resolveLoginEmail(input: string) {
     if (isMissingResolveLoginRpc(error)) return resolveLoginEmailFallback(value);
     throw error;
   }
-  return typeof data === 'string' ? data : '';
+  const rpcEmail = typeof data === 'string' ? normalizeLoginEmail(data) : '';
+  return rpcEmail || resolveLoginEmailFallback(value);
 }
 
 interface Notification {
