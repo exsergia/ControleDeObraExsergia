@@ -338,7 +338,7 @@ export default function Ferramentas() {
                 {minhasRetiradas.length === 0 ? (
                   <div className="p-8 text-center">
                     <Wrench className="w-8 h-8 text-zinc-200 mx-auto mb-3" />
-                    <p className="text-xs font-bold uppercase tracking-widest text-zinc-400">Nenhuma ferramenta com vocÃª</p>
+                    <p className="text-xs font-bold uppercase tracking-widest text-zinc-400">Nenhuma ferramenta com você</p>
                   </div>
                 ) : minhasRetiradas.map((log) => (
                   <MyToolItem
@@ -776,7 +776,7 @@ function MyToolsPanel({ logs, tools, obras, onReturn }: { logs: ToolLog[], tools
           {logs.length === 0 ? (
             <div className="p-8 text-center">
               <Wrench className="w-8 h-8 text-zinc-200 mx-auto mb-3" />
-              <p className="text-xs font-bold uppercase tracking-widest text-zinc-400">Nenhuma ferramenta com voce</p>
+              <p className="text-xs font-bold uppercase tracking-widest text-zinc-400">Nenhuma ferramenta com você</p>
             </div>
           ) : logs.map((log) => (
             <MyToolItem
