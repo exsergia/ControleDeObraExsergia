@@ -31,6 +31,15 @@ import { useAuth } from '../App';
 import { useAutoSaveForm } from '../hooks/useAutoSaveForm';
 import { refreshDailyProgressSnapshot } from '../lib/progress';
 
+const OBRA_DRAFT_INITIAL: Partial<Obra> = {
+  nome: '',
+  cliente: '',
+  endereco: '',
+  responsavel: '',
+  centroCusto: '',
+  status: 'Ativa',
+};
+
 export default function Obras() {
   const { isAdmin, notify } = useAuth();
   const [obrasSnap, loading, obrasError] = useCollection(collection(db, 'obras'));
@@ -41,31 +50,19 @@ export default function Obras() {
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('Todas');
   const [isSavingObra, setIsSavingObra] = useState(false);
+  const obraDraftBeforeEditRef = useRef<Partial<Obra> | null>(null);
 
-  const [formData, setFormData, limparRascunhoObra] = useAutoSaveForm<Partial<Obra>>('rascunho-nova-obra', {
-    nome: '',
-    cliente: '',
-    endereco: '',
-    responsavel: '',
-    centroCusto: '',
-    status: 'Ativa',
-  });
+  const [formData, setFormData, limparRascunhoObra] = useAutoSaveForm<Partial<Obra>>('rascunho-nova-obra', OBRA_DRAFT_INITIAL);
 
 
   const openCreateObra = () => {
+    obraDraftBeforeEditRef.current = null;
     setEditingObra(null);
-    setFormData({
-      nome: '',
-      cliente: '',
-      endereco: '',
-      responsavel: '',
-      centroCusto: '',
-      status: 'Ativa',
-    });
     setIsModalOpen(true);
   };
 
   const openEditObra = (obra: Obra) => {
+    obraDraftBeforeEditRef.current = formData;
     setEditingObra(obra);
     setFormData({
       nome: obra.nome || '',
@@ -79,9 +76,11 @@ export default function Obras() {
   };
 
   const closeObraModal = () => {
+    const previousDraft = obraDraftBeforeEditRef.current;
     setIsModalOpen(false);
     setEditingObra(null);
-    limparRascunhoObra();
+    if (previousDraft) setFormData(previousDraft);
+    obraDraftBeforeEditRef.current = null;
   };
 
   const handleSaveObra = async (e: React.FormEvent) => {
@@ -117,6 +116,7 @@ export default function Obras() {
         await updateDoc(doc(db, 'obras', editingObra.id), payload);
         setSelectedObra(prev => prev?.id === editingObra.id ? { ...prev, ...payload } as Obra : prev);
         notify('success', 'Obra atualizada', 'As informações da obra foram salvas.');
+        setFormData(obraDraftBeforeEditRef.current || OBRA_DRAFT_INITIAL);
       } else {
         await addDoc(collection(db, 'obras'), {
           ...payload,
@@ -125,11 +125,12 @@ export default function Obras() {
           createdAt: serverTimestamp()
         });
         notify('success', 'Sucesso', 'Obra cadastrada com sucesso!');
+        limparRascunhoObra();
       }
 
       setIsModalOpen(false);
       setEditingObra(null);
-      limparRascunhoObra();
+      obraDraftBeforeEditRef.current = null;
     } catch (err: any) {
       notify('error', 'Erro ao Salvar', err.message || 'Não foi possível salvar a obra.');
       handleFirestoreError(err, OperationType.WRITE, 'obras');

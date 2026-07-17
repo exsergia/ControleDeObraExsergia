@@ -7,6 +7,7 @@ import { useAuth } from '../App';
 import { uploadPhoto } from '../lib/services';
 import { CameraCapture } from '../components/CameraCapture';
 import { CurrencyInput } from '../components/CurrencyInput';
+import { useAutoSaveForm } from '../hooks/useAutoSaveForm';
 import { parseDate } from '../lib/dateUtils';
 import { format } from 'date-fns';
 import { cn } from '../lib/utils';
@@ -20,6 +21,16 @@ import { Obra, Operator } from '../types';
 const brl = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v || 0);
 const DESPESAS_OPTIONS = ['ALMOÇO', 'JANTA', 'CAFE', 'ESTACIONAMENTO', 'HOSPEDAGEM', 'MATERIAL'];
 
+type FiscalDraft = {
+  tipo: 'NF' | 'Cupom';
+  valor: number | '';
+  data: string;
+  fornecedor: string;
+  cartaoFinal: string;
+  observacoes: string;
+  obraId: string;
+  operadoresPresentes: string[];
+};
 export default function NotasFiscais() {
   const { userProfile, isAdmin, notify } = useAuth();
   const [docsSnap, loading, docsError] = useCollection(query(collection(db, 'fiscal_docs'), orderBy('createdAt', 'desc')));
@@ -247,19 +258,48 @@ function FiscalModal({
   const operadores = (operadoresSnap?.docs.map(d => ({ id: d.id, ...d.data() })) as Operator[]) || [];
 
   const editDate = editingDoc ? parseDate(editingDoc.data) : null;
-  const [tipo, setTipo] = useState<'NF' | 'Cupom'>(editingDoc?.tipo || 'Cupom');
-  const [valor, setValor] = useState<number | ''>(editingDoc?.valor || '');
-  const [data, setData] = useState(editDate ? format(editDate, 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd'));
-  const [fornecedor, setFornecedor] = useState(editingDoc?.fornecedor || '');
-  const [cartaoFinal, setCartaoFinal] = useState(editingDoc?.cartaoFinal || '');
-  const [observacoes, setObservacoes] = useState(editingDoc?.observacoes || '');
-  const [obraId, setObraId] = useState(editingDoc?.obraId || '');
-  const [operadoresPresentes, setOperadoresPresentes] = useState<string[]>((editingDoc?.operadoresPresentes || []).map(op => op.id));
+  const fiscalDraftInitial: FiscalDraft = {
+    tipo: 'Cupom',
+    valor: '',
+    data: format(new Date(), 'yyyy-MM-dd'),
+    fornecedor: '',
+    cartaoFinal: '',
+    observacoes: '',
+    obraId: '',
+    operadoresPresentes: [],
+  };
+  const [draft, setDraft, limparRascunhoFiscal] = useAutoSaveForm<FiscalDraft>('rascunho-novo-lancamento-fiscal', fiscalDraftInitial);
+  const [tipo, setTipoState] = useState<'NF' | 'Cupom'>(editingDoc?.tipo || draft.tipo);
+  const [valor, setValorState] = useState<number | ''>(editingDoc?.valor || draft.valor);
+  const [data, setDataState] = useState(editDate ? format(editDate, 'yyyy-MM-dd') : draft.data);
+  const [fornecedor, setFornecedorState] = useState(editingDoc?.fornecedor || draft.fornecedor);
+  const [cartaoFinal, setCartaoFinalState] = useState(editingDoc?.cartaoFinal || draft.cartaoFinal);
+  const [observacoes, setObservacoesState] = useState(editingDoc?.observacoes || draft.observacoes);
+  const [obraId, setObraIdState] = useState(editingDoc?.obraId || draft.obraId);
+  const [operadoresPresentes, setOperadoresPresentesState] = useState<string[]>(editingDoc ? (editingDoc.operadoresPresentes || []).map(op => op.id) : draft.operadoresPresentes);
   const [fotoFile, setFotoFile] = useState<File | null>(() => editingDoc?.fotoUrl ? new File([], 'existing-fiscal-photo') : null);
   const [fotoPreview, setFotoPreview] = useState<string | null>(editingDoc?.fotoUrl || null);
   const [showCamera, setShowCamera] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const saveDraft = (patch: Partial<FiscalDraft>) => {
+    if (!editingDoc) setDraft(prev => ({ ...prev, ...patch }));
+  };
+  const setTipo = (value: 'NF' | 'Cupom') => { setTipoState(value); saveDraft({ tipo: value }); };
+  const setValor = (value: number | '') => { setValorState(value); saveDraft({ valor: value }); };
+  const setData = (value: string) => { setDataState(value); saveDraft({ data: value }); };
+  const setFornecedor = (value: string) => { setFornecedorState(value); saveDraft({ fornecedor: value }); };
+  const setCartaoFinal = (value: string) => { setCartaoFinalState(value); saveDraft({ cartaoFinal: value }); };
+  const setObservacoes = (value: string) => { setObservacoesState(value); saveDraft({ observacoes: value }); };
+  const setObraId = (value: string) => { setObraIdState(value); saveDraft({ obraId: value, operadoresPresentes: [] }); };
+  const setOperadoresPresentes = (value: string[] | ((prev: string[]) => string[])) => {
+    setOperadoresPresentesState(prev => {
+      const next = typeof value === 'function' ? value(prev) : value;
+      saveDraft({ operadoresPresentes: next });
+      return next;
+    });
+  };
 
   // Equipe da obra selecionada — os operadores presentes saem DAQUI, não de todos.
   const obraSelecionada = obras.find(o => o.id === obraId);
@@ -326,6 +366,7 @@ function FiscalModal({
         criadoPorId: userId,
         createdAt: serverTimestamp(),
       });
+      limparRascunhoFiscal();
       if (fotoPreview?.startsWith('blob:')) URL.revokeObjectURL(fotoPreview);
       onSaved(false);
     } catch (err: any) {
