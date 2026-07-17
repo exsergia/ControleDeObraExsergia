@@ -172,29 +172,8 @@ export default function Financeiro() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="bg-white p-6 rounded-2xl border border-zinc-200 shadow-sm space-y-3">
-           <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-zinc-400 uppercase tracking-widest">Auditoria de Campo</span>
-              <PieChart className="w-4 h-4 text-zinc-300" />
-           </div>
-           <div className="flex items-end justify-between">
-              <div className="space-y-1">
-                 <p className="text-xl sm:text-2xl font-bold text-zinc-800">{stats.conferidos}</p>
-                 <p className="text-[10px] font-bold text-green-600 uppercase tracking-widest bg-green-50 px-2 py-0.5 rounded inline-block">Conferidos</p>
-              </div>
-              <div className="space-y-1 text-right">
-                 <p className="text-xl sm:text-2xl font-bold text-zinc-800">{stats.pendentes}</p>
-                 <p className="text-[10px] font-bold text-amber-600 uppercase tracking-widest bg-amber-50 px-2 py-0.5 rounded inline-block">Pendentes</p>
-              </div>
-           </div>
-           <div className="h-1.5 w-full bg-zinc-100 rounded-full overflow-hidden flex border border-zinc-50">
-              <div className="bg-green-500 h-full" style={{ width: `${(stats.conferidos/(stats.conferidos + stats.pendentes + stats.divergentes) || 0) * 100}%` }} />
-              <div className="bg-amber-500 h-full" style={{ width: `${(stats.pendentes/(stats.conferidos + stats.pendentes + stats.divergentes) || 0) * 100}%` }} />
-              <div className="bg-red-500 h-full" style={{ width: `${(stats.divergentes/(stats.conferidos + stats.pendentes + stats.divergentes) || 0) * 100}%` }} />
-           </div>
-        </div>
-        <div className="bg-white p-6 rounded-2xl border border-zinc-200 shadow-sm lg:col-span-2">
+      <div className="grid grid-cols-1 gap-6">
+        <div className="bg-white p-6 rounded-2xl border border-zinc-200 shadow-sm">
           <div className="flex items-center justify-between gap-3 mb-5">
             <div>
               <p className="text-xs font-bold text-zinc-400 uppercase tracking-widest">Resumo por Origem</p>
