@@ -100,7 +100,8 @@ export const uploadFile = async (file: File, path = 'uploads', onProgress?: (pro
 export const uploadPhoto = uploadImage;
 
 export async function analyzeFiscalImage(params: {
-  imageUrl: string;
+  imageUrl?: string;
+  imageDataUrl?: string;
   tipo: 'NF' | 'Cupom';
   valor: number;
   data: string;
@@ -127,4 +128,23 @@ export async function analyzeFiscalImage(params: {
   }
 
   return data as FiscalAiAnalysis;
+}
+
+function fileToDataUrl(file: File) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ''));
+    reader.onerror = () => reject(reader.error || new Error('Nao foi possivel ler a imagem.'));
+    reader.readAsDataURL(file);
+  });
+}
+
+export async function scanFiscalImageFile(file: File, params: {
+  tipo: 'NF' | 'Cupom';
+  valor: number;
+  data: string;
+  despesa?: string;
+}) {
+  const imageDataUrl = await fileToDataUrl(file);
+  return analyzeFiscalImage({ ...params, imageDataUrl });
 }

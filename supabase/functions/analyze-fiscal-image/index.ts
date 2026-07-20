@@ -101,21 +101,32 @@ Deno.serve(async (req) => {
 
   const body = await req.json().catch(() => ({}));
   const imageUrl = String(body.imageUrl || '');
-  if (!/^https?:\/\//i.test(imageUrl)) return json({ error: 'URL da imagem invalida.' }, 400);
+  const imageDataUrl = String(body.imageDataUrl || '');
+  let dataUrl = '';
 
-  const imageResponse = await fetch(imageUrl);
-  if (!imageResponse.ok) return json({ error: 'Nao foi possivel baixar a imagem.' }, 400);
+  if (imageDataUrl) {
+    if (!/^data:image\/[a-z0-9.+-]+;base64,/i.test(imageDataUrl)) {
+      return json({ error: 'Imagem enviada para scanner em formato invalido.' }, 400);
+    }
+    if (imageDataUrl.length > 11_000_000) return json({ error: 'Imagem acima do limite de analise.' }, 413);
+    dataUrl = imageDataUrl;
+  } else {
+    if (!/^https?:\/\//i.test(imageUrl)) return json({ error: 'URL da imagem invalida.' }, 400);
 
-  const contentType = imageResponse.headers.get('content-type') || 'image/jpeg';
-  if (!contentType.startsWith('image/')) return json({ error: 'Arquivo enviado nao parece ser imagem.' }, 400);
+    const imageResponse = await fetch(imageUrl);
+    if (!imageResponse.ok) return json({ error: 'Nao foi possivel baixar a imagem.' }, 400);
 
-  const imageBuffer = await imageResponse.arrayBuffer();
-  if (imageBuffer.byteLength > 8 * 1024 * 1024) return json({ error: 'Imagem acima do limite de analise.' }, 413);
+    const contentType = imageResponse.headers.get('content-type') || 'image/jpeg';
+    if (!contentType.startsWith('image/')) return json({ error: 'Arquivo enviado nao parece ser imagem.' }, 400);
 
-  const bytes = new Uint8Array(imageBuffer);
-  let binary = '';
-  for (const byte of bytes) binary += String.fromCharCode(byte);
-  const dataUrl = `data:${contentType};base64,${btoa(binary)}`;
+    const imageBuffer = await imageResponse.arrayBuffer();
+    if (imageBuffer.byteLength > 8 * 1024 * 1024) return json({ error: 'Imagem acima do limite de analise.' }, 413);
+
+    const bytes = new Uint8Array(imageBuffer);
+    let binary = '';
+    for (const byte of bytes) binary += String.fromCharCode(byte);
+    dataUrl = `data:${contentType};base64,${btoa(binary)}`;
+  }
 
   const expected = {
     tipo: body.tipo || null,

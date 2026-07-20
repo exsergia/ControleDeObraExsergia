@@ -4,7 +4,7 @@ import { collection, addDoc, deleteDoc, doc, serverTimestamp, query, orderBy, up
 import { db, handleFirestoreError, OperationType, auth } from '../lib/supabase';
 import { FiscalAiAnalysis, FiscalDoc } from '../types';
 import { useAuth } from '../App';
-import { analyzeFiscalImage, uploadPhoto } from '../lib/services';
+import { analyzeFiscalImage, scanFiscalImageFile, uploadPhoto } from '../lib/services';
 import { CameraCapture } from '../components/CameraCapture';
 import { CurrencyInput } from '../components/CurrencyInput';
 import { useAutoSaveForm } from '../hooks/useAutoSaveForm';
@@ -294,6 +294,8 @@ function FiscalModal({
   const [showCamera, setShowCamera] = useState(false);
   const [loading, setLoading] = useState(false);
   const [savingStep, setSavingStep] = useState('');
+  const [scanning, setScanning] = useState(false);
+  const [scanAnalysis, setScanAnalysis] = useState<FiscalAiAnalysis | null>(editingDoc?.aiAnalysis || null);
   const [error, setError] = useState<string | null>(null);
 
   const saveDraft = (patch: Partial<FiscalDraft>) => {
@@ -321,12 +323,47 @@ function FiscalModal({
     : [];
   const operadoresDaObra = operadores.filter(o => idsEquipe.includes(o.id));
 
+  const runImageScan = async (file: File) => {
+    setScanning(true);
+    setScanAnalysis(null);
+    try {
+      const result = await scanFiscalImageFile(file, {
+        tipo,
+        valor: typeof valor === 'number' ? valor : 0,
+        data,
+        despesa: fornecedor.trim(),
+      });
+      setScanAnalysis(result);
+      if (!editingDoc) {
+        if (result.documentType === 'NF' || result.documentType === 'Cupom') setTipo(result.documentType);
+        if ((!valor || Number(valor) <= 0) && result.extractedValue && result.extractedValue > 0) setValor(result.extractedValue);
+        if (result.extractedDate) setData(result.extractedDate);
+      }
+    } catch (err: any) {
+      setScanAnalysis({
+        status: 'pendente',
+        confidence: 0,
+        documentType: 'Indefinido',
+        extractedValue: null,
+        extractedDate: null,
+        vendor: null,
+        reasons: ['Scanner da imagem nao conseguiu concluir a leitura.'],
+        warnings: [err?.message || 'Tente salvar para registrar sem leitura automatica.'],
+        analyzedAt: new Date().toISOString(),
+        configured: false,
+      });
+    } finally {
+      setScanning(false);
+    }
+  };
+
   const setFoto = (file: File) => {
     if (fotoPreview?.startsWith('blob:')) URL.revokeObjectURL(fotoPreview);
     setFotoFile(file);
     setFotoPreview(URL.createObjectURL(file));
     setShowCamera(false);
     setError(null);
+    runImageScan(file);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -342,13 +379,15 @@ function FiscalModal({
     try {
       const fotoUrl = fotoFile.size > 0 ? await uploadPhoto(fotoFile, 'fiscal') : editingDoc?.fotoUrl || '';
       setSavingStep('Analisando imagem com IA...');
-      const aiAnalysis = await analyzeFiscalImage({
-        imageUrl: fotoUrl,
-        tipo,
-        valor: valorNum,
-        data,
-        despesa: fornecedor.trim(),
-      });
+      const aiAnalysis = scanAnalysis && fotoFile.size > 0
+        ? scanAnalysis
+        : await analyzeFiscalImage({
+          imageUrl: fotoUrl,
+          tipo,
+          valor: valorNum,
+          data,
+          despesa: fornecedor.trim(),
+        });
       const obraSel = obras.find(o => o.id === obraId);
       const presentes = operadores
         .filter(o => operadoresPresentes.includes(o.id))
@@ -441,6 +480,13 @@ function FiscalModal({
                 <div className="relative w-full aspect-video rounded-2xl overflow-hidden border-2 border-zinc-200">
                   <img src={fotoPreview} className="w-full h-full object-cover" alt="Pré-visualização" />
                 </div>
+                {scanning ? (
+                  <div className="rounded-xl border border-blue-100 bg-blue-50 px-3 py-2 text-xs font-bold text-blue-700">
+                    Scanner IA lendo a imagem...
+                  </div>
+                ) : scanAnalysis ? (
+                  <FiscalAiBadge analysis={scanAnalysis} />
+                ) : null}
                 <button type="button" onClick={() => setShowCamera(true)} className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-zinc-200 bg-zinc-50 text-xs font-bold text-zinc-600 hover:bg-zinc-100"><Camera className="w-4 h-4" /> Trocar foto</button>
               </div>
             ) : (
@@ -541,9 +587,9 @@ function FiscalModal({
             )}
           </div>
 
-          <button type="submit" disabled={loading}
+          <button type="submit" disabled={loading || scanning}
             className={cn('w-full py-4 rounded-2xl font-bold transition-all flex items-center justify-center gap-2 shadow-lg',
-              loading ? 'bg-zinc-100 text-zinc-300' : 'bg-zinc-900 text-white hover:bg-zinc-800')}>
+              (loading || scanning) ? 'bg-zinc-100 text-zinc-300' : 'bg-zinc-900 text-white hover:bg-zinc-800')}>
             {loading ? (savingStep || 'Salvando...') : <>{editingDoc ? 'Salvar Alterações' : 'Lançar'} <CheckCircle2 className="w-5 h-5" /></>}
           </button>
         </form>
