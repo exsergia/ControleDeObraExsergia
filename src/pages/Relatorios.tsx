@@ -802,7 +802,7 @@ export default function Relatorios() {
                       </td>
                       <td className="px-3 lg:px-5 py-4">
                         <p className="text-xs font-bold text-zinc-900">{usoPrevisto.text}</p>
-                        {usoPrevisto.previsao && <p className="text-[10px] text-zinc-500">até {format(usoPrevisto.previsao, 'dd/MM/yyyy HH:mm')}</p>}
+                        {usoPrevisto.previsao && <p className="text-[10px] text-zinc-500">AtÃ© {format(usoPrevisto.previsao, 'dd/MM/yyyy HH:mm')}</p>}
                       </td>
                       <td className="px-3 lg:px-5 py-4">
                         <div className="flex items-center gap-1.5">
