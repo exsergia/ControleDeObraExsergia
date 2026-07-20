@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { usePersistedTab } from '../hooks/usePersistedTab';
 import { useCollection } from '../lib/supabaseHooks';
 import { collection, query, orderBy, addDoc, serverTimestamp, updateDoc, doc, arrayUnion, arrayRemove } from '../lib/supabaseDb';
@@ -353,6 +353,22 @@ export default function Relatorios() {
     }
     return true;
   });
+
+  useEffect(() => {
+    if (activeTab !== 'diarios' || selectedChecklist || filteredChecklists.length === 0) return;
+
+    let checklistId = '';
+    try {
+      checklistId = sessionStorage.getItem('relatorio-checklist-id') || '';
+      if (checklistId) sessionStorage.removeItem('relatorio-checklist-id');
+    } catch {
+      checklistId = '';
+    }
+
+    if (!checklistId) return;
+    const checklist = filteredChecklists.find(c => c.id === checklistId) || checklists.find(c => c.id === checklistId);
+    if (checklist) setSelectedChecklist(checklist);
+  }, [activeTab, checklists, filteredChecklists, selectedChecklist]);
 
   const handleExportBI = () => {
     const workbook = utils.book_new();

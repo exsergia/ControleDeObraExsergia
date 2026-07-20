@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../App';
 import { Atividade, Checklist, Material } from '../types';
 import { parseDate } from '../lib/dateUtils';
@@ -60,7 +61,8 @@ function saudacaoPorHorario() {
 }
 
 export default function Dashboard() {
-  const { user, userProfile } = useAuth();
+  const { user, userProfile, isAdmin } = useAuth();
+  const navigate = useNavigate();
   const [obrasSnap, loading, obrasError] = useCollection(collection(db, 'obras'));
   const [materiaisSnap, , materiaisError] = useCollection(collection(db, 'materiais'));
   const [atividadesSnap, , atividadesError] = useCollection(collection(db, 'atividades'));
@@ -74,6 +76,21 @@ export default function Dashboard() {
   const checklists = (checklistsSnap?.docs.map((doc: any) => ({ id: doc.id, ...doc.data() })) as Checklist[]) || [];
   const progressoDiario = (progressoDiarioSnap?.docs.map((doc: any) => ({ id: doc.id, ...doc.data() }))) || [];
   const loadError = obrasError || materiaisError || atividadesError || checklistsError || progressoDiarioError || ultimasEntregasError || ultimosChecklistsError;
+  const canOpenReports = isAdmin || (userProfile?.email || user?.email || '').trim().toLowerCase() === 'contasapagar@exsergia.eng.br';
+
+  const goToMaterials = () => {
+    navigate('/materiais');
+  };
+
+  const goToReports = (checklistId?: string) => {
+    try {
+      localStorage.setItem('tab-relatorios', 'diarios');
+      if (checklistId) sessionStorage.setItem('relatorio-checklist-id', checklistId);
+    } catch {
+      // Storage pode falhar em alguns navegadores privados; a navegacao ainda funciona.
+    }
+    navigate('/relatorios');
+  };
 
   const chartData = useMemo(() => {
     const inicioSemana = inicioDaSemanaAtual();
@@ -294,7 +311,11 @@ export default function Dashboard() {
         <div className="bg-white rounded-xl border border-zinc-200 shadow-sm overflow-hidden flex flex-col">
           <div className="p-5 border-b border-zinc-100 flex items-center justify-between">
             <h3 className="font-semibold text-zinc-900">Últimas Entregas</h3>
-            <button className="text-xs font-semibold text-zinc-400 hover:text-zinc-900 transition-colors uppercase tracking-widest">
+            <button
+              type="button"
+              onClick={goToMaterials}
+              className="text-xs font-semibold text-zinc-400 hover:text-zinc-900 transition-colors uppercase tracking-widest"
+            >
               Ver Todas
             </button>
           </div>
@@ -329,15 +350,33 @@ export default function Dashboard() {
         <div className="bg-white rounded-xl border border-zinc-200 shadow-sm overflow-hidden flex flex-col">
           <div className="p-5 border-b border-zinc-100 flex items-center justify-between">
             <h3 className="font-semibold text-zinc-900">Checklists Recentes</h3>
-            <button className="text-xs font-semibold text-zinc-400 hover:text-zinc-900 transition-colors uppercase tracking-widest">
-              Ver Todos
-            </button>
+            {canOpenReports && (
+              <button
+                type="button"
+                onClick={() => goToReports()}
+                className="text-xs font-semibold text-zinc-400 hover:text-zinc-900 transition-colors uppercase tracking-widest"
+              >
+                Ver Todos
+              </button>
+            )}
           </div>
           <div className="divide-y divide-zinc-100 flex-1">
             {ultimosChecklistsSnap?.docs.length ? ultimosChecklistsSnap.docs.map((doc: any) => {
                const data = doc.data();
                return (
-                <div key={doc.id} className="p-4 flex items-center justify-between hover:bg-zinc-50 group cursor-default">
+                <div
+                  key={doc.id}
+                  role={canOpenReports ? 'button' : undefined}
+                  tabIndex={canOpenReports ? 0 : undefined}
+                  onClick={canOpenReports ? () => goToReports(doc.id) : undefined}
+                  onKeyDown={canOpenReports ? (e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      goToReports(doc.id);
+                    }
+                  } : undefined}
+                  className={`w-full p-4 flex items-center justify-between text-left group transition-colors ${canOpenReports ? 'hover:bg-zinc-50 cursor-pointer' : 'cursor-default'}`}
+                >
                   <div className="flex items-center gap-4">
                     <div className="w-10 h-10 rounded-lg bg-zinc-100 flex items-center justify-center border border-zinc-200">
                       <ClipboardCheck className="w-5 h-5 text-zinc-400" />
@@ -350,7 +389,7 @@ export default function Dashboard() {
                   <div className="flex items-center gap-2">
                     <div className="h-2 w-2 rounded-full bg-green-500" />
                     <span className="text-xs font-medium text-zinc-600">Finalizado</span>
-                    <ArrowUpRight className="w-4 h-4 text-zinc-300 group-hover:text-zinc-900 transition-colors ml-2" />
+                    {canOpenReports && <ArrowUpRight className="w-4 h-4 text-zinc-300 group-hover:text-zinc-900 transition-colors ml-2" />}
                   </div>
                 </div>
               );
