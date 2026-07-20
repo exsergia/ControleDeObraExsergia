@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useCollection } from '../lib/supabaseHooks';
-import { collection, addDoc, deleteDoc, doc, serverTimestamp, query, orderBy, updateDoc, where } from '../lib/supabaseDb';
+import { collection, addDoc, deleteDoc, doc, serverTimestamp, query, orderBy, updateDoc } from '../lib/supabaseDb';
 import { db, handleFirestoreError, OperationType, auth } from '../lib/supabase';
 import { FiscalDoc } from '../types';
 import { useAuth } from '../App';
@@ -33,13 +33,8 @@ type FiscalDraft = {
 };
 export default function NotasFiscais() {
   const { userProfile, isAdmin, notify } = useAuth();
-  const currentUserId = userProfile?.id || auth.currentUser?.id || '';
   const [docsSnap, loading, docsError] = useCollection(
-    isAdmin
-      ? query(collection(db, 'fiscal_docs'), orderBy('createdAt', 'desc'))
-      : currentUserId
-        ? query(collection(db, 'fiscal_docs'), where('criadoPorId', '==', currentUserId), orderBy('createdAt', 'desc'))
-        : null
+    isAdmin ? query(collection(db, 'fiscal_docs'), orderBy('createdAt', 'desc')) : null
   );
   const [showModal, setShowModal] = useState(false);
   const [editingDoc, setEditingDoc] = useState<FiscalDoc | null>(null);
@@ -122,50 +117,59 @@ export default function NotasFiscais() {
         </button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_220px_220px_auto] gap-3">
-        <div data-tour="nf-search" className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
-          <input
-            type="text"
-            placeholder="Buscar por despesa, cartao, tipo, obra ou pessoa..."
-            className="w-full pl-10 pr-4 py-2.5 bg-white border border-zinc-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900/10 shadow-sm"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
+      {isAdmin ? (
+        <div className="grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_220px_220px_auto] gap-3">
+          <div data-tour="nf-search" className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
+            <input
+              type="text"
+              placeholder="Buscar por despesa, cartao, tipo, obra ou pessoa..."
+              className="w-full pl-10 pr-4 py-2.5 bg-white border border-zinc-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900/10 shadow-sm"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
+          <div className="relative">
+            <HardHat className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400 pointer-events-none" />
+            <select
+              value={obraFilter}
+              onChange={(e) => setObraFilter(e.target.value)}
+              className="w-full pl-10 pr-8 py-2.5 bg-white border border-zinc-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900/10 shadow-sm appearance-none"
+            >
+              <option value="Todas">Todas as obras</option>
+              {obraOptions.map(([key, label]) => (
+                <option key={key} value={key}>{label}</option>
+              ))}
+            </select>
+          </div>
+          <div className="relative">
+            <Users className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400 pointer-events-none" />
+            <select
+              value={pessoaFilter}
+              onChange={(e) => setPessoaFilter(e.target.value)}
+              className="w-full pl-10 pr-8 py-2.5 bg-white border border-zinc-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900/10 shadow-sm appearance-none"
+            >
+              <option value="Todas">Todas as pessoas</option>
+              {pessoaOptions.map(nome => (
+                <option key={nome} value={nome}>{nome}</option>
+              ))}
+            </select>
+          </div>
+          <div data-tour="nf-total" className="flex items-center gap-2 px-4 py-2.5 bg-zinc-900 text-white rounded-xl shrink-0">
+            <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">Total</span>
+            <span className="text-sm font-black">{brl(total)}</span>
+          </div>
         </div>
-        <div className="relative">
-          <HardHat className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400 pointer-events-none" />
-          <select
-            value={obraFilter}
-            onChange={(e) => setObraFilter(e.target.value)}
-            className="w-full pl-10 pr-8 py-2.5 bg-white border border-zinc-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900/10 shadow-sm appearance-none"
-          >
-            <option value="Todas">Todas as obras</option>
-            {obraOptions.map(([key, label]) => (
-              <option key={key} value={key}>{label}</option>
-            ))}
-          </select>
+      ) : (
+        <div className="rounded-3xl border border-blue-100 bg-blue-50 p-5 text-blue-900">
+          <p className="text-sm font-black">Acesso de operador</p>
+          <p className="text-xs sm:text-sm font-medium mt-1 text-blue-800">
+            Voce pode cadastrar uma nova nota ou cupom fiscal, mas a consulta dos documentos ja lancados fica restrita aos administradores.
+          </p>
         </div>
-        <div className="relative">
-          <Users className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400 pointer-events-none" />
-          <select
-            value={pessoaFilter}
-            onChange={(e) => setPessoaFilter(e.target.value)}
-            className="w-full pl-10 pr-8 py-2.5 bg-white border border-zinc-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900/10 shadow-sm appearance-none"
-          >
-            <option value="Todas">Todas as pessoas</option>
-            {pessoaOptions.map(nome => (
-              <option key={nome} value={nome}>{nome}</option>
-            ))}
-          </select>
-        </div>
-        <div data-tour="nf-total" className="flex items-center gap-2 px-4 py-2.5 bg-zinc-900 text-white rounded-xl shrink-0">
-          <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">Total</span>
-          <span className="text-sm font-black">{brl(total)}</span>
-        </div>
-      </div>
+      )}
 
-      {docsError ? (
+      {isAdmin && (docsError ? (
         <FiscalLoadError title="Erro ao carregar documentos fiscais" message={docsError.message} />
       ) : loading ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -226,7 +230,7 @@ export default function NotasFiscais() {
             );
           })}
         </div>
-      )}
+      ))}
 
       {(showModal || editingDoc) && (
         <FiscalModal
