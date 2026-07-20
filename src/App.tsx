@@ -487,7 +487,7 @@ function App() {
                     <Route path="/frota" element={<Frota />} />
                     <Route path="/equipamentos" element={isAdmin ? <Equipamentos /> : <Navigate to="/" replace />} />
                     <Route path="/notas-fiscais" element={canFiscal ? <NotasFiscais /> : <Navigate to="/" replace />} />
-                    <Route path="/settings" element={<SettingsPage />} />
+                    <Route path="/settings" element={isAdmin ? <SettingsPage /> : <Navigate to="/" replace />} />
                     <Route path="*" element={<Navigate to="/" replace />} />
                   </Routes>
                 </React.Suspense>
@@ -1231,7 +1231,7 @@ function Layout({ children }: { children: React.ReactNode }) {
     { label: 'Controle de Frota', icon: Truck, path: '/frota' },
     { label: 'Equipamentos', icon: Boxes, path: '/equipamentos', adminOnly: true, soAdmin: true },
     { label: 'NF / Cupom Fiscal', icon: Receipt, path: '/notas-fiscais', fiscalOnly: true },
-    { label: 'Configurações', icon: Settings, path: '/settings' },
+    { label: 'Configurações', icon: Settings, path: '/settings', adminOnly: true },
   ];
 
   const filteredMenuItems = menuItems.filter(item => {
