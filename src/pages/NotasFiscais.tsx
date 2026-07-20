@@ -164,7 +164,7 @@ export default function NotasFiscais() {
         <div className="rounded-3xl border border-blue-100 bg-blue-50 p-5 text-blue-900">
           <p className="text-sm font-black">Acesso de operador</p>
           <p className="text-xs sm:text-sm font-medium mt-1 text-blue-800">
-            Voce pode cadastrar uma nova nota ou cupom fiscal, mas a consulta dos documentos ja lancados fica restrita aos administradores.
+            Você pode cadastrar uma nova nota ou cupom fiscal, mas a consulta dos documentos já lançados fica restrita aos administradores.
           </p>
         </div>
       )}
