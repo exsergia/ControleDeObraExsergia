@@ -19,6 +19,7 @@ import {
 
 const brl = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v || 0);
 const monthKey = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+const pct = (v: number | null) => v === null ? 'Sem dados' : `${v.toFixed(2)}% a.a.`;
 
 const statusBadge = (s: EquipamentoStatus) => ({
   'Ativo': 'bg-green-100 text-green-700',
@@ -30,7 +31,59 @@ const statusBadge = (s: EquipamentoStatus) => ({
 
 interface Finance {
   custoManutencao: number; custoAquisicao: number; receita: number;
-  custoTotal: number; resultado: number; margem: number | null; nManut: number; nLoc: number;
+  custoTotal: number; resultado: number; margem: number | null; tirAnual: number | null; nManut: number; nLoc: number;
+  fluxoCaixa: CashFlow[];
+}
+
+interface CashFlow {
+  date: Date;
+  amount: number;
+}
+
+function daysBetween(a: Date, b: Date) {
+  return (b.getTime() - a.getTime()) / 86400000;
+}
+
+function calcTirAnual(flows: CashFlow[]) {
+  const valid = flows
+    .filter(f => Number.isFinite(f.amount) && f.amount !== 0 && !Number.isNaN(f.date.getTime()))
+    .sort((a, b) => a.date.getTime() - b.date.getTime());
+
+  if (!valid.some(f => f.amount > 0) || !valid.some(f => f.amount < 0)) return null;
+  const start = valid[0].date;
+  if (valid.every(f => Math.abs(daysBetween(start, f.date)) < 1)) return null;
+
+  const xnpv = (rate: number) => valid.reduce((sum, f) => {
+    const years = daysBetween(start, f.date) / 365;
+    return sum + f.amount / Math.pow(1 + rate, years);
+  }, 0);
+
+  let low = -0.9999;
+  let high = 1;
+  let npvLow = xnpv(low);
+  let npvHigh = xnpv(high);
+
+  while (npvLow * npvHigh > 0 && high < 1000) {
+    high *= 2;
+    npvHigh = xnpv(high);
+  }
+
+  if (!Number.isFinite(npvLow) || !Number.isFinite(npvHigh) || npvLow * npvHigh > 0) return null;
+
+  for (let i = 0; i < 100; i++) {
+    const mid = (low + high) / 2;
+    const npvMid = xnpv(mid);
+    if (Math.abs(npvMid) < 0.01) return mid * 100;
+    if (npvLow * npvMid <= 0) {
+      high = mid;
+      npvHigh = npvMid;
+    } else {
+      low = mid;
+      npvLow = npvMid;
+    }
+  }
+
+  return ((low + high) / 2) * 100;
 }
 
 function calcFinance(eq: Equipamento, manuts: EquipamentoManutencao[], locs: EquipamentoLocacao[]): Finance {
@@ -40,7 +93,14 @@ function calcFinance(eq: Equipamento, manuts: EquipamentoManutencao[], locs: Equ
   const custoTotal = custoManutencao + custoAquisicao;
   const resultado = receita - custoTotal;
   const margem = receita > 0 ? (resultado / receita) * 100 : null;
-  return { custoManutencao, custoAquisicao, receita, custoTotal, resultado, margem, nManut: manuts.length, nLoc: locs.length };
+  const fallbackDate = parseDate(eq.createdAt) || new Date();
+  const fluxoCaixa: CashFlow[] = [
+    ...(custoAquisicao > 0 ? [{ date: eq.dataAquisicao ? new Date(`${eq.dataAquisicao}T12:00:00`) : fallbackDate, amount: -custoAquisicao }] : []),
+    ...manuts.map(m => ({ date: parseDate(m.data) || fallbackDate, amount: -(m.custoTotal || 0) })),
+    ...locs.map(l => ({ date: parseDate(l.dataInicio) || fallbackDate, amount: l.valorLocacao || 0 })),
+  ];
+  const tirAnual = calcTirAnual(fluxoCaixa);
+  return { custoManutencao, custoAquisicao, receita, custoTotal, resultado, margem, tirAnual, nManut: manuts.length, nLoc: locs.length, fluxoCaixa };
 }
 
 export default function Equipamentos() {
@@ -85,10 +145,12 @@ export default function Equipamentos() {
 
   const totals = useMemo(() => {
     const vals: Finance[] = Object.values(financeById);
+    const fluxoCaixa = vals.flatMap(f => f.fluxoCaixa);
     return {
       receita: vals.reduce((a, f) => a + f.receita, 0),
       custo: vals.reduce((a, f) => a + f.custoTotal, 0),
       resultado: vals.reduce((a, f) => a + f.resultado, 0),
+      tirAnual: calcTirAnual(fluxoCaixa),
     };
   }, [financeById]);
 
@@ -161,10 +223,11 @@ export default function Equipamentos() {
       )}
 
       {/* KPIs gerais */}
-      <div data-tour="equip-kpis" className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div data-tour="equip-kpis" className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
         <KPI label="Receita Total" value={brl(totals.receita)} icon={<TrendingUp className="w-5 h-5" />} tone="green" />
         <KPI label="Custo Total" value={brl(totals.custo)} icon={<TrendingDown className="w-5 h-5" />} tone="red" />
         <KPI label="Resultado" value={brl(totals.resultado)} icon={<DollarSign className="w-5 h-5" />} tone={totals.resultado >= 0 ? 'dark' : 'red'} />
+        <KPI label="TIR da Carteira" value={pct(totals.tirAnual)} icon={<Percent className="w-5 h-5" />} tone={totals.tirAnual !== null && totals.tirAnual < 0 ? 'red' : 'zinc'} />
       </div>
 
       {/* Rankings */}
@@ -202,10 +265,11 @@ export default function Equipamentos() {
                   </div>
                   <h4 className="font-bold text-zinc-900 break-words">{eq.nome}</h4>
                   {eq.codigo && <p className="text-[10px] text-zinc-400 font-mono">{eq.codigo}</p>}
-                  <div className="mt-4 grid grid-cols-3 gap-2 text-center">
+                  <div className="mt-4 grid grid-cols-4 gap-2 text-center">
                     <div><p className="text-[9px] font-bold text-zinc-400 uppercase">Receita</p><p className="text-xs font-black text-green-600">{brl(f?.receita || 0)}</p></div>
                     <div><p className="text-[9px] font-bold text-zinc-400 uppercase">Custo</p><p className="text-xs font-black text-red-500">{brl(f?.custoTotal || 0)}</p></div>
                     <div><p className="text-[9px] font-bold text-zinc-400 uppercase">Result.</p><p className={cn('text-xs font-black', (f?.resultado || 0) >= 0 ? 'text-zinc-900' : 'text-red-600')}>{brl(f?.resultado || 0)}</p></div>
+                    <div><p className="text-[9px] font-bold text-zinc-400 uppercase">TIR</p><p className={cn('text-xs font-black', f?.tirAnual !== null && (f?.tirAnual || 0) < 0 ? 'text-red-600' : 'text-zinc-700')}>{f?.tirAnual == null ? '—' : `${f.tirAnual.toFixed(1)}%`}</p></div>
                   </div>
                 </button>
               );
@@ -247,6 +311,7 @@ function EquipamentoDetalhe({ equipamento, manutencoes, locacoes, onBack, onEdit
   const manutFiltradas = manutencoes.filter(m => dentroPeriodo(parseDate(m.data)));
   const locFiltradas = locacoes.filter(l => dentroPeriodo(parseDate(l.dataInicio)));
   const f = calcFinance(equipamento, manutFiltradas, locFiltradas);
+  const fTudo = calcFinance(equipamento, manutencoes, locacoes);
 
   // Gráfico: custo x receita por mês (últimos 12 meses)
   const chartData = useMemo(() => {
@@ -322,14 +387,20 @@ function EquipamentoDetalhe({ equipamento, manutencoes, locacoes, onBack, onEdit
       </div>
 
       {/* KPIs do período */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-6 gap-3">
         <KPI label="Receita" value={brl(f.receita)} icon={<TrendingUp className="w-4 h-4" />} tone="green" small />
         <KPI label="Custo manut." value={brl(f.custoManutencao)} icon={<Wrench className="w-4 h-4" />} tone="red" small />
         <KPI label="Custo aquisição" value={brl(f.custoAquisicao)} icon={<DollarSign className="w-4 h-4" />} tone="zinc" small />
         <KPI label="Resultado" value={brl(f.resultado)} icon={<DollarSign className="w-4 h-4" />} tone={f.resultado >= 0 ? 'dark' : 'red'} small />
+        <KPI label="TIR total" value={pct(fTudo.tirAnual)} icon={<Percent className="w-4 h-4" />} tone={fTudo.tirAnual !== null && fTudo.tirAnual < 0 ? 'red' : 'zinc'} small />
         <KPI label="Margem" value={f.margem === null ? '—' : `${f.margem.toFixed(1)}%`} icon={<Percent className="w-4 h-4" />} tone="zinc" small />
       </div>
-      {periodo !== 'tudo' && <p className="text-[11px] text-zinc-400 -mt-3">* Custo de aquisição é total (não filtrado por período).</p>}
+      <div className="-mt-3 space-y-1">
+        {periodo !== 'tudo' && <p className="text-[11px] text-zinc-400">* Custo de aquisição é total (não filtrado por período).</p>}
+        <p className="text-[11px] text-zinc-400">
+          TIR total considera todo o histórico: aquisição e manutenções como saídas, locações como entradas e anualização pela data de cada lançamento.
+        </p>
+      </div>
 
       {/* Gráfico */}
       <div className="bg-white rounded-2xl border border-zinc-200 shadow-sm p-4">

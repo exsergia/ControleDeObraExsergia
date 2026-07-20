@@ -1,15 +1,37 @@
-# Exsergia - Controle de Obra com Supabase
+# Exsergia Hub
 
-Este projeto foi refeito para usar Supabase como backend:
+Aplicação web/PWA para controle operacional de obras da Exsergia.
 
-- Supabase Auth: login por Google, e-mail/senha e CPF/senha.
-- Supabase Database: dados do app em tabelas Postgres com `data jsonb`.
-- Supabase Storage: upload de fotos e anexos no bucket `uploads`.
-- Controle de acesso por `admin_access`.
+O projeto centraliza:
 
-## Como configurar
+- obras e equipes;
+- progresso físico;
+- materiais;
+- ferramentas e movimentações;
+- frota;
+- NF/Cupom Fiscal;
+- financeiro;
+- relatórios;
+- scanner IA para documentos fiscais.
 
-1. Crie um projeto gratuito no Supabase.
+## Stack
+
+- React 19
+- TypeScript
+- Vite
+- Tailwind CSS
+- Supabase Auth, Database, Storage, Realtime e Edge Functions
+- Vercel Serverless API em `/api/*`
+- XLSX para exportação
+
+## Configuração Local
+
+1. Instale as dependências:
+
+```bash
+npm install
+```
+
 2. Copie `.env.example` para `.env` e preencha:
 
 ```env
@@ -17,47 +39,163 @@ VITE_SUPABASE_URL=https://SEU-PROJETO.supabase.co
 VITE_SUPABASE_ANON_KEY=SUA_CHAVE_ANON_PUBLICA
 ```
 
-3. No Supabase, vá em **SQL Editor** e rode o arquivo:
+3. Rode o schema no Supabase:
 
 ```text
 supabase/schema.sql
 ```
 
-4. Em **Authentication > Providers**, ative:
-
-- Email/Password
-- Google, se quiser login com Google
-
-5. Para rodar local:
+4. Inicie o projeto:
 
 ```bash
-npm install
 npm run dev
 ```
 
-## Administradores
-
-A tabela que define administradores é:
+O app abre em:
 
 ```text
-admin_access
+http://localhost:3000
 ```
 
-Exemplo por e-mail:
+## Variáveis de Ambiente
+
+Frontend:
+
+```env
+VITE_SUPABASE_URL=
+VITE_SUPABASE_ANON_KEY=
+```
+
+API serverless na Vercel:
+
+```env
+SUPABASE_SERVICE_ROLE_KEY=
+```
+
+IA fiscal na Supabase Edge Function:
+
+```bash
+supabase secrets set OPENAI_API_KEY=...
+supabase secrets set OPENAI_VISION_MODEL=gpt-4o-mini
+```
+
+Nunca coloque `SUPABASE_SERVICE_ROLE_KEY` ou `OPENAI_API_KEY` no frontend.
+
+## Scripts
+
+```bash
+npm run dev
+npm run lint
+npm run build
+npm run preview
+```
+
+## Banco de Dados
+
+O app usa tabelas Postgres com `data jsonb` e colunas planas auxiliares.
+
+Principais tabelas:
+
+- `obras`
+- `atividades`
+- `materiais`
+- `checklists`
+- `progresso_diario`
+- `operadores`
+- `admin_access`
+- `tools`
+- `toolLogs`
+- `vehicles`
+- `vehicleLogs`
+- `fiscal_docs`
+- `equipamentos`
+- `equipamento_manutencoes`
+- `equipamento_locacoes`
+
+## Administradores
+
+Administradores são controlados pela tabela `admin_access`.
+
+Por e-mail:
 
 ```sql
 insert into public.admin_access (id, data)
-values ('email:admin@empresa.com', '{"tipo":"email","valor":"admin@empresa.com","ativo":true}');
+values (
+  'email:admin@exsergia.eng.br',
+  '{"tipo":"email","valor":"admin@exsergia.eng.br","ativo":true}'
+);
 ```
 
-Exemplo por CPF:
+Por CPF:
 
 ```sql
 insert into public.admin_access (id, data)
-values ('cpf:00000000000', '{"tipo":"cpf","valor":"00000000000","ativo":true}');
+values (
+  'cpf:00000000000',
+  '{"tipo":"cpf","valor":"00000000000","ativo":true}'
+);
 ```
 
-## Permissões no app
+## API
 
-- Administrador: acesso total.
-- Operador: Dashboard, Ferramentas e Progresso Físico somente visualização.
+As rotas serverless ficam em `/api/*`.
+
+Principais rotas:
+
+- `GET /api/health`
+- `GET /api/fiscal-docs`
+- `POST /api/fiscal-docs`
+- `PATCH /api/fiscal-docs?id=<id>`
+- `GET /api/records?table=obras`
+- `POST|PUT|PATCH /api/records?table=fiscal_docs`
+
+Rotas protegidas exigem:
+
+```http
+Authorization: Bearer <access_token_do_supabase>
+```
+
+Mais detalhes em `api/README.md`.
+
+## IA Fiscal
+
+A Edge Function `supabase/functions/analyze-fiscal-image/index.ts` analisa imagens de NF/Cupom Fiscal.
+
+Ela retorna:
+
+- status da análise;
+- confiança;
+- tipo do documento;
+- valor identificado;
+- data identificada;
+- fornecedor/despesa provável;
+- avisos e motivos.
+
+O resultado é salvo em `fiscal_docs.data.aiAnalysis`.
+
+## Deploy
+
+Antes de publicar:
+
+```bash
+npm run lint
+npm run build
+```
+
+No Vercel, configure:
+
+- `VITE_SUPABASE_URL`
+- `VITE_SUPABASE_ANON_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY`
+
+No Supabase, configure os secrets da IA fiscal quando o scanner estiver ativo.
+
+## Documentação Técnica
+
+A documentação completa fica em:
+
+```text
+DOCUMENTACAO_EXSERGIA.md
+docs_tecnica.html
+api/README.md
+```

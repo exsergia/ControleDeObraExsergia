@@ -1,0 +1,353 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Exsergia Hub - Documentação Técnica</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #111827;
+      --muted: #64748b;
+      --line: #e5e7eb;
+      --panel: #ffffff;
+      --soft: #f8fafc;
+      --brand: #2563eb;
+      --dark: #0f172a;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--ink);
+      background: #f3f4f6;
+      line-height: 1.65;
+    }
+
+    header {
+      background: var(--dark);
+      color: white;
+      padding: 56px 28px;
+    }
+
+    header .wrap,
+    main {
+      width: min(1120px, calc(100% - 40px));
+      margin: 0 auto;
+    }
+
+    .eyebrow {
+      color: #93c5fd;
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      margin-bottom: 16px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(34px, 6vw, 64px);
+      line-height: 1;
+      letter-spacing: -0.04em;
+    }
+
+    header p {
+      max-width: 760px;
+      color: #cbd5e1;
+      font-size: 18px;
+      margin: 22px 0 0;
+    }
+
+    main {
+      padding: 32px 0 64px;
+    }
+
+    section {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 28px;
+      margin-bottom: 18px;
+      box-shadow: 0 12px 28px rgba(15, 23, 42, 0.05);
+    }
+
+    h2 {
+      margin: 0 0 12px;
+      font-size: 24px;
+      letter-spacing: -0.02em;
+    }
+
+    h3 {
+      margin: 24px 0 8px;
+      font-size: 17px;
+    }
+
+    p { margin: 0 0 12px; }
+    ul { margin: 10px 0 0; padding-left: 20px; }
+    li { margin: 5px 0; }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 12px;
+      margin-top: 14px;
+    }
+
+    .card {
+      background: var(--soft);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 16px;
+    }
+
+    .card strong {
+      display: block;
+      margin-bottom: 4px;
+    }
+
+    code, pre {
+      font-family: "JetBrains Mono", Consolas, monospace;
+    }
+
+    pre {
+      overflow: auto;
+      background: #0b1020;
+      color: #e5e7eb;
+      padding: 16px;
+      border-radius: 8px;
+      font-size: 13px;
+      line-height: 1.55;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 12px;
+      font-size: 14px;
+    }
+
+    th, td {
+      border: 1px solid var(--line);
+      padding: 10px;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      background: var(--soft);
+    }
+
+    .note {
+      border-left: 4px solid var(--brand);
+      background: #eff6ff;
+      padding: 12px 14px;
+      border-radius: 6px;
+      color: #1e3a8a;
+    }
+
+    footer {
+      text-align: center;
+      color: var(--muted);
+      padding: 24px;
+      font-size: 13px;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap">
+      <div class="eyebrow">Documentação técnica</div>
+      <h1>Exsergia Hub</h1>
+      <p>Aplicação web/PWA para gestão operacional de obras, materiais, progresso físico, ferramentas, frota, documentos fiscais, financeiro, relatórios e scanner IA fiscal.</p>
+    </div>
+  </header>
+
+  <main>
+    <section>
+      <h2>Visão Geral</h2>
+      <p>O Exsergia Hub centraliza a operação de campo e a gestão administrativa em uma única plataforma conectada ao Supabase.</p>
+      <div class="grid">
+        <div class="card"><strong>Frontend</strong>React, TypeScript, Vite e Tailwind CSS.</div>
+        <div class="card"><strong>Backend</strong>Supabase Auth, Database, Storage, Realtime e Edge Functions.</div>
+        <div class="card"><strong>API</strong>Rotas serverless Vercel em <code>/api/*</code>.</div>
+        <div class="card"><strong>IA Fiscal</strong>Scanner de imagem de NF/Cupom via Edge Function.</div>
+      </div>
+    </section>
+
+    <section>
+      <h2>Arquitetura</h2>
+      <pre>Usuário Web/Mobile/PWA
+        |
+        | HTTPS
+        v
+Aplicação React na Vercel
+        |
+        | Supabase Client
+        v
+Supabase Auth / Database / Storage / Realtime
+        |
+        | Edge Functions
+        v
+Scanner IA Fiscal / Notificações
+
+Integrações externas
+        |
+        | /api/* com Bearer Token
+        v
+Vercel Serverless API
+        |
+        | Service Role somente no servidor
+        v
+Supabase</pre>
+    </section>
+
+    <section>
+      <h2>Variáveis de Ambiente</h2>
+      <h3>Frontend</h3>
+      <pre>VITE_SUPABASE_URL=https://SEU-PROJETO.supabase.co
+VITE_SUPABASE_ANON_KEY=SUA_CHAVE_ANON_PUBLICA</pre>
+      <h3>API Vercel</h3>
+      <pre>SUPABASE_SERVICE_ROLE_KEY=SUA_SERVICE_ROLE_KEY</pre>
+      <h3>IA Fiscal</h3>
+      <pre>supabase secrets set OPENAI_API_KEY=...
+supabase secrets set OPENAI_VISION_MODEL=gpt-4o-mini</pre>
+      <p class="note">Chaves secretas como service role e OpenAI nunca devem ser colocadas no frontend.</p>
+    </section>
+
+    <section>
+      <h2>Banco de Dados</h2>
+      <p>O banco usa tabelas Postgres com campo principal <code>data jsonb</code> e colunas planas auxiliares para performance, filtros e políticas.</p>
+      <table>
+        <thead><tr><th>Tabela</th><th>Finalidade</th></tr></thead>
+        <tbody>
+          <tr><td><code>obras</code></td><td>Cadastro e status das obras.</td></tr>
+          <tr><td><code>atividades</code></td><td>Atividades de progresso físico.</td></tr>
+          <tr><td><code>materiais</code></td><td>Materiais, custos e conferências.</td></tr>
+          <tr><td><code>checklists</code></td><td>Relatórios e conferências diárias.</td></tr>
+          <tr><td><code>operadores</code></td><td>Usuários operacionais e perfis.</td></tr>
+          <tr><td><code>admin_access</code></td><td>Controle de administradores.</td></tr>
+          <tr><td><code>tools</code> / <code>toolLogs</code></td><td>Ferramentas e movimentações.</td></tr>
+          <tr><td><code>vehicles</code> / <code>vehicleLogs</code></td><td>Frota e movimentações.</td></tr>
+          <tr><td><code>fiscal_docs</code></td><td>NF/Cupom Fiscal e análise IA.</td></tr>
+          <tr><td><code>equipamentos</code></td><td>Equipamentos, manutenção e locação.</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section>
+      <h2>Perfis e Permissões</h2>
+      <table>
+        <thead><tr><th>Perfil</th><th>Acesso</th></tr></thead>
+        <tbody>
+          <tr><td>Administrador</td><td>Acesso completo, edição, exclusão, financeiro, relatórios e todos os documentos fiscais.</td></tr>
+          <tr><td>Encarregado</td><td>Acesso operacional ampliado às obras sob responsabilidade.</td></tr>
+          <tr><td>Operador</td><td>Uso de campo, lançamento de NF/Cupom, ferramentas, checklist e visualização restrita dos próprios dados sensíveis.</td></tr>
+        </tbody>
+      </table>
+      <h3>Admin por e-mail</h3>
+      <pre>insert into public.admin_access (id, data)
+values (
+  'email:admin@exsergia.eng.br',
+  '{"tipo":"email","valor":"admin@exsergia.eng.br","ativo":true}'
+);</pre>
+    </section>
+
+    <section>
+      <h2>Módulos</h2>
+      <div class="grid">
+        <div class="card"><strong>Dashboard</strong>Indicadores gerais e atalhos de navegação.</div>
+        <div class="card"><strong>Obras</strong>Cadastro, edição, cliente, centro de custo, status e equipe.</div>
+        <div class="card"><strong>Progresso Físico</strong>Execução de atividades. Obras concluídas e atividades 100% saem da tela ativa.</div>
+        <div class="card"><strong>Materiais</strong>Entrada, custo, foto e conferência.</div>
+        <div class="card"><strong>Ferramentas</strong>Inventário, categorias, retirada, devolução e histórico.</div>
+        <div class="card"><strong>Frota</strong>Retirada, devolução, localização, painel e avarias.</div>
+        <div class="card"><strong>NF/Cupom Fiscal</strong>Lançamento, filtros, observações, despesas e scanner IA.</div>
+        <div class="card"><strong>Financeiro</strong>Custos, receitas, resultado, filtros e exportação Excel.</div>
+        <div class="card"><strong>Relatórios</strong>Relatórios diários, ferramentas, frota, fiscal e BI.</div>
+      </div>
+    </section>
+
+    <section>
+      <h2>NF/Cupom Fiscal</h2>
+      <ul>
+        <li>Operador pode cadastrar NF/Cupom.</li>
+        <li>Operador visualiza somente documentos que lançou.</li>
+        <li>Administrador visualiza e edita todos.</li>
+        <li>Campo Despesas substitui o antigo fornecedor.</li>
+        <li>Despesas disponíveis: ALMOÇO, JANTA, CAFE, ESTACIONAMENTO, HOSPEDAGEM, MATERIAL.</li>
+        <li>Campo de despesa não é obrigatório.</li>
+        <li>Há campo de observação no lançamento.</li>
+        <li>Filtros por obra e pessoas envolvidas.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Scanner IA Fiscal</h2>
+      <p>A Edge Function <code>supabase/functions/analyze-fiscal-image/index.ts</code> analisa imagens de NF/Cupom Fiscal e retorna status, confiança, valor, data, fornecedor/despesa provável, avisos e motivos.</p>
+      <p>O resultado fica salvo em <code>fiscal_docs.data.aiAnalysis</code>.</p>
+      <p class="note">A imagem enviada ao modelo é processada como entrada visual e consome tokens. O app usa detalhe baixo para reduzir custo.</p>
+    </section>
+
+    <section>
+      <h2>API Serverless</h2>
+      <p>A API fica em <code>/api/*</code> e exige token Supabase nas rotas protegidas.</p>
+      <pre>Authorization: Bearer &lt;access_token_do_supabase&gt;</pre>
+      <table>
+        <thead><tr><th>Método</th><th>Rota</th><th>Uso</th></tr></thead>
+        <tbody>
+          <tr><td>GET</td><td><code>/api/health</code></td><td>Verifica configuração.</td></tr>
+          <tr><td>GET</td><td><code>/api/fiscal-docs</code></td><td>Lista NF/Cupom.</td></tr>
+          <tr><td>POST</td><td><code>/api/fiscal-docs</code></td><td>Cria NF/Cupom.</td></tr>
+          <tr><td>PATCH</td><td><code>/api/fiscal-docs?id=&lt;id&gt;</code></td><td>Edita NF/Cupom.</td></tr>
+          <tr><td>GET</td><td><code>/api/records?table=obras</code></td><td>Lista registros permitidos.</td></tr>
+          <tr><td>POST/PUT/PATCH</td><td><code>/api/records?table=fiscal_docs</code></td><td>Grava registros permitidos.</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section>
+      <h2>PWA e Plataformas</h2>
+      <p>O app é responsivo e preparado para desktop, Android, iPhone/iOS, tablets e instalação como PWA.</p>
+      <ul>
+        <li>Layouts responsivos.</li>
+        <li>Inputs e botões adaptados para mobile.</li>
+        <li>Persistência de abas e formulários em partes críticas.</li>
+        <li>Service worker e manifest configurados.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Deploy e Validação</h2>
+      <pre>npm install
+npm run lint
+npm run build</pre>
+      <ul>
+        <li>Configurar variáveis no Vercel.</li>
+        <li>Configurar secrets da IA no Supabase.</li>
+        <li>Rodar migrations necessárias.</li>
+        <li>Validar login por e-mail, CPF e telefone.</li>
+        <li>Validar cadastro, upload de foto, NF/Cupom e scanner IA.</li>
+        <li>Confirmar que <code>/api/*</code> retorna JSON.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Cuidados de Produção</h2>
+      <ul>
+        <li>Não expor service role nem chave OpenAI.</li>
+        <li>Manter RLS ativo.</li>
+        <li>Não apagar dados sem backup.</li>
+        <li>Testar mobile/iPhone após alterações de auth, câmera ou upload.</li>
+        <li>Monitorar falhas de rede do Supabase.</li>
+      </ul>
+    </section>
+  </main>
+
+  <footer>
+    Exsergia Hub - Documentação técnica atualizada.
+  </footer>
+</body>
+</html>
