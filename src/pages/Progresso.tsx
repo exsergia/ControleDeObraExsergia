@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useCollection } from '../lib/supabaseHooks';
 import { collection, query, where, addDoc, updateDoc, doc, serverTimestamp, deleteDoc } from '../lib/supabaseDb';
 import { db, handleFirestoreError, OperationType } from '../lib/supabase';
@@ -39,12 +39,35 @@ export default function ProgressoFisico() {
   const obras = (obrasSnap?.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Obra[]) || [];
   const atividades = (atividadesSnap?.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Atividade[]) || [];
   const loadError = obrasError || atividadesError;
+  const activeObras = useMemo(() => obras.filter(o => o.status !== 'Concluída'), [obras]);
+  const activeObraIds = useMemo(() => new Set(activeObras.map(o => o.id)), [activeObras]);
+  const isAtividadeConcluida = useMemo(() => (atividade: Atividade) => {
+    const previsto = Number(atividade.quantidadePrevista || 0);
+    const executado = Number(atividade.quantidadeExecutada || 0);
+    const percentual = Number(atividade.percentual || 0);
+    return previsto > 0 ? executado >= previsto || percentual >= 100 : percentual >= 100;
+  }, []);
+  const atividadesEmAndamento = useMemo(() => atividades.filter(a => {
+    if (a.obraId && !activeObraIds.has(a.obraId)) return false;
+    return !isAtividadeConcluida(a);
+  }), [activeObraIds, atividades, isAtividadeConcluida]);
 
-  const filteredAtividades = atividades.filter(a =>
-    a.descricao.toLowerCase().includes(search.toLowerCase())
+  useEffect(() => {
+    if (selectedObraId !== 'all' && !activeObraIds.has(selectedObraId)) {
+      setSelectedObraId('all');
+      setPage(1);
+    }
+  }, [activeObraIds, selectedObraId]);
+
+  const filteredAtividades = atividadesEmAndamento.filter(a =>
+    (a.descricao || '').toLowerCase().includes(search.toLowerCase())
   );
   const totalPages = Math.max(1, Math.ceil(filteredAtividades.length / PAGE_SIZE));
   const pagedAtividades = filteredAtividades.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
+  useEffect(() => {
+    if (page > totalPages) setPage(totalPages);
+  }, [page, totalPages]);
 
   const [formData, setFormData, limparRascunhoProgresso] = useAutoSaveForm('rascunho-progresso-fisico', {
     obraId: '',
@@ -161,7 +184,7 @@ export default function ProgressoFisico() {
             onChange={(e) => { setSelectedObraId(e.target.value); setPage(1); }}
           >
             <option value="all">Todas as Obras</option>
-            {obras.map(o => (
+            {activeObras.map(o => (
               <option key={o.id} value={o.id}>{o.nome}</option>
             ))}
           </select>
@@ -188,6 +211,7 @@ export default function ProgressoFisico() {
           <div className="py-32 text-center bg-white rounded-[2.5rem] border-2 border-dashed border-zinc-100">
             <Activity className="w-16 h-16 text-zinc-100 mx-auto mb-4" />
             <p className="text-zinc-500 font-medium">Nenhuma atividade registrada.</p>
+            <p className="text-xs text-zinc-400 mt-1">Atividades concluídas ou obras concluídas ficam salvas e saem desta tela.</p>
             {isAdmin && <button onClick={() => setIsModalOpen(true)} className="text-zinc-900 font-bold underline mt-2">Registrar agora</button>}
           </div>
         )}
@@ -240,7 +264,7 @@ export default function ProgressoFisico() {
                   onChange={(e) => setFormData({...formData, obraId: e.target.value})}
                 >
                   <option value="">Sem obra vinculada</option>
-                  {obras.map(o => (
+                  {activeObras.map(o => (
                     <option key={o.id} value={o.id}>{o.nome}</option>
                   ))}
                 </select>
