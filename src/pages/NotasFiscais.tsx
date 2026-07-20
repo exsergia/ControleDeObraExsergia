@@ -2,9 +2,9 @@ import React, { useState } from 'react';
 import { useCollection } from '../lib/supabaseHooks';
 import { collection, addDoc, deleteDoc, doc, serverTimestamp, query, orderBy, updateDoc } from '../lib/supabaseDb';
 import { db, handleFirestoreError, OperationType, auth } from '../lib/supabase';
-import { FiscalDoc } from '../types';
+import { FiscalAiAnalysis, FiscalDoc } from '../types';
 import { useAuth } from '../App';
-import { uploadPhoto } from '../lib/services';
+import { analyzeFiscalImage, uploadPhoto } from '../lib/services';
 import { CameraCapture } from '../components/CameraCapture';
 import { CurrencyInput } from '../components/CurrencyInput';
 import { useAutoSaveForm } from '../hooks/useAutoSaveForm';
@@ -210,6 +210,7 @@ export default function NotasFiscais() {
                   {d.obraNome && <p className="text-xs text-zinc-600 break-words flex items-center gap-1"><HardHat className="w-3 h-3 text-zinc-400" />{d.obraNome}</p>}
                   {(d.operadoresPresentes?.length || 0) > 0 && <p className="text-[11px] text-zinc-500 break-words flex items-center gap-1"><Users className="w-3 h-3 text-zinc-400" />{d.operadoresPresentes!.map(p => p.nome).join(', ')}</p>}
                   {d.observacoes && <p className="text-[11px] text-zinc-400 break-words">{d.observacoes}</p>}
+                  {d.aiAnalysis && <FiscalAiBadge analysis={d.aiAnalysis} />}
                   <div className="flex items-center justify-between pt-1 gap-2">
                     <span className="text-[10px] text-zinc-400 flex items-center gap-1 truncate"><User className="w-3 h-3" />{d.criadoPorNome || '—'}</span>
                     <div className="flex items-center gap-1 shrink-0">
@@ -292,6 +293,7 @@ function FiscalModal({
   const [fotoPreview, setFotoPreview] = useState<string | null>(editingDoc?.fotoUrl || null);
   const [showCamera, setShowCamera] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [savingStep, setSavingStep] = useState('');
   const [error, setError] = useState<string | null>(null);
 
   const saveDraft = (patch: Partial<FiscalDraft>) => {
@@ -336,8 +338,17 @@ function FiscalModal({
     if (!Number.isFinite(valorNum) || valorNum <= 0) { setError('Informe um valor válido.'); return; }
 
     setLoading(true);
+    setSavingStep('Enviando foto...');
     try {
       const fotoUrl = fotoFile.size > 0 ? await uploadPhoto(fotoFile, 'fiscal') : editingDoc?.fotoUrl || '';
+      setSavingStep('Analisando imagem com IA...');
+      const aiAnalysis = await analyzeFiscalImage({
+        imageUrl: fotoUrl,
+        tipo,
+        valor: valorNum,
+        data,
+        despesa: fornecedor.trim(),
+      });
       const obraSel = obras.find(o => o.id === obraId);
       const presentes = operadores
         .filter(o => operadoresPresentes.includes(o.id))
@@ -355,6 +366,7 @@ function FiscalModal({
           obraId: obraId || '',
           obraNome: obraSel?.nome || '',
           operadoresPresentes: presentes,
+          aiAnalysis,
           updatedAt: serverTimestamp(),
         });
         if (fotoPreview?.startsWith('blob:')) URL.revokeObjectURL(fotoPreview);
@@ -373,6 +385,7 @@ function FiscalModal({
         obraId: obraId || '',
         obraNome: obraSel?.nome || '',
         operadoresPresentes: presentes,
+        aiAnalysis,
         criadoPorNome: userName,
         criadoPorId: userId,
         createdAt: serverTimestamp(),
@@ -385,6 +398,7 @@ function FiscalModal({
       handleFirestoreError(err, OperationType.WRITE, 'fiscal_docs');
     } finally {
       setLoading(false);
+      setSavingStep('');
     }
   };
 
@@ -530,7 +544,7 @@ function FiscalModal({
           <button type="submit" disabled={loading}
             className={cn('w-full py-4 rounded-2xl font-bold transition-all flex items-center justify-center gap-2 shadow-lg',
               loading ? 'bg-zinc-100 text-zinc-300' : 'bg-zinc-900 text-white hover:bg-zinc-800')}>
-            {loading ? 'Salvando...' : <>{editingDoc ? 'Salvar Alterações' : 'Lançar'} <CheckCircle2 className="w-5 h-5" /></>}
+            {loading ? (savingStep || 'Salvando...') : <>{editingDoc ? 'Salvar Alterações' : 'Lançar'} <CheckCircle2 className="w-5 h-5" /></>}
           </button>
         </form>
       </div>
@@ -548,6 +562,39 @@ function FiscalLoadError({ title, message }: { title: string; message?: string }
         <p className="text-sm font-black">{title}</p>
         {message && <p className="text-xs font-semibold mt-1 break-words opacity-80">{message}</p>}
       </div>
+    </div>
+  );
+}
+
+function FiscalAiBadge({ analysis }: { analysis: FiscalAiAnalysis }) {
+  const tone = analysis.status === 'aprovado'
+    ? 'bg-green-50 text-green-700 border-green-100'
+    : analysis.status === 'reprovado'
+      ? 'bg-red-50 text-red-700 border-red-100'
+      : analysis.status === 'pendente'
+        ? 'bg-zinc-50 text-zinc-600 border-zinc-100'
+        : 'bg-amber-50 text-amber-700 border-amber-100';
+
+  const label = {
+    aprovado: 'IA aprovou',
+    revisar: 'IA pediu revisão',
+    reprovado: 'IA reprovou',
+    pendente: 'IA pendente',
+  }[analysis.status];
+
+  const confidence = Math.round((analysis.confidence || 0) * 100);
+  const reason = analysis.reasons?.[0] || analysis.warnings?.[0] || 'Analise registrada.';
+
+  return (
+    <div className={cn('rounded-xl border px-3 py-2 text-[11px]', tone)}>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <span className="font-black uppercase tracking-wide">{label}</span>
+        {confidence > 0 && <span className="font-bold">{confidence}%</span>}
+      </div>
+      <p className="mt-1 font-medium leading-snug">{reason}</p>
+      {analysis.extractedValue !== null && analysis.extractedValue !== undefined && (
+        <p className="mt-1 opacity-80">Valor lido: {brl(Number(analysis.extractedValue))}</p>
+      )}
     </div>
   );
 }

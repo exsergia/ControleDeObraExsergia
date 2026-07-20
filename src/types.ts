@@ -161,7 +161,24 @@ export interface FiscalDoc {
   operadoresPresentes?: { id: string; nome: string }[]; // quem estava presente
   criadoPorNome?: string;
   criadoPorId?: string;
+  aiAnalysis?: FiscalAiAnalysis;
   createdAt: any;
+}
+
+export interface FiscalAiAnalysis {
+  status: 'aprovado' | 'revisar' | 'reprovado' | 'pendente';
+  confidence: number;
+  documentType: 'NF' | 'Cupom' | 'Outro' | 'Indefinido';
+  extractedValue: number | null;
+  extractedDate: string | null;
+  vendor: string | null;
+  reasons: string[];
+  warnings: string[];
+  rawTextSummary?: string;
+  model?: string;
+  analyzedAt: string;
+  configured?: boolean;
+  error?: string;
 }
 
 // ── Frente 2: Equipamentos (custo e rentabilidade) ─────────────────────────

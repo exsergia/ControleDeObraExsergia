@@ -1,5 +1,6 @@
 import { supabase } from './supabase';
 import { compressImage } from './imageUtils';
+import { FiscalAiAnalysis } from '../types';
 
 export const requestNotificationPermission = async () => {
   if (!('Notification' in window)) return false;
@@ -97,3 +98,33 @@ export const uploadFile = async (file: File, path = 'uploads', onProgress?: (pro
 };
 
 export const uploadPhoto = uploadImage;
+
+export async function analyzeFiscalImage(params: {
+  imageUrl: string;
+  tipo: 'NF' | 'Cupom';
+  valor: number;
+  data: string;
+  despesa?: string;
+}): Promise<FiscalAiAnalysis> {
+  const { data, error } = await supabase.functions.invoke('analyze-fiscal-image', {
+    body: params,
+  });
+
+  if (error) {
+    return {
+      status: 'pendente',
+      confidence: 0,
+      documentType: 'Indefinido',
+      extractedValue: null,
+      extractedDate: null,
+      vendor: null,
+      reasons: ['Nao foi possivel executar a analise automatica.'],
+      warnings: [error.message || 'Edge Function indisponivel.'],
+      analyzedAt: new Date().toISOString(),
+      configured: false,
+      error: error.message,
+    };
+  }
+
+  return data as FiscalAiAnalysis;
+}
