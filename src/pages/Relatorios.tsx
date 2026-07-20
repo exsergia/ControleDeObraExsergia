@@ -49,6 +49,33 @@ import { parseDateSafe as parseDate } from '../lib/dateUtils';
 
 type RelatorioTab = 'diarios' | 'ferramentas' | 'frota' | 'fiscal' | 'bi';
 
+function getToolUsagePlan(log: ToolLog) {
+  const diasUso = Number(log.diasUso || 0);
+  const saida = parseDate(log.dataSaida);
+  const previsao = log.previsaoDevolucao ? parseDate(log.previsaoDevolucao) : null;
+
+  if (diasUso > 0) {
+    return {
+      text: diasUso === 1 ? '1 dia' : `${diasUso} dias`,
+      previsao,
+    };
+  }
+
+  if (previsao && saida) {
+    const diffMs = previsao.getTime() - saida.getTime();
+    const diffDays = Math.max(1, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
+    return {
+      text: diffDays === 1 ? '1 dia' : `${diffDays} dias`,
+      previsao,
+    };
+  }
+
+  return {
+    text: 'Não informado',
+    previsao,
+  };
+}
+
 export default function Relatorios() {
   const { isAdmin, notify } = useAuth();
   const navigate = useNavigate();
@@ -231,6 +258,7 @@ export default function Relatorios() {
       const obra = obras.find(o => o.id === l.obraId);
       const saida = parseDate(l.dataSaida);
       const devolucao = l.dataDevolucao ? parseDate(l.dataDevolucao) : null;
+      const usoPrevisto = getToolUsagePlan(l);
       return {
         'ID Retirada': l.id,
         'ID Ferramenta': l.toolId,
@@ -240,6 +268,8 @@ export default function Relatorios() {
         'Obra': obra?.nome || '---',
         'Data Saída': format(saida, 'dd/MM/yyyy'),
         'Hora Saída': format(saida, 'HH:mm:ss'),
+        'Tempo Previsto de Uso': usoPrevisto.text,
+        'Previsao Devolucao': usoPrevisto.previsao ? format(usoPrevisto.previsao, 'dd/MM/yyyy HH:mm:ss') : '---',
         'Data Devolução': devolucao ? format(devolucao, 'dd/MM/yyyy') : '---',
         'Hora Devolução': devolucao ? format(devolucao, 'HH:mm:ss') : '---',
         'Status': l.statusLog,
@@ -684,6 +714,7 @@ export default function Relatorios() {
               const obra = obras.find(o => o.id === log.obraId);
               const saida = parseDate(log.dataSaida);
               const devolucao = log.dataDevolucao ? parseDate(log.dataDevolucao) : null;
+              const usoPrevisto = getToolUsagePlan(log);
               const isPending = log.statusLog === 'Aberta';
               return (
                 <div key={log.id} className="p-4 space-y-2">
@@ -702,7 +733,11 @@ export default function Relatorios() {
                   </div>
                   <p className="text-xs text-zinc-600"><span className="font-bold">Resp:</span> {log.responsavelNome}</p>
                   <p className="text-xs text-zinc-500 break-words"><span className="font-bold">Obra:</span> {obra?.nome || '---'}</p>
-                  <div className="flex items-center gap-4 text-xs text-zinc-400">
+                  <p className="text-xs text-zinc-500">
+                    <span className="font-bold">Tempo previsto:</span> {usoPrevisto.text}
+                    {usoPrevisto.previsao ? ` - até ${format(usoPrevisto.previsao, 'dd/MM/yy HH:mm')}` : ''}
+                  </p>
+                  <div className="flex flex-wrap items-center gap-3 text-xs text-zinc-400">
                     <span className="flex items-center gap-1"><ArrowUpRight className="w-3 h-3 text-orange-500" />{format(saida, 'dd/MM/yy HH:mm')}</span>
                     {devolucao && <span className="flex items-center gap-1"><ArrowDownLeft className="w-3 h-3 text-green-500" />{format(devolucao, 'dd/MM/yy HH:mm')}</span>}
                   </div>
@@ -718,28 +753,29 @@ export default function Relatorios() {
 
           {/* Desktop table */}
           <div className="hidden sm:block overflow-x-auto">
-            <table className="w-full text-left">
+            <table className="w-full min-w-[980px] text-left">
               <thead>
                 <tr className="bg-zinc-50 border-b border-zinc-100">
-                  <th className="px-5 py-4 text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Ferramenta / ID</th>
-                  <th className="px-5 py-4 text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Responsável</th>
-                  <th className="px-5 py-4 text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Obra</th>
-                  <th className="px-5 py-4 text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Saída</th>
-                  <th className="px-5 py-4 text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Devolução</th>
-                  <th className="px-5 py-4 text-[10px] font-bold text-zinc-400 uppercase tracking-widest text-center">Foto</th>
-                  <th className="px-5 py-4 text-[10px] font-bold text-zinc-400 uppercase tracking-widest text-center">Status</th>
+                  <th className="px-3 lg:px-5 py-4 text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Ferramenta / ID</th>
+                  <th className="px-3 lg:px-5 py-4 text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Responsável</th>
+                  <th className="px-3 lg:px-5 py-4 text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Obra</th>
+                  <th className="px-3 lg:px-5 py-4 text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Tempo de Uso</th>
+                  <th className="px-3 lg:px-5 py-4 text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Saída</th>
+                  <th className="px-3 lg:px-5 py-4 text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Devolução</th>
+                  <th className="px-3 lg:px-5 py-4 text-[10px] font-bold text-zinc-400 uppercase tracking-widest text-center">Foto</th>
+                  <th className="px-3 lg:px-5 py-4 text-[10px] font-bold text-zinc-400 uppercase tracking-widest text-center">Status</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-zinc-100">
                 {loadingLogs ? (
                   Array(5).fill(0).map((_, i) => (
                     <tr key={i} className="animate-pulse">
-                      <td colSpan={7} className="px-5 py-6"><div className="h-4 bg-zinc-100 rounded w-full" /></td>
+                      <td colSpan={8} className="px-5 py-6"><div className="h-4 bg-zinc-100 rounded w-full" /></td>
                     </tr>
                   ))
                 ) : filteredToolLogs.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="px-5 py-16 text-center">
+                    <td colSpan={8} className="px-5 py-16 text-center">
                       <Hammer className="w-10 h-10 text-zinc-200 mx-auto mb-3" />
                       <p className="text-zinc-400 text-sm font-medium">Nenhuma movimentação encontrada.</p>
                     </td>
@@ -749,21 +785,26 @@ export default function Relatorios() {
                   const obra = obras.find(o => o.id === log.obraId);
                   const saida = parseDate(log.dataSaida);
                   const devolucao = log.dataDevolucao ? parseDate(log.dataDevolucao) : null;
+                  const usoPrevisto = getToolUsagePlan(log);
                   const isPending = log.statusLog === 'Aberta';
                   return (
                     <tr key={log.id} className="hover:bg-zinc-50/50 transition-colors">
-                      <td className="px-5 py-4">
+                      <td className="px-3 lg:px-5 py-4">
                         <p className="text-sm font-bold text-zinc-900">{tool?.nome || 'Ferramenta removida'}</p>
                         <p className="text-[10px] font-mono text-zinc-400 mt-0.5">ID: {log.id.slice(0, 12)}…</p>
                         {tool?.codigo && <p className="text-[10px] font-bold text-zinc-500">#{tool.codigo}</p>}
                       </td>
-                      <td className="px-5 py-4">
+                      <td className="px-3 lg:px-5 py-4">
                         <p className="text-sm font-semibold text-zinc-800">{log.responsavelNome}</p>
                       </td>
-                      <td className="px-5 py-4">
+                      <td className="px-3 lg:px-5 py-4">
                         <p className="text-sm text-zinc-600">{obra?.nome || '---'}</p>
                       </td>
-                      <td className="px-5 py-4">
+                      <td className="px-3 lg:px-5 py-4">
+                        <p className="text-xs font-bold text-zinc-900">{usoPrevisto.text}</p>
+                        {usoPrevisto.previsao && <p className="text-[10px] text-zinc-500">at� {format(usoPrevisto.previsao, 'dd/MM/yyyy HH:mm')}</p>}
+                      </td>
+                      <td className="px-3 lg:px-5 py-4">
                         <div className="flex items-center gap-1.5">
                           <ArrowUpRight className="w-3.5 h-3.5 text-orange-500 shrink-0" />
                           <div>
@@ -772,7 +813,7 @@ export default function Relatorios() {
                           </div>
                         </div>
                       </td>
-                      <td className="px-5 py-4">
+                      <td className="px-3 lg:px-5 py-4">
                         {devolucao ? (
                           <div className="flex items-center gap-1.5">
                             <ArrowDownLeft className="w-3.5 h-3.5 text-green-600 shrink-0" />
@@ -785,7 +826,7 @@ export default function Relatorios() {
                           <span className="text-[10px] text-zinc-400 font-bold uppercase">Pendente</span>
                         )}
                       </td>
-                      <td className="px-5 py-4 text-center">
+                      <td className="px-3 lg:px-5 py-4 text-center">
                         {log.fotoDevolucaoUrl ? (
                           <a href={log.fotoDevolucaoUrl} target="_blank" rel="noopener noreferrer" className="inline-block" title="Ver foto da devolução">
                             <img src={log.fotoDevolucaoUrl} alt="Foto devolução" className="w-12 h-12 object-cover rounded-lg border border-zinc-200 hover:opacity-80 transition-opacity mx-auto" />
@@ -794,7 +835,7 @@ export default function Relatorios() {
                           <span className="text-[10px] text-zinc-300 font-bold uppercase">—</span>
                         )}
                       </td>
-                      <td className="px-5 py-4 text-center">
+                      <td className="px-3 lg:px-5 py-4 text-center">
                         <span className={cn(
                           'inline-flex items-center gap-1 px-2 py-1 rounded-full text-[9px] font-bold uppercase tracking-wide',
                           isPending ? 'bg-orange-100 text-orange-700' : 'bg-green-100 text-green-700'
