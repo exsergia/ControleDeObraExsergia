@@ -31,7 +31,7 @@ const statusBadge = (s: EquipamentoStatus) => ({
 
 interface Finance {
   custoManutencao: number; custoAquisicao: number; receita: number;
-  custoTotal: number; resultado: number; margem: number | null; tirAnual: number | null; nManut: number; nLoc: number;
+  custoTotal: number; resultado: number; tirAnual: number | null; nManut: number; nLoc: number;
   fluxoCaixa: CashFlow[];
 }
 
@@ -92,7 +92,6 @@ function calcFinance(eq: Equipamento, manuts: EquipamentoManutencao[], locs: Equ
   const receita = locs.reduce((a, l) => a + (l.valorLocacao || 0), 0);
   const custoTotal = custoManutencao + custoAquisicao;
   const resultado = receita - custoTotal;
-  const margem = receita > 0 ? (resultado / receita) * 100 : null;
   const fallbackDate = parseDate(eq.createdAt) || new Date();
   const fluxoCaixa: CashFlow[] = [
     ...(custoAquisicao > 0 ? [{ date: eq.dataAquisicao ? new Date(`${eq.dataAquisicao}T12:00:00`) : fallbackDate, amount: -custoAquisicao }] : []),
@@ -100,7 +99,7 @@ function calcFinance(eq: Equipamento, manuts: EquipamentoManutencao[], locs: Equ
     ...locs.map(l => ({ date: parseDate(l.dataInicio) || fallbackDate, amount: l.valorLocacao || 0 })),
   ];
   const tirAnual = calcTirAnual(fluxoCaixa);
-  return { custoManutencao, custoAquisicao, receita, custoTotal, resultado, margem, tirAnual, nManut: manuts.length, nLoc: locs.length, fluxoCaixa };
+  return { custoManutencao, custoAquisicao, receita, custoTotal, resultado, tirAnual, nManut: manuts.length, nLoc: locs.length, fluxoCaixa };
 }
 
 export default function Equipamentos() {
@@ -387,13 +386,12 @@ function EquipamentoDetalhe({ equipamento, manutencoes, locacoes, onBack, onEdit
       </div>
 
       {/* KPIs do período */}
-      <div className="grid grid-cols-2 lg:grid-cols-6 gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
         <KPI label="Receita" value={brl(f.receita)} icon={<TrendingUp className="w-4 h-4" />} tone="green" small />
         <KPI label="Custo manut." value={brl(f.custoManutencao)} icon={<Wrench className="w-4 h-4" />} tone="red" small />
         <KPI label="Custo aquisição" value={brl(f.custoAquisicao)} icon={<DollarSign className="w-4 h-4" />} tone="zinc" small />
         <KPI label="Resultado" value={brl(f.resultado)} icon={<DollarSign className="w-4 h-4" />} tone={f.resultado >= 0 ? 'dark' : 'red'} small />
         <KPI label="TIR total" value={pct(fTudo.tirAnual)} icon={<Percent className="w-4 h-4" />} tone={fTudo.tirAnual !== null && fTudo.tirAnual < 0 ? 'red' : 'zinc'} small />
-        <KPI label="Margem" value={f.margem === null ? '—' : `${f.margem.toFixed(1)}%`} icon={<Percent className="w-4 h-4" />} tone="zinc" small />
       </div>
       <div className="-mt-3 space-y-1">
         {periodo !== 'tudo' && <p className="text-[11px] text-zinc-400">* Custo de aquisição é total (não filtrado por período).</p>}
