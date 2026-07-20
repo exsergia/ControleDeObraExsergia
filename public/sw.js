@@ -1,4 +1,4 @@
-const CACHE_NAME = 'exsergia-app-v7';
+const CACHE_NAME = 'exsergia-app-v8';
 const CACHE_PREFIX = 'exsergia-app';
 const CORE_ASSETS = ['/', '/manifest.webmanifest', '/icon-192.png', '/icon-512.png'];
 
