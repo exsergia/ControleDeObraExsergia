@@ -719,6 +719,15 @@ function FiscalLoadError({ title, message }: { title: string; message?: string }
 function FiscalAiBadge({ analysis }: { analysis: FiscalAiAnalysis }) {
   const cleanAiMessage = (message?: string) => {
     if (!message) return '';
+    if (/invalid_api_key|incorrect api key/i.test(message)) {
+      return 'Chave OpenAI invalida. Atualize a OPENAI_API_KEY no Supabase e reanalise a imagem.';
+    }
+    if (/insufficient_quota|billing|quota/i.test(message)) {
+      return 'Conta OpenAI sem saldo/cota para executar a analise.';
+    }
+    if (/model_not_found|does not have access to model/i.test(message)) {
+      return 'Chave OpenAI sem acesso ao modelo configurado para analise.';
+    }
     if (/failed to send a request to the edge function|edge function/i.test(message)) {
       return 'Scanner de IA pendente. Reanalise a imagem para atualizar este documento.';
     }

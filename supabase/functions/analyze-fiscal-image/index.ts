@@ -104,6 +104,19 @@ function pending(reason: string, warning: string) {
   };
 }
 
+function openAiErrorMessage(detail: string) {
+  if (/invalid_api_key|incorrect api key/i.test(detail)) {
+    return 'OPENAI_API_KEY invalida. Gere uma nova chave na OpenAI e atualize o secret do Supabase.';
+  }
+  if (/insufficient_quota|billing|quota/i.test(detail)) {
+    return 'A conta OpenAI esta sem saldo/cota para executar a analise.';
+  }
+  if (/model_not_found|does not have access to model/i.test(detail)) {
+    return `A chave OpenAI nao tem acesso ao modelo ${OPENAI_MODEL}.`;
+  }
+  return 'A OpenAI recusou a analise neste momento. Revise a configuracao da chave e tente novamente.';
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   if (req.method !== 'POST') return json({ error: 'Metodo nao permitido.' }, 405);
@@ -212,7 +225,7 @@ Critérios:
   if (!openaiResponse.ok) {
     const detail = await openaiResponse.text();
     console.error('OpenAI fiscal analysis error', detail);
-    return json(pending('Falha na analise de IA.', detail.slice(0, 500)), 200);
+    return json(pending('Falha na analise de IA.', openAiErrorMessage(detail)), 200);
   }
 
     const result = await openaiResponse.json();
