@@ -8,45 +8,114 @@ export function CameraCapture({ onCapture, onClose }: { onCapture: (file: File) 
   const videoRef = useRef<HTMLVideoElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const mountedRef = useRef(true);
   const [ready, setReady] = useState(false);
   const [camError, setCamError] = useState<string | null>(null);
+  const [focusMessage, setFocusMessage] = useState<string | null>(null);
   const [captured, setCaptured] = useState<string | null>(null);
   const [capturedFile, setCapturedFile] = useState<File | null>(null);
 
-  useEffect(() => {
-    let mounted = true;
-    const startCamera = async () => {
-      try {
-        if (!navigator.mediaDevices?.getUserMedia) {
-          throw new Error('getUserMedia indisponivel');
-        }
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } },
-          audio: false,
-        });
-        if (!mounted) { stream.getTracks().forEach(t => t.stop()); return; }
-        streamRef.current = stream;
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
+  const applyFocus = async (stream: MediaStream, point?: { x: number; y: number }) => {
+    const track = stream.getVideoTracks()[0];
+    if (!track?.applyConstraints) return false;
+
+    const capabilities = (track.getCapabilities?.() || {}) as any;
+    const advanced: Record<string, unknown>[] = [];
+
+    if (Array.isArray(capabilities.focusMode)) {
+      if (capabilities.focusMode.includes('continuous')) advanced.push({ focusMode: 'continuous' });
+      else if (capabilities.focusMode.includes('single-shot')) advanced.push({ focusMode: 'single-shot' });
+      else if (capabilities.focusMode.includes('auto')) advanced.push({ focusMode: 'auto' });
+    }
+
+    if (point && 'pointsOfInterest' in capabilities) {
+      advanced.push({ pointsOfInterest: [point] });
+    }
+
+    if (advanced.length === 0) return false;
+
+    try {
+      await track.applyConstraints({ advanced } as MediaTrackConstraints);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
+  const stopStream = () => {
+    streamRef.current?.getTracks().forEach(track => track.stop());
+    streamRef.current = null;
+    if (videoRef.current) {
+      videoRef.current.pause();
+      videoRef.current.srcObject = null;
+    }
+  };
+
+  const startCamera = async () => {
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setCamError('getUserMedia indisponivel');
+      return;
+    }
+
+    stopStream();
+    setReady(false);
+    setCamError(null);
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: { ideal: 'environment' },
+          width: { ideal: 1920 },
+          height: { ideal: 1080 },
+          frameRate: { ideal: 30 },
+        },
+        audio: false,
+      });
+
+      if (!mountedRef.current) {
+        stream.getTracks().forEach(track => track.stop());
+        return;
+      }
+
+      streamRef.current = stream;
+      void applyFocus(stream);
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        videoRef.current.muted = true;
+        try {
           await videoRef.current.play();
           setReady(true);
+        } catch {
+          setReady(false);
         }
-      } catch (err: any) {
-        if (!mounted) return;
-        const msg = err?.name === 'NotAllowedError'
-          ? 'Permissão de câmera negada. Libere nas configurações do navegador.'
-          : 'Não foi possível acessar a câmera neste dispositivo.';
-        setCamError(msg);
       }
-    };
+    } catch (err: any) {
+      if (!mountedRef.current) return;
+      const msg = err?.name === 'NotAllowedError'
+        ? 'Permissão de câmera negada. Libere nas configurações do navegador.'
+        : 'Não foi possível acessar a câmera neste dispositivo.';
+      setCamError(msg);
+    }
+  };
+
+  const handleTapToFocus = async (event: React.PointerEvent<HTMLDivElement>) => {
+    if (!streamRef.current || captured || camError) return;
+    const rect = event.currentTarget.getBoundingClientRect();
+    const x = Math.min(1, Math.max(0, (event.clientX - rect.left) / rect.width));
+    const y = Math.min(1, Math.max(0, (event.clientY - rect.top) / rect.height));
+    const focused = await applyFocus(streamRef.current, { x, y });
+    setFocusMessage(focused ? 'Foco ajustado' : 'Autofoco do navegador');
+    window.setTimeout(() => setFocusMessage(null), 1200);
+  };
+
+  useEffect(() => {
+    mountedRef.current = true;
     startCamera();
     return () => {
-      mounted = false;
-      streamRef.current?.getTracks().forEach(t => t.stop());
+      mountedRef.current = false;
+      stopStream();
     };
   }, []);
-
-  const stopStream = () => streamRef.current?.getTracks().forEach(t => t.stop());
 
   const handleCapture = () => {
     if (!videoRef.current || !ready) return;
@@ -77,13 +146,7 @@ export function CameraCapture({ onCapture, onClose }: { onCapture: (file: File) 
     if (captured) URL.revokeObjectURL(captured);
     setCaptured(null);
     setCapturedFile(null);
-    setReady(false);
-    navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } }, audio: false })
-      .then(stream => {
-        streamRef.current = stream;
-        if (videoRef.current) { videoRef.current.srcObject = stream; videoRef.current.play().then(() => setReady(true)); }
-      })
-      .catch(() => setCamError('Não foi possível reiniciar a câmera.'));
+    void startCamera();
   };
 
   const handleClose = () => { stopStream(); if (captured) URL.revokeObjectURL(captured); onClose(); };
@@ -98,7 +161,7 @@ export function CameraCapture({ onCapture, onClose }: { onCapture: (file: File) 
         <div className="w-10" />
       </div>
 
-      <div className="flex-1 relative overflow-hidden bg-black">
+      <div className="flex-1 relative overflow-hidden bg-black" onPointerDown={handleTapToFocus}>
         {camError ? (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 p-8 text-center">
             <AlertCircle className="w-16 h-16 text-red-400" />
@@ -117,7 +180,12 @@ export function CameraCapture({ onCapture, onClose }: { onCapture: (file: File) 
         ) : captured ? (
           <img src={captured} className="w-full h-full object-contain" alt="Captura" />
         ) : (
-          <video ref={videoRef} className="w-full h-full object-cover" playsInline muted />
+          <video ref={videoRef} className="w-full h-full object-cover" autoPlay playsInline muted />
+        )}
+        {!captured && !camError && (
+          <div className="pointer-events-none absolute left-1/2 top-4 -translate-x-1/2 rounded-full bg-black/45 px-4 py-2 text-[11px] font-bold uppercase tracking-widest text-white">
+            {focusMessage || 'Toque na tela para focar'}
+          </div>
         )}
       </div>
 
