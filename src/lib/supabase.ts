@@ -10,8 +10,8 @@ function normalizeSupabaseUrl(url?: string) {
   return url.trim().replace(/\/?rest\/v1\/?$/i, '').replace(/\/$/, '');
 }
 
-const supabaseUrl = normalizeSupabaseUrl(rawSupabaseUrl) || DEFAULT_SUPABASE_URL;
-const supabaseKey = (supabaseAnonKey || '').trim() || DEFAULT_SUPABASE_PUBLISHABLE_KEY;
+export const supabaseUrl = normalizeSupabaseUrl(rawSupabaseUrl) || DEFAULT_SUPABASE_URL;
+export const supabaseKey = (supabaseAnonKey || '').trim() || DEFAULT_SUPABASE_PUBLISHABLE_KEY;
 
 if (!rawSupabaseUrl?.trim() || !supabaseAnonKey?.trim()) {
   console.warn('Supabase não configurado. Defina VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY no .env.');

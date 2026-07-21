@@ -1,4 +1,4 @@
-import { supabase } from './supabase';
+import { supabase, supabaseKey, supabaseUrl } from './supabase';
 import { compressImage } from './imageUtils';
 import { FiscalAiAnalysis } from '../types';
 
@@ -121,21 +121,47 @@ export async function analyzeFiscalImage(params: {
     error: detail,
   });
 
-  let result: Awaited<ReturnType<typeof supabase.functions.invoke>>;
-  try {
-    result = await Promise.race([
-      supabase.functions.invoke('analyze-fiscal-image', { body: params }),
-      new Promise<never>((_, reject) =>
-        window.setTimeout(() => reject(new Error('Tempo limite da IA excedido.')), 30000)
-      ),
-    ]);
-  } catch (err: any) {
-    return pending('Nao foi possivel executar a analise automatica.', err?.message || 'Edge Function indisponivel.');
+  const { data: sessionData } = await supabase.auth.getSession();
+  const token = sessionData.session?.access_token;
+  if (!token) {
+    return pending('Sessao obrigatoria para executar a analise automatica.', 'Entre novamente no sistema e tente lancar a imagem outra vez.');
   }
 
-  const { data, error } = result;
-  if (error) {
-    return pending('Nao foi possivel executar a analise automatica.', error.message || 'Edge Function indisponivel.');
+  let data: unknown;
+  try {
+    const controller = new AbortController();
+    const timeoutId = window.setTimeout(() => controller.abort(), 30000);
+
+    const response = await fetch(`${supabaseUrl}/functions/v1/analyze-fiscal-image`, {
+      method: 'POST',
+      headers: {
+        authorization: `Bearer ${token}`,
+        apikey: supabaseKey,
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify(params),
+      signal: controller.signal,
+    });
+    window.clearTimeout(timeoutId);
+
+    const text = await response.text();
+    try {
+      data = text ? JSON.parse(text) : null;
+    } catch {
+      data = { error: text || 'Resposta invalida da Edge Function.' };
+    }
+
+    if (!response.ok) {
+      const message = String((data as any)?.error || (data as any)?.message || `HTTP ${response.status}`);
+      return pending('A IA nao concluiu a leitura da imagem.', message);
+    }
+  } catch (err: any) {
+    const detail = err?.name === 'AbortError'
+      ? 'Tempo limite da IA excedido.'
+      : /failed to fetch|network/i.test(String(err?.message || ''))
+        ? 'Nao foi possivel conectar ao scanner de IA agora.'
+        : err?.message || 'Edge Function indisponivel.';
+    return pending('Nao foi possivel executar a analise automatica.', detail);
   }
 
   if ((data as any)?.error) {
