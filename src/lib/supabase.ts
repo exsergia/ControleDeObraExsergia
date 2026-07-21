@@ -2,21 +2,24 @@ import { createClient, Session, User } from '@supabase/supabase-js';
 
 const rawSupabaseUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
+const DEFAULT_SUPABASE_URL = 'https://krbimgxlnyucldfxkvdy.supabase.co';
+const DEFAULT_SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_LyarOzLLpQjox1EypkoX6g_tFHWZX9T';
 
 function normalizeSupabaseUrl(url?: string) {
   if (!url) return undefined;
   return url.trim().replace(/\/?rest\/v1\/?$/i, '').replace(/\/$/, '');
 }
 
-const supabaseUrl = normalizeSupabaseUrl(rawSupabaseUrl);
+const supabaseUrl = normalizeSupabaseUrl(rawSupabaseUrl) || DEFAULT_SUPABASE_URL;
+const supabaseKey = (supabaseAnonKey || '').trim() || DEFAULT_SUPABASE_PUBLISHABLE_KEY;
 
-if (!supabaseUrl || !supabaseAnonKey) {
+if (!rawSupabaseUrl?.trim() || !supabaseAnonKey?.trim()) {
   console.warn('Supabase não configurado. Defina VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY no .env.');
 }
 
 export const supabase = createClient(
-  supabaseUrl || 'https://placeholder.supabase.co',
-  supabaseAnonKey || 'placeholder-anon-key',
+  supabaseUrl,
+  supabaseKey,
   {
     auth: {
       persistSession: true,

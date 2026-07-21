@@ -19,7 +19,7 @@ import {
 
 const brl = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v || 0);
 const monthKey = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-const pct = (v: number | null) => v === null ? 'Sem dados' : `${v.toFixed(2)}% a.a.`;
+const fator = (v: number | null) => v === null ? 'Sem dados' : `${v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}x`;
 
 const statusBadge = (s: EquipamentoStatus) => ({
   'Ativo': 'bg-green-100 text-green-700',
@@ -31,59 +31,7 @@ const statusBadge = (s: EquipamentoStatus) => ({
 
 interface Finance {
   custoManutencao: number; custoAquisicao: number; receita: number;
-  custoTotal: number; resultado: number; tirAnual: number | null; nManut: number; nLoc: number;
-  fluxoCaixa: CashFlow[];
-}
-
-interface CashFlow {
-  date: Date;
-  amount: number;
-}
-
-function daysBetween(a: Date, b: Date) {
-  return (b.getTime() - a.getTime()) / 86400000;
-}
-
-function calcTirAnual(flows: CashFlow[]) {
-  const valid = flows
-    .filter(f => Number.isFinite(f.amount) && f.amount !== 0 && !Number.isNaN(f.date.getTime()))
-    .sort((a, b) => a.date.getTime() - b.date.getTime());
-
-  if (!valid.some(f => f.amount > 0) || !valid.some(f => f.amount < 0)) return null;
-  const start = valid[0].date;
-  if (valid.every(f => Math.abs(daysBetween(start, f.date)) < 1)) return null;
-
-  const xnpv = (rate: number) => valid.reduce((sum, f) => {
-    const years = daysBetween(start, f.date) / 365;
-    return sum + f.amount / Math.pow(1 + rate, years);
-  }, 0);
-
-  let low = -0.9999;
-  let high = 1;
-  let npvLow = xnpv(low);
-  let npvHigh = xnpv(high);
-
-  while (npvLow * npvHigh > 0 && high < 1000) {
-    high *= 2;
-    npvHigh = xnpv(high);
-  }
-
-  if (!Number.isFinite(npvLow) || !Number.isFinite(npvHigh) || npvLow * npvHigh > 0) return null;
-
-  for (let i = 0; i < 100; i++) {
-    const mid = (low + high) / 2;
-    const npvMid = xnpv(mid);
-    if (Math.abs(npvMid) < 0.01) return mid * 100;
-    if (npvLow * npvMid <= 0) {
-      high = mid;
-      npvHigh = npvMid;
-    } else {
-      low = mid;
-      npvLow = npvMid;
-    }
-  }
-
-  return ((low + high) / 2) * 100;
+  custoTotal: number; resultado: number; fatorLocacao: number | null; nManut: number; nLoc: number;
 }
 
 function calcFinance(eq: Equipamento, manuts: EquipamentoManutencao[], locs: EquipamentoLocacao[]): Finance {
@@ -92,14 +40,8 @@ function calcFinance(eq: Equipamento, manuts: EquipamentoManutencao[], locs: Equ
   const receita = locs.reduce((a, l) => a + (l.valorLocacao || 0), 0);
   const custoTotal = custoManutencao + custoAquisicao;
   const resultado = receita - custoTotal;
-  const fallbackDate = parseDate(eq.createdAt) || new Date();
-  const fluxoCaixa: CashFlow[] = [
-    ...(custoAquisicao > 0 ? [{ date: eq.dataAquisicao ? new Date(`${eq.dataAquisicao}T12:00:00`) : fallbackDate, amount: -custoAquisicao }] : []),
-    ...manuts.map(m => ({ date: parseDate(m.data) || fallbackDate, amount: -(m.custoTotal || 0) })),
-    ...locs.map(l => ({ date: parseDate(l.dataInicio) || fallbackDate, amount: l.valorLocacao || 0 })),
-  ];
-  const tirAnual = calcTirAnual(fluxoCaixa);
-  return { custoManutencao, custoAquisicao, receita, custoTotal, resultado, tirAnual, nManut: manuts.length, nLoc: locs.length, fluxoCaixa };
+  const fatorLocacao = custoAquisicao > 0 && receita > 0 ? custoAquisicao / receita : null;
+  return { custoManutencao, custoAquisicao, receita, custoTotal, resultado, fatorLocacao, nManut: manuts.length, nLoc: locs.length };
 }
 
 export default function Equipamentos() {
@@ -144,12 +86,13 @@ export default function Equipamentos() {
 
   const totals = useMemo(() => {
     const vals: Finance[] = Object.values(financeById);
-    const fluxoCaixa = vals.flatMap(f => f.fluxoCaixa);
+    const receita = vals.reduce((a, f) => a + f.receita, 0);
+    const custoAquisicao = vals.reduce((a, f) => a + f.custoAquisicao, 0);
     return {
-      receita: vals.reduce((a, f) => a + f.receita, 0),
+      receita,
       custo: vals.reduce((a, f) => a + f.custoTotal, 0),
       resultado: vals.reduce((a, f) => a + f.resultado, 0),
-      tirAnual: calcTirAnual(fluxoCaixa),
+      fatorLocacao: custoAquisicao > 0 && receita > 0 ? custoAquisicao / receita : null,
     };
   }, [financeById]);
 
@@ -226,7 +169,7 @@ export default function Equipamentos() {
         <KPI label="Receita Total" value={brl(totals.receita)} icon={<TrendingUp className="w-5 h-5" />} tone="green" />
         <KPI label="Custo Total" value={brl(totals.custo)} icon={<TrendingDown className="w-5 h-5" />} tone="red" />
         <KPI label="Resultado" value={brl(totals.resultado)} icon={<DollarSign className="w-5 h-5" />} tone={totals.resultado >= 0 ? 'dark' : 'red'} />
-        <KPI label="Fator de locação" value={pct(totals.tirAnual)} icon={<Percent className="w-5 h-5" />} tone={totals.tirAnual !== null && totals.tirAnual < 0 ? 'red' : 'zinc'} />
+        <KPI label="Fator de locação" value={fator(totals.fatorLocacao)} icon={<Percent className="w-5 h-5" />} tone="zinc" />
       </div>
 
       {/* Rankings */}
@@ -268,7 +211,7 @@ export default function Equipamentos() {
                     <div><p className="text-[9px] font-bold text-zinc-400 uppercase">Receita</p><p className="text-xs font-black text-green-600">{brl(f?.receita || 0)}</p></div>
                     <div><p className="text-[9px] font-bold text-zinc-400 uppercase">Custo</p><p className="text-xs font-black text-red-500">{brl(f?.custoTotal || 0)}</p></div>
                     <div><p className="text-[9px] font-bold text-zinc-400 uppercase">Result.</p><p className={cn('text-xs font-black', (f?.resultado || 0) >= 0 ? 'text-zinc-900' : 'text-red-600')}>{brl(f?.resultado || 0)}</p></div>
-                    <div><p className="text-[9px] font-bold text-zinc-400 uppercase">Fator</p><p className={cn('text-xs font-black', f?.tirAnual !== null && (f?.tirAnual || 0) < 0 ? 'text-red-600' : 'text-zinc-700')}>{f?.tirAnual == null ? '—' : `${f.tirAnual.toFixed(1)}%`}</p></div>
+                    <div><p className="text-[9px] font-bold text-zinc-400 uppercase">Fator</p><p className="text-xs font-black text-zinc-700">{fator(f?.fatorLocacao ?? null)}</p></div>
                   </div>
                 </button>
               );
@@ -391,12 +334,12 @@ function EquipamentoDetalhe({ equipamento, manutencoes, locacoes, onBack, onEdit
         <KPI label="Custo manut." value={brl(f.custoManutencao)} icon={<Wrench className="w-4 h-4" />} tone="red" small />
         <KPI label="Custo aquisição" value={brl(f.custoAquisicao)} icon={<DollarSign className="w-4 h-4" />} tone="zinc" small />
         <KPI label="Resultado" value={brl(f.resultado)} icon={<DollarSign className="w-4 h-4" />} tone={f.resultado >= 0 ? 'dark' : 'red'} small />
-        <KPI label="Fator de locação" value={pct(fTudo.tirAnual)} icon={<Percent className="w-4 h-4" />} tone={fTudo.tirAnual !== null && fTudo.tirAnual < 0 ? 'red' : 'zinc'} small />
+        <KPI label="Fator de locação" value={fator(fTudo.fatorLocacao)} icon={<Percent className="w-4 h-4" />} tone="zinc" small />
       </div>
       <div className="-mt-3 space-y-1">
         {periodo !== 'tudo' && <p className="text-[11px] text-zinc-400">* Custo de aquisição é total (não filtrado por período).</p>}
         <p className="text-[11px] text-zinc-400">
-          Fator de locação considera todo o histórico: aquisição e manutenções como saídas, locações como entradas e anualização pela data de cada lançamento.
+          Fator de locação = valor de aquisição dividido pela receita total de locação.
         </p>
       </div>
 
