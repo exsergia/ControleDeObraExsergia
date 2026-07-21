@@ -1315,7 +1315,7 @@ function Layout({ children }: { children: React.ReactNode }) {
       </aside>
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+      <div className="flex-1 flex flex-col min-w-0 min-h-0 overflow-hidden">
         {/* Header */}
         <header className="h-12 flex items-center justify-between px-6 bg-white border-b border-slate-200 shrink-0 shadow-sm z-10">
           <div className="flex items-center gap-4">
@@ -1339,8 +1339,8 @@ function Layout({ children }: { children: React.ReactNode }) {
         </header>
 
         {/* Content Area */}
-        <main className="flex-1 overflow-y-auto p-4 bg-slate-50">
-          <div className="max-w-7xl mx-auto h-full">
+        <main className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-4 bg-slate-50">
+          <div className="max-w-7xl mx-auto min-h-full">
             {children}
           </div>
         </main>

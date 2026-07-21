@@ -240,11 +240,11 @@ export default function Financeiro() {
         </div>
         <div className={cn(
           "p-4 sm:p-8 rounded-2xl border shadow-sm flex items-center gap-4 sm:gap-6",
-          stats.resultadoOperacional >= 0 ? "bg-white border-zinc-200" : "bg-red-50 border-red-100"
+          stats.resultadoOperacional >= 0 ? "bg-green-50 border-green-100" : "bg-red-50 border-red-100"
         )}>
            <div className={cn(
              "w-12 h-12 sm:w-14 sm:h-14 rounded-2xl flex items-center justify-center text-white shadow-lg shrink-0",
-             stats.resultadoOperacional >= 0 ? "bg-zinc-900" : "bg-red-600"
+             stats.resultadoOperacional >= 0 ? "bg-green-600" : "bg-red-600"
            )}>
              <PieChart className="w-6 h-6 sm:w-7 sm:h-7" />
            </div>
@@ -252,7 +252,7 @@ export default function Financeiro() {
               <p className="text-xs font-bold text-zinc-400 uppercase tracking-widest leading-none mb-1">Resultado Operacional</p>
               <p className={cn(
                 "text-lg sm:text-3xl font-black tracking-tighter truncate",
-                stats.resultadoOperacional >= 0 ? "text-zinc-900" : "text-red-700"
+                stats.resultadoOperacional >= 0 ? "text-green-700" : "text-red-700"
               )}>{brl(stats.resultadoOperacional)}</p>
            </div>
         </div>

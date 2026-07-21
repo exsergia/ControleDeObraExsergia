@@ -191,7 +191,7 @@ export default function Equipamentos() {
       <div data-tour="equip-kpis" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
         <KPI label="Receita Total" value={brl(totals.receita)} icon={<TrendingUp className="w-5 h-5" />} tone="green" />
         <KPI label="Custo Total" value={brl(totals.custo)} icon={<TrendingDown className="w-5 h-5" />} tone="red" />
-        <KPI label="Resultado" value={brl(totals.resultado)} icon={<DollarSign className="w-5 h-5" />} tone={totals.resultado >= 0 ? 'dark' : 'red'} />
+        <KPI label="Resultado" value={brl(totals.resultado)} icon={<DollarSign className="w-5 h-5" />} tone={totals.resultado >= 0 ? 'green' : 'red'} />
         <KPI label="Fator locação ano" value={fator(fatorPeriodos.fatorAno)} icon={<Percent className="w-5 h-5" />} tone="zinc" />
         <KPI label="Fator locação mês" value={fator(fatorPeriodos.fatorMes)} icon={<Percent className="w-5 h-5" />} tone="zinc" />
       </div>
@@ -234,7 +234,7 @@ export default function Equipamentos() {
                   <div className="mt-4 grid grid-cols-4 gap-2 text-center">
                     <div><p className="text-[9px] font-bold text-zinc-400 uppercase">Receita</p><p className="text-xs font-black text-green-600">{brl(f?.receita || 0)}</p></div>
                     <div><p className="text-[9px] font-bold text-zinc-400 uppercase">Custo</p><p className="text-xs font-black text-red-500">{brl(f?.custoTotal || 0)}</p></div>
-                    <div><p className="text-[9px] font-bold text-zinc-400 uppercase">Result.</p><p className={cn('text-xs font-black', (f?.resultado || 0) >= 0 ? 'text-zinc-900' : 'text-red-600')}>{brl(f?.resultado || 0)}</p></div>
+                    <div><p className="text-[9px] font-bold text-zinc-400 uppercase">Result.</p><p className={cn('text-xs font-black', (f?.resultado || 0) >= 0 ? 'text-green-600' : 'text-red-600')}>{brl(f?.resultado || 0)}</p></div>
                     <div><p className="text-[9px] font-bold text-zinc-400 uppercase">Fator</p><p className="text-xs font-black text-zinc-700">{fator(f?.fatorLocacao ?? null)}</p></div>
                   </div>
                 </button>
@@ -372,7 +372,7 @@ function EquipamentoDetalhe({ equipamento, manutencoes, locacoes, onBack, onEdit
         <KPI label="Receita" value={brl(f.receita)} icon={<TrendingUp className="w-4 h-4" />} tone="green" small />
         <KPI label="Custo manut." value={brl(f.custoManutencao)} icon={<Wrench className="w-4 h-4" />} tone="red" small />
         <KPI label="Custo aquisição" value={brl(f.custoAquisicao)} icon={<DollarSign className="w-4 h-4" />} tone="zinc" small />
-        <KPI label="Resultado" value={brl(f.resultado)} icon={<DollarSign className="w-4 h-4" />} tone={f.resultado >= 0 ? 'dark' : 'red'} small />
+        <KPI label="Resultado" value={brl(f.resultado)} icon={<DollarSign className="w-4 h-4" />} tone={f.resultado >= 0 ? 'green' : 'red'} small />
         <KPI label="Fator locação ano" value={fator(fatorAno)} icon={<Percent className="w-4 h-4" />} tone="zinc" small />
         <KPI label="Fator locação mês" value={fator(fatorMes)} icon={<Percent className="w-4 h-4" />} tone="zinc" small />
       </div>
