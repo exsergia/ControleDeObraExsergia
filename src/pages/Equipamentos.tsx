@@ -401,7 +401,8 @@ function EquipamentoDetalhe({ equipamento, manutencoes, locacoes, onBack, onEdit
 
       {/* Manutenções */}
       <Section title={`Manutenções (${manutFiltradas.length})`} icon={<Wrench className="w-4 h-4 text-zinc-400" />}
-        action={isAdmin ? <button onClick={() => setShowManut(true)} className="text-xs font-bold text-zinc-900 flex items-center gap-1"><Plus className="w-3.5 h-3.5" />Adicionar</button> : undefined}>
+        action={isAdmin ? <button onClick={() => setShowManut(true)} className="text-xs font-bold text-zinc-900 flex items-center gap-1"><Plus className="w-3.5 h-3.5" />Adicionar</button> : undefined}
+        scrollable>
         {manutFiltradas.length === 0 ? <Empty texto="Nenhuma manutenção no período." /> : (
           <div className="divide-y divide-zinc-100">
             {manutFiltradas.sort((a, b) => (parseDate(b.data)?.getTime() || 0) - (parseDate(a.data)?.getTime() || 0)).map(m => (
@@ -431,7 +432,8 @@ function EquipamentoDetalhe({ equipamento, manutencoes, locacoes, onBack, onEdit
 
       {/* Locações */}
       <Section title={`Locações / Receitas (${locFiltradas.length})`} icon={<DollarSign className="w-4 h-4 text-zinc-400" />}
-        action={isAdmin ? <button onClick={() => setShowLoc(true)} className="text-xs font-bold text-zinc-900 flex items-center gap-1"><Plus className="w-3.5 h-3.5" />Adicionar</button> : undefined}>
+        action={isAdmin ? <button onClick={() => setShowLoc(true)} className="text-xs font-bold text-zinc-900 flex items-center gap-1"><Plus className="w-3.5 h-3.5" />Adicionar</button> : undefined}
+        scrollable>
         {locFiltradas.length === 0 ? <Empty texto="Nenhuma locação no período." /> : (
           <div className="divide-y divide-zinc-100">
             {locFiltradas.sort((a, b) => (parseDate(b.dataInicio)?.getTime() || 0) - (parseDate(a.dataInicio)?.getTime() || 0)).map(l => (
@@ -456,7 +458,7 @@ function EquipamentoDetalhe({ equipamento, manutencoes, locacoes, onBack, onEdit
       </Section>
 
       {/* Histórico completo */}
-      <Section title="Histórico financeiro completo" icon={<Clock className="w-4 h-4 text-zinc-400" />}>
+      <Section title="Histórico financeiro completo" icon={<Clock className="w-4 h-4 text-zinc-400" />} scrollable>
         {historico.length === 0 ? <Empty texto="Sem lançamentos ainda." /> : (
           <div className="divide-y divide-zinc-100">
             {historico.map((h, i) => (
@@ -544,14 +546,22 @@ function RankCard({ title, icon, items, positive }: { title: string; icon: React
   );
 }
 
-function Section({ title, icon, action, children }: { title: string; icon: React.ReactNode; action?: React.ReactNode; children: React.ReactNode }) {
+function Section({ title, icon, action, children, scrollable = false }: {
+  title: string;
+  icon: React.ReactNode;
+  action?: React.ReactNode;
+  children: React.ReactNode;
+  scrollable?: boolean;
+}) {
   return (
     <div className="bg-white rounded-2xl border border-zinc-200 shadow-sm overflow-hidden">
       <div className="p-4 bg-zinc-50 border-b border-zinc-200 flex items-center justify-between">
         <span className="text-xs font-bold text-zinc-600 flex items-center gap-2">{icon}{title}</span>
         {action}
       </div>
-      {children}
+      <div className={scrollable ? 'max-h-[60vh] md:max-h-[520px] overflow-y-auto overscroll-contain' : undefined}>
+        {children}
+      </div>
     </div>
   );
 }
