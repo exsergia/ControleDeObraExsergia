@@ -226,7 +226,7 @@ export default function Equipamentos() {
         <KPI label="Receita Total" value={brl(totals.receita)} icon={<TrendingUp className="w-5 h-5" />} tone="green" />
         <KPI label="Custo Total" value={brl(totals.custo)} icon={<TrendingDown className="w-5 h-5" />} tone="red" />
         <KPI label="Resultado" value={brl(totals.resultado)} icon={<DollarSign className="w-5 h-5" />} tone={totals.resultado >= 0 ? 'dark' : 'red'} />
-        <KPI label="TIR da Carteira" value={pct(totals.tirAnual)} icon={<Percent className="w-5 h-5" />} tone={totals.tirAnual !== null && totals.tirAnual < 0 ? 'red' : 'zinc'} />
+        <KPI label="Fator de locação" value={pct(totals.tirAnual)} icon={<Percent className="w-5 h-5" />} tone={totals.tirAnual !== null && totals.tirAnual < 0 ? 'red' : 'zinc'} />
       </div>
 
       {/* Rankings */}
@@ -268,7 +268,7 @@ export default function Equipamentos() {
                     <div><p className="text-[9px] font-bold text-zinc-400 uppercase">Receita</p><p className="text-xs font-black text-green-600">{brl(f?.receita || 0)}</p></div>
                     <div><p className="text-[9px] font-bold text-zinc-400 uppercase">Custo</p><p className="text-xs font-black text-red-500">{brl(f?.custoTotal || 0)}</p></div>
                     <div><p className="text-[9px] font-bold text-zinc-400 uppercase">Result.</p><p className={cn('text-xs font-black', (f?.resultado || 0) >= 0 ? 'text-zinc-900' : 'text-red-600')}>{brl(f?.resultado || 0)}</p></div>
-                    <div><p className="text-[9px] font-bold text-zinc-400 uppercase">TIR</p><p className={cn('text-xs font-black', f?.tirAnual !== null && (f?.tirAnual || 0) < 0 ? 'text-red-600' : 'text-zinc-700')}>{f?.tirAnual == null ? '—' : `${f.tirAnual.toFixed(1)}%`}</p></div>
+                    <div><p className="text-[9px] font-bold text-zinc-400 uppercase">Fator</p><p className={cn('text-xs font-black', f?.tirAnual !== null && (f?.tirAnual || 0) < 0 ? 'text-red-600' : 'text-zinc-700')}>{f?.tirAnual == null ? '—' : `${f.tirAnual.toFixed(1)}%`}</p></div>
                   </div>
                 </button>
               );
@@ -391,12 +391,12 @@ function EquipamentoDetalhe({ equipamento, manutencoes, locacoes, onBack, onEdit
         <KPI label="Custo manut." value={brl(f.custoManutencao)} icon={<Wrench className="w-4 h-4" />} tone="red" small />
         <KPI label="Custo aquisição" value={brl(f.custoAquisicao)} icon={<DollarSign className="w-4 h-4" />} tone="zinc" small />
         <KPI label="Resultado" value={brl(f.resultado)} icon={<DollarSign className="w-4 h-4" />} tone={f.resultado >= 0 ? 'dark' : 'red'} small />
-        <KPI label="TIR total" value={pct(fTudo.tirAnual)} icon={<Percent className="w-4 h-4" />} tone={fTudo.tirAnual !== null && fTudo.tirAnual < 0 ? 'red' : 'zinc'} small />
+        <KPI label="Fator de locação" value={pct(fTudo.tirAnual)} icon={<Percent className="w-4 h-4" />} tone={fTudo.tirAnual !== null && fTudo.tirAnual < 0 ? 'red' : 'zinc'} small />
       </div>
       <div className="-mt-3 space-y-1">
         {periodo !== 'tudo' && <p className="text-[11px] text-zinc-400">* Custo de aquisição é total (não filtrado por período).</p>}
         <p className="text-[11px] text-zinc-400">
-          TIR total considera todo o histórico: aquisição e manutenções como saídas, locações como entradas e anualização pela data de cada lançamento.
+          Fator de locação considera todo o histórico: aquisição e manutenções como saídas, locações como entradas e anualização pela data de cada lançamento.
         </p>
       </div>
 
