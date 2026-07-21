@@ -119,24 +119,6 @@ export default function Equipamentos() {
     };
   }, [equipamentos, locacoes, agora]);
 
-  const fatorMensal = useMemo(() => {
-    const custoAquisicao = equipamentos.reduce((a, e) => a + (e.valorAquisicao || 0), 0);
-    return Array.from({ length: 12 }, (_, index) => {
-      const data = new Date(agora.getFullYear(), agora.getMonth() - (11 - index), 1);
-      const key = monthKey(data);
-      const receita = locacoes.reduce((acc, loc) => {
-        const locDate = parseDate(loc.dataInicio);
-        return locDate && monthKey(locDate) === key ? acc + (loc.valorLocacao || 0) : acc;
-      }, 0);
-      return {
-        key,
-        mes: format(data, 'MM/yy'),
-        receita,
-        fatorLocacao: calcFatorLocacao(custoAquisicao, receita),
-      };
-    });
-  }, [equipamentos, locacoes, agora]);
-
   const rankLucrativos = [...equipamentos].sort((a, b) => (financeById[b.id]?.resultado || 0) - (financeById[a.id]?.resultado || 0)).slice(0, 5);
   const rankCusto = [...equipamentos].sort((a, b) => (financeById[b.id]?.custoManutencao || 0) - (financeById[a.id]?.custoManutencao || 0)).slice(0, 5);
 
@@ -206,38 +188,13 @@ export default function Equipamentos() {
       )}
 
       {/* KPIs gerais */}
-      <div data-tour="equip-kpis" className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+      <div data-tour="equip-kpis" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
         <KPI label="Receita Total" value={brl(totals.receita)} icon={<TrendingUp className="w-5 h-5" />} tone="green" />
         <KPI label="Custo Total" value={brl(totals.custo)} icon={<TrendingDown className="w-5 h-5" />} tone="red" />
         <KPI label="Resultado" value={brl(totals.resultado)} icon={<DollarSign className="w-5 h-5" />} tone={totals.resultado >= 0 ? 'dark' : 'red'} />
-        <KPI label="Fator de locação" value={fator(totals.fatorLocacao)} icon={<Percent className="w-5 h-5" />} tone="zinc" />
+        <KPI label="Fator locação ano" value={fator(fatorPeriodos.fatorAno)} icon={<Percent className="w-5 h-5" />} tone="zinc" />
+        <KPI label="Fator locação mês" value={fator(fatorPeriodos.fatorMes)} icon={<Percent className="w-5 h-5" />} tone="zinc" />
       </div>
-
-      <section className="bg-white rounded-2xl border border-zinc-200 shadow-sm p-4 space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-2">
-          <div>
-            <h3 className="text-sm font-black text-zinc-900">Fator de locação por período</h3>
-            <p className="text-xs text-zinc-500">Valor de aquisição dividido pela receita de locação do período.</p>
-          </div>
-          <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">últimos 12 meses</span>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <MiniMetric label="Este mês" value={fator(fatorPeriodos.fatorMes)} helper={brl(fatorPeriodos.receitaMes)} />
-          <MiniMetric label="Este ano" value={fator(fatorPeriodos.fatorAno)} helper={brl(fatorPeriodos.receitaAno)} />
-          <MiniMetric label="Histórico" value={fator(totals.fatorLocacao)} helper={brl(totals.receita)} />
-        </div>
-
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
-          {fatorMensal.map(item => (
-            <div key={item.key} className="rounded-xl border border-zinc-100 bg-zinc-50 p-3 min-w-0">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">{item.mes}</p>
-              <p className="mt-1 text-sm font-black text-zinc-900">{fator(item.fatorLocacao)}</p>
-              <p className="mt-0.5 text-[10px] font-semibold text-zinc-400 truncate">{brl(item.receita)}</p>
-            </div>
-          ))}
-        </div>
-      </section>
 
       {/* Rankings */}
       {equipamentos.length > 0 && (
@@ -534,16 +491,6 @@ function EquipamentosLoadError({ title, message }: { title: string; message?: st
         <p className="text-sm font-black">{title}</p>
         <p className="text-xs font-medium text-red-600 break-words">{message || 'Verifique permissoes e conexao com o banco.'}</p>
       </div>
-    </div>
-  );
-}
-
-function MiniMetric({ label, value, helper }: { label: string; value: string; helper: string }) {
-  return (
-    <div className="rounded-xl border border-zinc-100 bg-zinc-50 p-3 min-w-0">
-      <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">{label}</p>
-      <p className="mt-1 text-lg font-black text-zinc-900 truncate">{value}</p>
-      <p className="mt-0.5 text-[10px] font-semibold text-zinc-400 truncate">Receita: {helper}</p>
     </div>
   );
 }
