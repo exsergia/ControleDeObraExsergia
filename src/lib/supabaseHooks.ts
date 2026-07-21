@@ -1,10 +1,25 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from './supabase';
-import { CollectionRef, getDocs } from './supabaseDb';
+import { CollectionRef, getDocs, LOCAL_WRITE_EVENT } from './supabaseDb';
 
 let wasHiddenSinceLastLoad = false;
 const collectionCache = new Map<string, { snap: any; timestamp: number }>();
 const CACHE_TTL_MS = 60_000;
+
+function invalidateCollectionCache(table?: string) {
+  if (!table) {
+    collectionCache.clear();
+    return;
+  }
+
+  for (const key of Array.from(collectionCache.keys())) {
+    try {
+      if (JSON.parse(key)?.table === table) collectionCache.delete(key);
+    } catch {
+      collectionCache.delete(key);
+    }
+  }
+}
 
 if (typeof document !== 'undefined') {
   document.addEventListener('visibilitychange', () => {
@@ -135,6 +150,27 @@ export function useCollection(
   }, [loadData]);
 
   // ── Realtime ──────────────────────────────────────────────────────────────
+  // Gravacoes feitas nesta aba devem derrubar o cache imediatamente. Sem isso,
+  // navegar de volta para a tela podia mostrar uma lista antiga por ate 60s.
+  useEffect(() => {
+    if (!ref?.table || typeof window === 'undefined') return;
+
+    const handleLocalWrite = (event: Event) => {
+      const table = (event as CustomEvent<{ table?: string }>).detail?.table;
+      if (table && table !== ref.table) return;
+
+      invalidateCollectionCache(ref.table);
+      if (pausedRef.current) {
+        pendingRefreshRef.current = true;
+        return;
+      }
+      loadData(false);
+    };
+
+    window.addEventListener(LOCAL_WRITE_EVENT, handleLocalWrite as EventListener);
+    return () => window.removeEventListener(LOCAL_WRITE_EVENT, handleLocalWrite as EventListener);
+  }, [ref?.table, loadData]);
+
   useEffect(() => {
     if (!ref?.table) return;
 

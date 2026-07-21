@@ -7,6 +7,8 @@ export type QueryConstraint = WhereFilter | OrderFilter | LimitFilter;
 export type CollectionRef = { table: string; constraints: QueryConstraint[] };
 export type DocRef = { table: string; id: string };
 
+export const LOCAL_WRITE_EVENT = 'exsergia:local-write';
+
 const normalizeTable = (table: string) => table;
 const newId = () =>
   typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
@@ -14,6 +16,15 @@ const newId = () =>
     : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
 export const db = {};
+
+function notifyLocalWrite(table: string) {
+  if (typeof window === 'undefined') return;
+  window.dispatchEvent(new CustomEvent(LOCAL_WRITE_EVENT, { detail: { table } }));
+}
+
+function notifyBatchWrite(ops: Array<{ table: string }>) {
+  Array.from(new Set(ops.map(op => op.table))).forEach(notifyLocalWrite);
+}
 
 export function collection(_dbOrCollection: unknown, table?: string): CollectionRef {
   if (typeof _dbOrCollection === 'string') return { table: normalizeTable(_dbOrCollection), constraints: [] };
@@ -217,6 +228,7 @@ export async function setDoc(ref: DocRef, value: any) {
     () => supabase.from(ref.table).upsert(row)
   );
   if (error) throw error;
+  notifyLocalWrite(ref.table);
 }
 
 export async function addDoc(ref: CollectionRef, value: any) {
@@ -236,7 +248,10 @@ export async function updateDoc(ref: DocRef, value: any) {
       }],
     })
   );
-  if (!error) return;
+  if (!error) {
+    notifyLocalWrite(ref.table);
+    return;
+  }
   if (!String(error.message || '').includes('Could not find the function')) throw error;
 
   const current = await getDoc(ref);
@@ -258,6 +273,7 @@ export async function updateDoc(ref: DocRef, value: any) {
 export async function deleteDoc(ref: DocRef) {
   const { error } = await supabase.from(ref.table).delete().eq('id', ref.id);
   if (error) throw error;
+  notifyLocalWrite(ref.table);
 }
 
 export function arrayUnion(...values: any[]) {
@@ -280,7 +296,10 @@ export function writeBatch(_db: unknown) {
     delete: (ref: DocRef) => ops.push({ type: 'delete', table: ref.table, id: ref.id }),
     commit: async () => {
       const { error } = await supabase.rpc('commit_json_batch', { p_ops: ops });
-      if (!error) return;
+      if (!error) {
+        notifyBatchWrite(ops);
+        return;
+      }
       if (!String(error.message || '').includes('Could not find the function')) throw error;
 
       const refs = Array.from(new Map(

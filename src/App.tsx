@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useContext, createContext } from 'react';
-import { HashRouter as BrowserRouter, Routes, Route, Navigate, Link, useLocation, useNavigate } from 'react-router-dom';
+import { HashRouter as BrowserRouter, Routes, Route, Navigate, Link, useLocation } from 'react-router-dom';
 import {
   auth,
   supabase,
@@ -569,24 +569,8 @@ async function resetAppRuntimeCache() {
 
 function RouteTracker() {
   const location = useLocation();
-  const navigate = useNavigate();
 
-  // Ao montar, se o app abriu na raiz mas havia uma rota salva, restaura.
-  // Cobre tanto o refresh quanto reabrir o navegador (localStorage persiste).
-  useEffect(() => {
-    let saved = '';
-    try {
-      saved = localStorage.getItem(LAST_ROUTE_KEY) || '';
-    } catch {
-      saved = '';
-    }
-    if (saved && saved !== '/' && location.pathname === '/') {
-      navigate(saved, { replace: true });
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // Salva a rota atual (incluindo a Dashboard) sempre que ela muda.
+  // Salva apenas para diagnostico e limpa no login/logout; nao restaura sozinho.
   useEffect(() => {
     try {
       localStorage.setItem(LAST_ROUTE_KEY, location.pathname + location.search);

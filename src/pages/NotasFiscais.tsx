@@ -19,7 +19,7 @@ import {
 import { Obra, Operator } from '../types';
 
 const brl = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v || 0);
-const DESPESAS_OPTIONS = ['ALMOÇO', 'JANTAR', 'CAFÉ', 'ESTACIONAMENTO', 'HOSPEDAGEM', 'MATERIAL'];
+const DESPESAS_OPTIONS = ['ALMOÇO', 'JANTAR', 'CAFÉ', 'ESTACIONAMENTO', 'HOSPEDAGEM', 'MATERIAL', 'OUTROS'];
 
 type FiscalDraft = {
   tipo: 'NF' | 'Cupom';
