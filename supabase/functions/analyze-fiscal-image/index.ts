@@ -1,7 +1,7 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
-const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
-const SERVICE_ROLE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || '';
+const SUPABASE_AUTH_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || Deno.env.get('SUPABASE_ANON_KEY') || '';
 const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY') || '';
 const OPENAI_MODEL = Deno.env.get('OPENAI_VISION_MODEL') || 'gpt-4o-mini';
 
@@ -70,34 +70,60 @@ function extractOutputText(result: any) {
   return parts.join('\n').trim();
 }
 
+function parseModelJson(text: string) {
+  const clean = text
+    .trim()
+    .replace(/^```(?:json)?/i, '')
+    .replace(/```$/i, '')
+    .trim();
+
+  try {
+    return JSON.parse(clean);
+  } catch {
+    const start = clean.indexOf('{');
+    const end = clean.lastIndexOf('}');
+    if (start >= 0 && end > start) return JSON.parse(clean.slice(start, end + 1));
+    throw new Error('Resposta da IA nao contem JSON valido.');
+  }
+}
+
+function pending(reason: string, warning: string) {
+  return {
+    status: 'pendente',
+    confidence: 0,
+    documentType: 'Indefinido',
+    extractedValue: null,
+    extractedDate: null,
+    vendor: null,
+    reasons: [reason],
+    warnings: [warning],
+    rawTextSummary: '',
+    model: OPENAI_MODEL,
+    analyzedAt: new Date().toISOString(),
+    configured: false,
+  };
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   if (req.method !== 'POST') return json({ error: 'Metodo nao permitido.' }, 405);
 
-  const authHeader = req.headers.get('authorization') || '';
-  const token = authHeader.replace(/^Bearer\s+/i, '');
-  if (!token) return json({ error: 'Sessao obrigatoria.' }, 401);
+  try {
+    if (!SUPABASE_URL || !SUPABASE_AUTH_KEY) {
+      return json(pending('Supabase da Edge Function nao configurado.', 'Configure SUPABASE_URL e SUPABASE_ANON_KEY ou SUPABASE_SERVICE_ROLE_KEY.'), 200);
+    }
 
-  const supabase = createClient(SUPABASE_URL, SERVICE_ROLE);
-  const { data: userData, error: userError } = await supabase.auth.getUser(token);
-  if (userError || !userData.user) return json({ error: 'Sessao invalida.' }, 401);
+    const authHeader = req.headers.get('authorization') || '';
+    const token = authHeader.replace(/^Bearer\s+/i, '');
+    if (!token) return json({ error: 'Sessao obrigatoria.' }, 401);
 
-  if (!OPENAI_API_KEY) {
-    return json({
-      status: 'pendente',
-      confidence: 0,
-      documentType: 'Indefinido',
-      extractedValue: null,
-      extractedDate: null,
-      vendor: null,
-      reasons: ['OPENAI_API_KEY nao configurada nos secrets do Supabase.'],
-      warnings: ['Documento salvo sem analise automatica.'],
-      rawTextSummary: '',
-      model: OPENAI_MODEL,
-      analyzedAt: new Date().toISOString(),
-      configured: false,
-    });
-  }
+    const supabase = createClient(SUPABASE_URL, SUPABASE_AUTH_KEY);
+    const { data: userData, error: userError } = await supabase.auth.getUser(token);
+    if (userError || !userData.user) return json({ error: 'Sessao invalida.' }, 401);
+
+    if (!OPENAI_API_KEY) {
+      return json(pending('OPENAI_API_KEY nao configurada nos secrets do Supabase.', 'Documento salvo sem analise automatica.'));
+    }
 
   const body = await req.json().catch(() => ({}));
   const imageUrl = String(body.imageUrl || '');
@@ -186,24 +212,28 @@ Critérios:
   if (!openaiResponse.ok) {
     const detail = await openaiResponse.text();
     console.error('OpenAI fiscal analysis error', detail);
-    return json({ error: 'Falha na analise de IA.', detail: detail.slice(0, 500) }, 502);
+    return json(pending('Falha na analise de IA.', detail.slice(0, 500)), 200);
   }
 
-  const result = await openaiResponse.json();
-  const outputText = extractOutputText(result);
-  let parsed: any = {};
-  try {
-    parsed = JSON.parse(outputText);
-  } catch {
-    parsed = {
-      status: 'revisar',
-      confidence: 0.2,
-      documentType: 'Indefinido',
-      reasons: ['A IA respondeu fora do formato esperado.'],
-      warnings: ['Revise manualmente este documento.'],
-      rawTextSummary: outputText,
-    };
-  }
+    const result = await openaiResponse.json();
+    const outputText = extractOutputText(result);
+    let parsed: any = {};
+    try {
+      parsed = parseModelJson(outputText);
+    } catch {
+      parsed = {
+        status: 'revisar',
+        confidence: 0.2,
+        documentType: 'Indefinido',
+        reasons: ['A IA respondeu fora do formato esperado.'],
+        warnings: ['Revise manualmente este documento.'],
+        rawTextSummary: outputText,
+      };
+    }
 
-  return json({ ...normalizeAnalysis(parsed), configured: true });
+    return json({ ...normalizeAnalysis(parsed), configured: true });
+  } catch (error) {
+    console.error('Fiscal analysis unexpected error', error);
+    return json(pending('Scanner da imagem nao conseguiu concluir a leitura.', error instanceof Error ? error.message : 'Erro inesperado na Edge Function.'), 200);
+  }
 });

@@ -107,30 +107,45 @@ export async function analyzeFiscalImage(params: {
   data: string;
   despesa?: string;
 }): Promise<FiscalAiAnalysis> {
-  const { data, error } = await supabase.functions.invoke('analyze-fiscal-image', {
-    body: params,
+  const pending = (message: string, detail?: string): FiscalAiAnalysis => ({
+    status: 'pendente',
+    confidence: 0,
+    documentType: 'Indefinido',
+    extractedValue: null,
+    extractedDate: null,
+    vendor: null,
+    reasons: [message],
+    warnings: detail ? [detail] : ['Documento salvo sem analise automatica.'],
+    analyzedAt: new Date().toISOString(),
+    configured: false,
+    error: detail,
   });
 
+  let result: Awaited<ReturnType<typeof supabase.functions.invoke>>;
+  try {
+    result = await Promise.race([
+      supabase.functions.invoke('analyze-fiscal-image', { body: params }),
+      new Promise<never>((_, reject) =>
+        window.setTimeout(() => reject(new Error('Tempo limite da IA excedido.')), 30000)
+      ),
+    ]);
+  } catch (err: any) {
+    return pending('Nao foi possivel executar a analise automatica.', err?.message || 'Edge Function indisponivel.');
+  }
+
+  const { data, error } = result;
   if (error) {
-    return {
-      status: 'pendente',
-      confidence: 0,
-      documentType: 'Indefinido',
-      extractedValue: null,
-      extractedDate: null,
-      vendor: null,
-      reasons: ['Nao foi possivel executar a analise automatica.'],
-      warnings: [error.message || 'Edge Function indisponivel.'],
-      analyzedAt: new Date().toISOString(),
-      configured: false,
-      error: error.message,
-    };
+    return pending('Nao foi possivel executar a analise automatica.', error.message || 'Edge Function indisponivel.');
+  }
+
+  if ((data as any)?.error) {
+    return pending('A IA nao concluiu a leitura da imagem.', String((data as any).error));
   }
 
   return data as FiscalAiAnalysis;
 }
 
-function fileToDataUrl(file: File) {
+function fileToDataUrl(file: Blob) {
   return new Promise<string>((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(String(reader.result || ''));
@@ -145,6 +160,12 @@ export async function scanFiscalImageFile(file: File, params: {
   data: string;
   despesa?: string;
 }) {
-  const imageDataUrl = await fileToDataUrl(file);
+  let imageForScan: Blob = file;
+  try {
+    imageForScan = await compressImage(file, 1200, 0.65);
+  } catch {
+    imageForScan = file;
+  }
+  const imageDataUrl = await fileToDataUrl(imageForScan);
   return analyzeFiscalImage({ ...params, imageDataUrl });
 }

@@ -14,12 +14,46 @@ import { cn } from '../lib/utils';
 import {
   Receipt, Plus, Camera, X, Search, CreditCard, Calendar,
   AlertCircle, Trash2, CheckCircle2, User,
-  HardHat, Users, Edit2,
+  HardHat, Users, Edit2, Download,
 } from 'lucide-react';
 import { Obra, Operator } from '../types';
 
 const brl = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v || 0);
 const DESPESAS_OPTIONS = ['ALMOÇO', 'JANTAR', 'CAFÉ', 'ESTACIONAMENTO', 'HOSPEDAGEM', 'MATERIAL', 'OUTROS'];
+
+const sanitizeFileName = (value: string) =>
+  value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-zA-Z0-9._-]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 80) || 'documento-fiscal';
+
+async function downloadFiscalImage(url: string, filename: string) {
+  if (!url) return;
+  try {
+    const response = await fetch(url);
+    if (!response.ok) throw new Error('Falha ao baixar imagem.');
+    const blob = await response.blob();
+    const objectUrl = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = objectUrl;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(objectUrl);
+  } catch {
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    link.target = '_blank';
+    link.rel = 'noreferrer';
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+  }
+}
 
 type FiscalDraft = {
   tipo: 'NF' | 'Cupom';
@@ -185,17 +219,32 @@ export default function NotasFiscais() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {filtered.map(d => {
             const dt = parseDate(d.data);
+            const downloadName = `${sanitizeFileName(`${d.tipo}-${d.fornecedor || d.obraNome || d.id}-${dt ? format(dt, 'yyyy-MM-dd') : 'sem-data'}`)}.jpg`;
             return (
               <div key={d.id} className="bg-white rounded-2xl border border-zinc-200 shadow-sm overflow-hidden group">
-                <a href={d.fotoUrl} target="_blank" rel="noreferrer" className="block relative aspect-video bg-zinc-100">
-                  {d.fotoUrl
-                    ? <img src={d.fotoUrl} className="w-full h-full object-cover" alt="Documento fiscal" />
-                    : <div className="w-full h-full flex items-center justify-center"><Receipt className="w-8 h-8 text-zinc-300" /></div>}
+                <div className="relative aspect-video bg-zinc-100">
+                  {d.fotoUrl ? (
+                    <a href={d.fotoUrl} target="_blank" rel="noreferrer" className="block w-full h-full">
+                      <img src={d.fotoUrl} className="w-full h-full object-cover" alt="Documento fiscal" />
+                    </a>
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center"><Receipt className="w-8 h-8 text-zinc-300" /></div>
+                  )}
                   <span className={cn(
                     'absolute top-2 left-2 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider',
                     d.tipo === 'NF' ? 'bg-blue-600 text-white' : 'bg-amber-500 text-white'
                   )}>{d.tipo}</span>
-                </a>
+                  {d.fotoUrl && (
+                    <button
+                      type="button"
+                      onClick={() => downloadFiscalImage(d.fotoUrl, downloadName)}
+                      className="absolute top-2 right-2 p-2 rounded-xl bg-white/90 text-zinc-700 shadow-sm border border-white/60 hover:bg-white hover:text-zinc-900 transition-colors"
+                      title="Baixar imagem"
+                    >
+                      <Download className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
                 <div className="p-4 space-y-1.5">
                   <div className="flex items-center justify-between gap-2">
                     <span className="text-lg font-black text-zinc-900">{brl(d.valor)}</span>
@@ -216,6 +265,11 @@ export default function NotasFiscais() {
                     <div className="flex items-center gap-1 shrink-0">
                       {isAdmin && (
                         <>
+                          {d.fotoUrl && (
+                            <button onClick={() => downloadFiscalImage(d.fotoUrl, downloadName)} className="p-1.5 text-zinc-300 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="Baixar imagem">
+                              <Download className="w-3.5 h-3.5" />
+                            </button>
+                          )}
                           <button onClick={() => setEditingDoc(d)} className="p-1.5 text-zinc-300 hover:text-zinc-900 hover:bg-zinc-100 rounded-lg transition-colors" title="Editar">
                             <Edit2 className="w-3.5 h-3.5" />
                           </button>
@@ -297,6 +351,7 @@ function FiscalModal({
   const [scanning, setScanning] = useState(false);
   const [scanAnalysis, setScanAnalysis] = useState<FiscalAiAnalysis | null>(editingDoc?.aiAnalysis || null);
   const [error, setError] = useState<string | null>(null);
+  const previewDownloadName = `${sanitizeFileName(`${tipo}-${fornecedor || editingDoc?.obraNome || editingDoc?.id || 'documento'}-${data || 'sem-data'}`)}.jpg`;
 
   const saveDraft = (patch: Partial<FiscalDraft>) => {
     if (!editingDoc) setDraft(prev => ({ ...prev, ...patch }));
@@ -479,6 +534,17 @@ function FiscalModal({
               <div className="space-y-2">
                 <div className="relative w-full aspect-video rounded-2xl overflow-hidden border-2 border-zinc-200">
                   <img src={fotoPreview} className="w-full h-full object-cover" alt="Pré-visualização" />
+                  {!fotoPreview.startsWith('blob:') && (
+                    <button
+                      type="button"
+                      onClick={() => downloadFiscalImage(fotoPreview, previewDownloadName)}
+                      className="absolute top-3 right-3 flex items-center gap-2 rounded-xl bg-white/90 px-3 py-2 text-xs font-bold text-zinc-700 shadow-sm border border-white/60 hover:bg-white hover:text-zinc-900 transition-colors"
+                      title="Baixar imagem"
+                    >
+                      <Download className="w-4 h-4" />
+                      Baixar
+                    </button>
+                  )}
                 </div>
                 {scanning ? (
                   <div className="rounded-xl border border-blue-100 bg-blue-50 px-3 py-2 text-xs font-bold text-blue-700">
@@ -630,6 +696,7 @@ function FiscalAiBadge({ analysis }: { analysis: FiscalAiAnalysis }) {
 
   const confidence = Math.round((analysis.confidence || 0) * 100);
   const reason = analysis.reasons?.[0] || analysis.warnings?.[0] || 'Analise registrada.';
+  const warning = analysis.warnings?.[0];
 
   return (
     <div className={cn('rounded-xl border px-3 py-2 text-[11px]', tone)}>
@@ -641,6 +708,9 @@ function FiscalAiBadge({ analysis }: { analysis: FiscalAiAnalysis }) {
       {analysis.extractedValue !== null && analysis.extractedValue !== undefined && (
         <p className="mt-1 opacity-80">Valor lido: {brl(Number(analysis.extractedValue))}</p>
       )}
+      {analysis.extractedDate && <p className="mt-1 opacity-80">Data lida: {analysis.extractedDate}</p>}
+      {analysis.vendor && <p className="mt-1 opacity-80">Emitente: {analysis.vendor}</p>}
+      {warning && warning !== reason && <p className="mt-1 font-semibold opacity-80">Aviso: {warning}</p>}
     </div>
   );
 }
