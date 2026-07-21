@@ -14,7 +14,7 @@ import { cn } from '../lib/utils';
 import {
   Receipt, Plus, Camera, X, Search, CreditCard, Calendar,
   AlertCircle, Trash2, CheckCircle2, User,
-  HardHat, Users, Edit2, Download,
+  HardHat, Users, Edit2, Download, RefreshCw,
 } from 'lucide-react';
 import { Obra, Operator } from '../types';
 
@@ -75,6 +75,7 @@ export default function NotasFiscais() {
   const [search, setSearch] = useState('');
   const [obraFilter, setObraFilter] = useState('Todas');
   const [pessoaFilter, setPessoaFilter] = useState('Todas');
+  const [reanalyzingId, setReanalyzingId] = useState<string | null>(null);
 
   const docs = (docsSnap?.docs.map(d => ({ id: d.id, ...d.data() })) as FiscalDoc[]) || [];
   const obraOptions = Array.from(
@@ -132,6 +133,33 @@ export default function NotasFiscais() {
     } catch (err: any) {
       notify('error', 'Erro ao excluir', err.message || 'Não foi possível remover.');
       handleFirestoreError(err, OperationType.DELETE, 'fiscal_docs');
+    }
+  };
+
+  const handleReanalyze = async (fiscalDoc: FiscalDoc) => {
+    if (!fiscalDoc.fotoUrl || reanalyzingId) return;
+    setReanalyzingId(fiscalDoc.id);
+    try {
+      const analysis = await analyzeFiscalImage({
+        imageUrl: fiscalDoc.fotoUrl,
+        tipo: fiscalDoc.tipo,
+        valor: fiscalDoc.valor || 0,
+        data: parseDate(fiscalDoc.data) ? format(parseDate(fiscalDoc.data)!, 'yyyy-MM-dd') : '',
+        despesa: fiscalDoc.fornecedor || '',
+      });
+      await updateDoc(doc(db, 'fiscal_docs', fiscalDoc.id), {
+        aiAnalysis: analysis,
+        updatedAt: serverTimestamp(),
+      });
+      notify(
+        analysis.status === 'pendente' ? 'warning' : 'success',
+        analysis.status === 'pendente' ? 'IA pendente' : 'IA atualizada',
+        analysis.reasons?.[0] || 'Analise da imagem atualizada.'
+      );
+    } catch (err: any) {
+      notify('error', 'Erro na IA', err?.message || 'Nao foi possivel reanalisar a imagem.');
+    } finally {
+      setReanalyzingId(null);
     }
   };
 
@@ -268,6 +296,16 @@ export default function NotasFiscais() {
                           {d.fotoUrl && (
                             <button onClick={() => downloadFiscalImage(d.fotoUrl, downloadName)} className="p-1.5 text-zinc-300 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="Baixar imagem">
                               <Download className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                          {d.fotoUrl && (
+                            <button
+                              onClick={() => handleReanalyze(d)}
+                              disabled={reanalyzingId === d.id}
+                              className="p-1.5 text-zinc-300 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors disabled:opacity-40"
+                              title="Reanalisar imagem com IA"
+                            >
+                              <RefreshCw className={cn('w-3.5 h-3.5', reanalyzingId === d.id && 'animate-spin')} />
                             </button>
                           )}
                           <button onClick={() => setEditingDoc(d)} className="p-1.5 text-zinc-300 hover:text-zinc-900 hover:bg-zinc-100 rounded-lg transition-colors" title="Editar">
@@ -679,6 +717,17 @@ function FiscalLoadError({ title, message }: { title: string; message?: string }
 }
 
 function FiscalAiBadge({ analysis }: { analysis: FiscalAiAnalysis }) {
+  const cleanAiMessage = (message?: string) => {
+    if (!message) return '';
+    if (/failed to send a request to the edge function|edge function/i.test(message)) {
+      return 'Scanner de IA pendente. Reanalise a imagem para atualizar este documento.';
+    }
+    if (/openai_api_key/i.test(message)) {
+      return 'Scanner de IA aguardando configuracao da chave OpenAI.';
+    }
+    return message;
+  };
+
   const tone = analysis.status === 'aprovado'
     ? 'bg-green-50 text-green-700 border-green-100'
     : analysis.status === 'reprovado'
@@ -695,8 +744,8 @@ function FiscalAiBadge({ analysis }: { analysis: FiscalAiAnalysis }) {
   }[analysis.status];
 
   const confidence = Math.round((analysis.confidence || 0) * 100);
-  const reason = analysis.reasons?.[0] || analysis.warnings?.[0] || 'Analise registrada.';
-  const warning = analysis.warnings?.[0];
+  const reason = cleanAiMessage(analysis.reasons?.[0] || analysis.warnings?.[0]) || 'Analise registrada.';
+  const warning = cleanAiMessage(analysis.warnings?.[0]);
 
   return (
     <div className={cn('rounded-xl border px-3 py-2 text-[11px]', tone)}>
