@@ -277,6 +277,22 @@ function EquipamentoDetalhe({ equipamento, manutencoes, locacoes, onBack, onEdit
   const manutFiltradas = manutencoes.filter(m => dentroPeriodo(parseDate(m.data)));
   const locFiltradas = locacoes.filter(l => dentroPeriodo(parseDate(l.dataInicio)));
   const f = calcFinance(equipamento, manutFiltradas, locFiltradas);
+  const fatorMes = calcFatorLocacao(
+    equipamento.valorAquisicao || 0,
+    locacoes.reduce((acc, loc) => {
+      const data = parseDate(loc.dataInicio);
+      if (!data || data.getFullYear() !== agora.getFullYear() || data.getMonth() !== agora.getMonth()) return acc;
+      return acc + (loc.valorLocacao || 0);
+    }, 0)
+  );
+  const fatorAno = calcFatorLocacao(
+    equipamento.valorAquisicao || 0,
+    locacoes.reduce((acc, loc) => {
+      const data = parseDate(loc.dataInicio);
+      if (!data || data.getFullYear() !== agora.getFullYear()) return acc;
+      return acc + (loc.valorLocacao || 0);
+    }, 0)
+  );
 
   // Gráfico: custo x receita por mês (últimos 12 meses)
   const chartData = useMemo(() => {
@@ -352,17 +368,18 @@ function EquipamentoDetalhe({ equipamento, manutencoes, locacoes, onBack, onEdit
       </div>
 
       {/* KPIs do período */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
         <KPI label="Receita" value={brl(f.receita)} icon={<TrendingUp className="w-4 h-4" />} tone="green" small />
         <KPI label="Custo manut." value={brl(f.custoManutencao)} icon={<Wrench className="w-4 h-4" />} tone="red" small />
         <KPI label="Custo aquisição" value={brl(f.custoAquisicao)} icon={<DollarSign className="w-4 h-4" />} tone="zinc" small />
         <KPI label="Resultado" value={brl(f.resultado)} icon={<DollarSign className="w-4 h-4" />} tone={f.resultado >= 0 ? 'dark' : 'red'} small />
-        <KPI label="Fator de locação" value={fator(f.fatorLocacao)} icon={<Percent className="w-4 h-4" />} tone="zinc" small />
+        <KPI label="Fator locação ano" value={fator(fatorAno)} icon={<Percent className="w-4 h-4" />} tone="zinc" small />
+        <KPI label="Fator locação mês" value={fator(fatorMes)} icon={<Percent className="w-4 h-4" />} tone="zinc" small />
       </div>
       <div className="-mt-3 space-y-1">
         {periodo !== 'tudo' && <p className="text-[11px] text-zinc-400">* Custo de aquisição é total (não filtrado por período).</p>}
         <p className="text-[11px] text-zinc-400">
-          Fator de locação = valor de aquisição dividido pela receita de locação do período selecionado.
+          Fator de locação = valor de aquisição dividido pela receita de locação do ano ou mês atual.
         </p>
       </div>
 
