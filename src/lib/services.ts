@@ -43,6 +43,8 @@ export const sendBrowserNotification = async (title: string, body: string) => {
 
 const UPLOADS_BUCKET = 'uploads';
 const SIGNED_URL_TTL_SECONDS = 60 * 60 * 24 * 365;
+const FISCAL_BUCKET = 'fiscal-private';
+const FISCAL_SIGNED_URL_TTL_SECONDS = 60 * 10;
 
 const buildAccessUrl = async (bucket: string, path: string) => {
   const { data, error } = await supabase.storage
@@ -98,6 +100,71 @@ export const uploadFile = async (file: File, path = 'uploads', onProgress?: (pro
 };
 
 export const uploadPhoto = uploadImage;
+
+export type FiscalPhotoUpload = {
+  fotoPath: string;
+  fotoSizeBytes: number;
+  fotoStorageSizeBytes: number;
+  thumbnailPath: string;
+  thumbnailSizeBytes: number;
+};
+
+async function uploadBlobToBucket(bucket: string, fileName: string, body: Blob, contentType = 'image/jpeg') {
+  const { error } = await supabase.storage.from(bucket).upload(fileName, body, {
+    cacheControl: '3600',
+    upsert: false,
+    contentType,
+  });
+  if (error) throw error;
+}
+
+export async function uploadFiscalPhoto(file: File): Promise<FiscalPhotoUpload> {
+  const baseName = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  let fullImage: Blob = file;
+  let thumbnail: Blob = file;
+
+  try {
+    fullImage = await compressImage(file, 1600, 0.72);
+  } catch {
+    fullImage = file;
+  }
+
+  try {
+    thumbnail = await compressImage(file, 480, 0.62);
+  } catch {
+    thumbnail = fullImage;
+  }
+
+  const fotoPath = `fiscal/${baseName}.jpg`;
+  const thumbnailPath = `fiscal/thumbs/${baseName}.jpg`;
+
+  await uploadBlobToBucket(FISCAL_BUCKET, fotoPath, fullImage);
+  await uploadBlobToBucket(FISCAL_BUCKET, thumbnailPath, thumbnail);
+
+  return {
+    fotoPath,
+    fotoSizeBytes: file.size,
+    fotoStorageSizeBytes: fullImage.size,
+    thumbnailPath,
+    thumbnailSizeBytes: thumbnail.size,
+  };
+}
+
+export async function getFiscalPhotoUrl(path?: string, ttlSeconds = FISCAL_SIGNED_URL_TTL_SECONDS) {
+  if (!path) return '';
+  const { data, error } = await supabase.storage
+    .from(FISCAL_BUCKET)
+    .createSignedUrl(path, ttlSeconds);
+  if (error) throw error;
+  return data.signedUrl;
+}
+
+export async function deleteFiscalPhotos(paths: Array<string | undefined>) {
+  const cleanPaths = Array.from(new Set(paths.filter(Boolean))) as string[];
+  if (cleanPaths.length === 0) return;
+  const { error } = await supabase.storage.from(FISCAL_BUCKET).remove(cleanPaths);
+  if (error) throw error;
+}
 
 export async function analyzeFiscalImage(params: {
   imageUrl?: string;

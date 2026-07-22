@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useCollection } from '../lib/supabaseHooks';
 import { collection, addDoc, deleteDoc, doc, serverTimestamp, query, orderBy, updateDoc } from '../lib/supabaseDb';
 import { db, handleFirestoreError, OperationType, auth } from '../lib/supabase';
 import { FiscalDoc } from '../types';
 import { useAuth } from '../App';
-import { uploadPhoto } from '../lib/services';
+import { deleteFiscalPhotos, getFiscalPhotoUrl, uploadFiscalPhoto } from '../lib/services';
 import { CameraCapture } from '../components/CameraCapture';
 import { CurrencyInput } from '../components/CurrencyInput';
 import { useAutoSaveForm } from '../hooks/useAutoSaveForm';
@@ -20,6 +20,13 @@ import { Obra, Operator } from '../types';
 
 const brl = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v || 0);
 const DESPESAS_OPTIONS = ['ALMOÇO', 'JANTAR', 'CAFÉ', 'ESTACIONAMENTO', 'HOSPEDAGEM', 'MATERIAL', 'OUTROS'];
+
+const formatBytes = (bytes?: number) => {
+  const value = Number(bytes || 0);
+  if (!Number.isFinite(value) || value <= 0) return '';
+  if (value >= 1024 * 1024) return `${(value / (1024 * 1024)).toFixed(1)} MB`;
+  return `${Math.ceil(value / 1024)} KB`;
+};
 
 const sanitizeFileName = (value: string) =>
   value
@@ -55,6 +62,17 @@ async function downloadFiscalImage(url: string, filename: string) {
   }
 }
 
+async function openFiscalImage(fiscalDoc: FiscalDoc) {
+  const url = fiscalDoc.fotoPath ? await getFiscalPhotoUrl(fiscalDoc.fotoPath) : fiscalDoc.fotoUrl || '';
+  if (!url) return;
+  window.open(url, '_blank', 'noopener,noreferrer');
+}
+
+async function downloadFiscalDocumentImage(fiscalDoc: FiscalDoc, filename: string) {
+  const url = fiscalDoc.fotoPath ? await getFiscalPhotoUrl(fiscalDoc.fotoPath) : fiscalDoc.fotoUrl || '';
+  await downloadFiscalImage(url, filename);
+}
+
 type FiscalDraft = {
   tipo: 'NF' | 'Cupom';
   valor: number | '';
@@ -75,8 +93,33 @@ export default function NotasFiscais() {
   const [search, setSearch] = useState('');
   const [obraFilter, setObraFilter] = useState('Todas');
   const [pessoaFilter, setPessoaFilter] = useState('Todas');
+  const [fiscalThumbUrls, setFiscalThumbUrls] = useState<Record<string, string>>({});
 
   const docs = (docsSnap?.docs.map(d => ({ id: d.id, ...d.data() })) as FiscalDoc[]) || [];
+  useEffect(() => {
+    let cancelled = false;
+    const docsWithPrivateImages = docs.filter(d => d.thumbnailPath || d.fotoPath);
+    if (docsWithPrivateImages.length === 0) {
+      setFiscalThumbUrls({});
+      return;
+    }
+
+    Promise.all(docsWithPrivateImages.map(async d => {
+      try {
+        const url = await getFiscalPhotoUrl(d.thumbnailPath || d.fotoPath);
+        return [d.id, url] as const;
+      } catch {
+        return [d.id, ''] as const;
+      }
+    })).then(entries => {
+      if (!cancelled) setFiscalThumbUrls(Object.fromEntries(entries.filter(([, url]) => url)));
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [docsSnap]);
+
   const obraOptions = Array.from(
     docs.reduce((acc, d) => {
       const key = d.obraId || d.obraNome || '';
@@ -124,10 +167,16 @@ export default function NotasFiscais() {
 
   const total = filtered.reduce((acc, d) => acc + (d.valor || 0), 0);
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = async (fiscalDoc: FiscalDoc) => {
     if (!confirm('Excluir este lançamento?')) return;
     try {
-      await deleteDoc(doc(db, 'fiscal_docs', id));
+      await deleteDoc(doc(db, 'fiscal_docs', fiscalDoc.id));
+      try {
+        await deleteFiscalPhotos([fiscalDoc.fotoPath, fiscalDoc.thumbnailPath]);
+      } catch (storageError: any) {
+        notify('warning', 'Lançamento removido', storageError?.message || 'A foto não pôde ser removida do Storage.');
+        return;
+      }
       notify('success', 'Excluído', 'Lançamento removido.');
     } catch (err: any) {
       notify('error', 'Erro ao excluir', err.message || 'Não foi possível remover.');
@@ -220,13 +269,17 @@ export default function NotasFiscais() {
           {filtered.map(d => {
             const dt = parseDate(d.data);
             const downloadName = `${sanitizeFileName(`${d.tipo}-${d.fornecedor || d.obraNome || d.id}-${dt ? format(dt, 'yyyy-MM-dd') : 'sem-data'}`)}.jpg`;
+            const previewUrl = d.thumbnailPath || d.fotoPath ? fiscalThumbUrls[d.id] : d.fotoUrl;
+            const hasImage = Boolean(d.fotoPath || d.fotoUrl);
             return (
               <div key={d.id} className="bg-white rounded-2xl border border-zinc-200 shadow-sm overflow-hidden group">
                 <div className="relative aspect-video bg-zinc-100">
-                  {d.fotoUrl ? (
-                    <a href={d.fotoUrl} target="_blank" rel="noreferrer" className="block w-full h-full">
-                      <img src={d.fotoUrl} className="w-full h-full object-cover" alt="Documento fiscal" />
-                    </a>
+                  {hasImage ? (
+                    <button type="button" onClick={() => openFiscalImage(d)} className="block w-full h-full text-left">
+                      {previewUrl
+                        ? <img src={previewUrl} className="w-full h-full object-cover" alt="Documento fiscal" />
+                        : <div className="w-full h-full flex items-center justify-center"><Receipt className="w-8 h-8 text-zinc-300 animate-pulse" /></div>}
+                    </button>
                   ) : (
                     <div className="w-full h-full flex items-center justify-center"><Receipt className="w-8 h-8 text-zinc-300" /></div>
                   )}
@@ -234,10 +287,10 @@ export default function NotasFiscais() {
                     'absolute top-2 left-2 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider',
                     d.tipo === 'NF' ? 'bg-blue-600 text-white' : 'bg-amber-500 text-white'
                   )}>{d.tipo}</span>
-                  {d.fotoUrl && (
+                  {hasImage && (
                     <button
                       type="button"
-                      onClick={() => downloadFiscalImage(d.fotoUrl, downloadName)}
+                      onClick={() => downloadFiscalDocumentImage(d, downloadName)}
                       className="absolute top-2 right-2 p-2 rounded-xl bg-white/90 text-zinc-700 shadow-sm border border-white/60 hover:bg-white hover:text-zinc-900 transition-colors"
                       title="Baixar imagem"
                     >
@@ -259,20 +312,27 @@ export default function NotasFiscais() {
                   {d.obraNome && <p className="text-xs text-zinc-600 break-words flex items-center gap-1"><HardHat className="w-3 h-3 text-zinc-400" />{d.obraNome}</p>}
                   {(d.operadoresPresentes?.length || 0) > 0 && <p className="text-[11px] text-zinc-500 break-words flex items-center gap-1"><Users className="w-3 h-3 text-zinc-400" />{d.operadoresPresentes!.map(p => p.nome).join(', ')}</p>}
                   {d.observacoes && <p className="text-[11px] text-zinc-400 break-words">{d.observacoes}</p>}
+                  {(d.fotoSizeBytes || d.fotoStorageSizeBytes || d.thumbnailSizeBytes) && (
+                    <p className="text-[10px] text-zinc-400 break-words">
+                      Imagem: {[formatBytes(d.fotoSizeBytes), formatBytes(d.fotoStorageSizeBytes), formatBytes(d.thumbnailSizeBytes)]
+                        .filter(Boolean)
+                        .join(' / ')}
+                    </p>
+                  )}
                   <div className="flex items-center justify-between pt-1 gap-2">
                     <span className="text-[10px] text-zinc-400 flex items-center gap-1 truncate"><User className="w-3 h-3" />{d.criadoPorNome || '—'}</span>
                     <div className="flex items-center gap-1 shrink-0">
                       {isAdmin && (
                         <>
-                          {d.fotoUrl && (
-                            <button onClick={() => downloadFiscalImage(d.fotoUrl, downloadName)} className="p-1.5 text-zinc-300 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="Baixar imagem">
+                          {hasImage && (
+                            <button onClick={() => downloadFiscalDocumentImage(d, downloadName)} className="p-1.5 text-zinc-300 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="Baixar imagem">
                               <Download className="w-3.5 h-3.5" />
                             </button>
                           )}
                           <button onClick={() => setEditingDoc(d)} className="p-1.5 text-zinc-300 hover:text-zinc-900 hover:bg-zinc-100 rounded-lg transition-colors" title="Editar">
                             <Edit2 className="w-3.5 h-3.5" />
                           </button>
-                          <button onClick={() => handleDelete(d.id)} className="p-1.5 text-zinc-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors">
+                          <button onClick={() => handleDelete(d)} className="p-1.5 text-zinc-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors">
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
                         </>
@@ -342,13 +402,29 @@ function FiscalModal({
   const [observacoes, setObservacoesState] = useState(editingDoc?.observacoes || draft.observacoes);
   const [obraId, setObraIdState] = useState(editingDoc?.obraId || draft.obraId);
   const [operadoresPresentes, setOperadoresPresentesState] = useState<string[]>(editingDoc ? (editingDoc.operadoresPresentes || []).map(op => op.id) : draft.operadoresPresentes);
-  const [fotoFile, setFotoFile] = useState<File | null>(() => editingDoc?.fotoUrl ? new File([], 'existing-fiscal-photo') : null);
+  const existingHasPhoto = Boolean(editingDoc?.fotoPath || editingDoc?.fotoUrl);
+  const [fotoFile, setFotoFile] = useState<File | null>(() => existingHasPhoto ? new File([], 'existing-fiscal-photo') : null);
   const [fotoPreview, setFotoPreview] = useState<string | null>(editingDoc?.fotoUrl || null);
   const [showCamera, setShowCamera] = useState(false);
   const [loading, setLoading] = useState(false);
   const [savingStep, setSavingStep] = useState('');
   const [error, setError] = useState<string | null>(null);
   const previewDownloadName = `${sanitizeFileName(`${tipo}-${fornecedor || editingDoc?.obraNome || editingDoc?.id || 'documento'}-${data || 'sem-data'}`)}.jpg`;
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!editingDoc?.fotoPath) return;
+    getFiscalPhotoUrl(editingDoc.fotoPath)
+      .then(url => {
+        if (!cancelled) setFotoPreview(url);
+      })
+      .catch(() => {
+        if (!cancelled) setFotoPreview(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [editingDoc?.fotoPath]);
 
   const saveDraft = (patch: Partial<FiscalDraft>) => {
     if (!editingDoc) setDraft(prev => ({ ...prev, ...patch }));
@@ -394,7 +470,24 @@ function FiscalModal({
     setLoading(true);
     setSavingStep('Enviando foto...');
     try {
-      const fotoUrl = fotoFile.size > 0 ? await uploadPhoto(fotoFile, 'fiscal') : editingDoc?.fotoUrl || '';
+      const uploaded = fotoFile.size > 0 ? await uploadFiscalPhoto(fotoFile) : null;
+      const fotoPayload = uploaded
+        ? {
+          fotoUrl: '',
+          fotoPath: uploaded.fotoPath,
+          thumbnailPath: uploaded.thumbnailPath,
+          fotoSizeBytes: uploaded.fotoSizeBytes,
+          fotoStorageSizeBytes: uploaded.fotoStorageSizeBytes,
+          thumbnailSizeBytes: uploaded.thumbnailSizeBytes,
+        }
+        : {
+          fotoUrl: editingDoc?.fotoUrl || '',
+          fotoPath: editingDoc?.fotoPath || '',
+          thumbnailPath: editingDoc?.thumbnailPath || '',
+          fotoSizeBytes: editingDoc?.fotoSizeBytes || 0,
+          fotoStorageSizeBytes: editingDoc?.fotoStorageSizeBytes || 0,
+          thumbnailSizeBytes: editingDoc?.thumbnailSizeBytes || 0,
+        };
       const obraSel = obras.find(o => o.id === obraId);
       const presentes = operadores
         .filter(o => operadoresPresentes.includes(o.id))
@@ -403,7 +496,7 @@ function FiscalModal({
       if (editingDoc) {
         await updateDoc(doc(db, 'fiscal_docs', editingDoc.id), {
           tipo,
-          fotoUrl,
+          ...fotoPayload,
           valor: valorNum,
           data: data ? new Date(`${data}T12:00:00`).toISOString() : serverTimestamp(),
           fornecedor: fornecedor.trim(),
@@ -414,6 +507,13 @@ function FiscalModal({
           operadoresPresentes: presentes,
           updatedAt: serverTimestamp(),
         });
+        if (uploaded) {
+          try {
+            await deleteFiscalPhotos([editingDoc.fotoPath, editingDoc.thumbnailPath]);
+          } catch {
+            // O lançamento já foi salvo; uma falha de limpeza no Storage não deve bloquear o usuário.
+          }
+        }
         if (fotoPreview?.startsWith('blob:')) URL.revokeObjectURL(fotoPreview);
         onSaved(true);
         return;
@@ -421,7 +521,7 @@ function FiscalModal({
 
       await addDoc(collection(db, 'fiscal_docs'), {
         tipo,
-        fotoUrl,
+        ...fotoPayload,
         valor: valorNum,
         data: data ? new Date(`${data}T12:00:00`).toISOString() : serverTimestamp(),
         fornecedor: fornecedor.trim(),

@@ -87,7 +87,34 @@ Payload:
 ```json
 {
   "tipo": "Cupom",
-  "fotoUrl": "https://...",
+  "fotoPath": "fiscal/arquivo.jpg",
+  "thumbnailPath": "fiscal/thumbs/arquivo.jpg",
+  "fotoSizeBytes": 2450000,
+  "fotoStorageSizeBytes": 320000,
+  "thumbnailSizeBytes": 24000,
+  "aiAnalysis": {
+    "status": "aprovado",
+    "confidence": 0.92,
+    "documentType": "Cupom",
+    "extractedValue": 36.96,
+    "extractedDate": "2026-07-20",
+    "vendor": "Emitente exemplo",
+    "reasons": ["Documento legivel"],
+    "warnings": [],
+    "model": "gpt-4o-mini",
+    "analyzedAt": "2026-07-22T12:00:00.000Z",
+    "tokenUsage": {
+      "inputTokens": 980,
+      "outputTokens": 160,
+      "totalTokens": 1140
+    },
+    "cost": {
+      "amountUsd": 0.000243,
+      "inputUsd": 0.000147,
+      "outputUsd": 0.000096,
+      "source": "estimated_from_tokens"
+    }
+  },
   "valor": 36.96,
   "data": "2026-07-20",
   "fornecedor": "ALMOÇO",
@@ -177,7 +204,8 @@ Payload:
 ```json
 {
   "tipo": "NF",
-  "fotoUrl": "https://...",
+  "fotoPath": "fiscal/arquivo.jpg",
+  "thumbnailPath": "fiscal/thumbs/arquivo.jpg",
   "valor": 100,
   "data": "2026-07-20"
 }

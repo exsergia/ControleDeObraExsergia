@@ -150,7 +150,12 @@ export interface Checklist {
 export interface FiscalDoc {
   id: string;
   tipo: 'NF' | 'Cupom';
-  fotoUrl: string;            // foto do documento (obrigatória)
+  fotoUrl?: string;           // legado: URL assinada antiga
+  fotoPath?: string;          // caminho privado no Storage
+  thumbnailPath?: string;     // miniatura privada no Storage
+  fotoSizeBytes?: number;     // tamanho original enviado
+  fotoStorageSizeBytes?: number; // tamanho após compressão para Storage
+  thumbnailSizeBytes?: number;
   valor: number;
   data: any;                  // data do documento (ISO)
   fornecedor?: string;
@@ -179,6 +184,17 @@ export interface FiscalAiAnalysis {
   analyzedAt: string;
   configured?: boolean;
   error?: string;
+  tokenUsage?: {
+    inputTokens: number;
+    outputTokens: number;
+    totalTokens: number;
+  };
+  cost?: {
+    amountUsd: number | null;
+    inputUsd: number | null;
+    outputUsd: number | null;
+    source: 'estimated_from_tokens' | 'not_returned_by_openai';
+  };
 }
 
 // ── Frente 2: Equipamentos (custo e rentabilidade) ─────────────────────────

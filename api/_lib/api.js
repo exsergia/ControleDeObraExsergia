@@ -122,6 +122,11 @@ export function sanitizeFiscalPayload(input, user, operatorProfile) {
   const payload = {
     tipo: input.tipo === 'NF' ? 'NF' : 'Cupom',
     fotoUrl: String(input.fotoUrl || '').trim(),
+    fotoPath: input.fotoPath ? String(input.fotoPath).trim() : undefined,
+    thumbnailPath: input.thumbnailPath ? String(input.thumbnailPath).trim() : undefined,
+    fotoSizeBytes: Number(input.fotoSizeBytes || 0),
+    fotoStorageSizeBytes: Number(input.fotoStorageSizeBytes || 0),
+    thumbnailSizeBytes: Number(input.thumbnailSizeBytes || 0),
     valor: Number(input.valor || 0),
     data: input.data || new Date().toISOString().slice(0, 10),
     fornecedor: input.fornecedor ? String(input.fornecedor).trim() : undefined,
@@ -136,7 +141,7 @@ export function sanitizeFiscalPayload(input, user, operatorProfile) {
     createdAt: new Date().toISOString(),
   };
 
-  if (!payload.fotoUrl) throw new Error('fotoUrl e obrigatorio.');
+  if (!payload.fotoPath && !payload.fotoUrl) throw new Error('fotoPath ou fotoUrl e obrigatorio.');
   if (!Number.isFinite(payload.valor) || payload.valor <= 0) throw new Error('valor precisa ser maior que zero.');
 
   return payload;

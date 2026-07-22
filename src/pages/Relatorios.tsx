@@ -3,6 +3,7 @@ import { usePersistedTab } from '../hooks/usePersistedTab';
 import { useCollection } from '../lib/supabaseHooks';
 import { collection, query, orderBy, addDoc, serverTimestamp, updateDoc, doc, arrayUnion, arrayRemove } from '../lib/supabaseDb';
 import { db, handleFirestoreError, OperationType } from '../lib/supabase';
+import { getFiscalPhotoUrl } from '../lib/services';
 import { Attachment, Checklist, Obra, Material, Atividade, Operator, Tool, ToolLog, Vehicle, VehicleLog, FiscalDoc } from '../types';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -76,6 +77,13 @@ function getToolUsagePlan(log: ToolLog) {
   };
 }
 
+const formatBytes = (bytes?: number) => {
+  const value = Number(bytes || 0);
+  if (!Number.isFinite(value) || value <= 0) return '';
+  if (value >= 1024 * 1024) return `${(value / (1024 * 1024)).toFixed(1)} MB`;
+  return `${Math.ceil(value / 1024)} KB`;
+};
+
 export default function Relatorios() {
   const { isAdmin, notify } = useAuth();
   const navigate = useNavigate();
@@ -115,6 +123,36 @@ export default function Relatorios() {
   const progressoDiario = (progressoDiarioSnap?.docs.map(doc => ({ id: doc.id, ...doc.data() }))) || [];
   const fiscalDocs = (fiscalSnap?.docs.map(doc => ({ id: doc.id, ...doc.data() })) as FiscalDoc[]) || [];
   const loadError = checklistsError || obrasError || materiaisError || atividadesError || operadoresError || toolsError || toolLogsError || vehiclesError || vehicleLogsError || progressoDiarioError || fiscalError;
+  const [fiscalThumbUrls, setFiscalThumbUrls] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    let cancelled = false;
+    const docsWithPrivateImages = fiscalDocs.filter(f => f.thumbnailPath || f.fotoPath);
+    if (docsWithPrivateImages.length === 0) {
+      setFiscalThumbUrls({});
+      return;
+    }
+
+    Promise.all(docsWithPrivateImages.map(async f => {
+      try {
+        const url = await getFiscalPhotoUrl(f.thumbnailPath || f.fotoPath);
+        return [f.id, url] as const;
+      } catch {
+        return [f.id, ''] as const;
+      }
+    })).then(entries => {
+      if (!cancelled) setFiscalThumbUrls(Object.fromEntries(entries.filter(([, url]) => url)));
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [fiscalSnap]);
+
+  const openFiscalImage = async (fiscalDoc: FiscalDoc) => {
+    const url = fiscalDoc.fotoPath ? await getFiscalPhotoUrl(fiscalDoc.fotoPath) : fiscalDoc.fotoUrl || '';
+    if (url) window.open(url, '_blank', 'noopener,noreferrer');
+  };
 
   const filteredTools = tools.filter(t => {
     if (!search) return true;
@@ -212,7 +250,10 @@ export default function Relatorios() {
       'Obra': f.obraNome || '---',
       'Presentes': (f.operadoresPresentes || []).map(o => o.nome).join(', ') || '---',
       'Lançado por': f.criadoPorNome || '---',
-      'Documento (foto)': f.fotoUrl || '---',
+      'Documento (foto)': f.fotoPath || f.fotoUrl || '---',
+      'Tamanho original': f.fotoSizeBytes || 0,
+      'Tamanho armazenado': f.fotoStorageSizeBytes || 0,
+      'Tamanho miniatura': f.thumbnailSizeBytes || 0,
     }));
     const ws = utils.json_to_sheet(data);
     utils.book_append_sheet(wb, ws, 'NF e Cupons');
@@ -678,14 +719,18 @@ export default function Relatorios() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {filteredFiscal.map(f => {
                 const dt = parseDate(f.data);
+                const previewUrl = f.thumbnailPath || f.fotoPath ? fiscalThumbUrls[f.id] : f.fotoUrl;
+                const hasImage = Boolean(f.fotoPath || f.fotoUrl);
                 return (
                   <div key={f.id} className="bg-white rounded-2xl border border-zinc-200 shadow-sm overflow-hidden">
-                    <a href={f.fotoUrl} target="_blank" rel="noreferrer" className="block relative aspect-video bg-zinc-100">
-                      {f.fotoUrl
-                        ? <img src={f.fotoUrl} className="w-full h-full object-cover" alt="Documento fiscal" />
+                    <button type="button" onClick={() => openFiscalImage(f)} className="block relative aspect-video bg-zinc-100 w-full text-left">
+                      {hasImage
+                        ? previewUrl
+                          ? <img src={previewUrl} className="w-full h-full object-cover" alt="Documento fiscal" />
+                          : <div className="w-full h-full flex items-center justify-center"><Receipt className="w-8 h-8 text-zinc-300 animate-pulse" /></div>
                         : <div className="w-full h-full flex items-center justify-center"><Receipt className="w-8 h-8 text-zinc-300" /></div>}
                       <span className={cn('absolute top-2 left-2 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider', f.tipo === 'NF' ? 'bg-blue-600 text-white' : 'bg-amber-500 text-white')}>{f.tipo}</span>
-                    </a>
+                    </button>
                     <div className="p-4 space-y-1.5">
                       <div className="flex items-center justify-between gap-2">
                         <span className="text-lg font-black text-zinc-900">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(f.valor || 0)}</span>
@@ -694,6 +739,13 @@ export default function Relatorios() {
                       {f.fornecedor && <p className="text-xs text-zinc-600 break-words flex items-center gap-1"><Box className="w-3 h-3 text-zinc-400" />{f.fornecedor}</p>}
                       {f.obraNome && <p className="text-xs text-zinc-600 break-words flex items-center gap-1"><MapPin className="w-3 h-3 text-zinc-400" />{f.obraNome}</p>}
                       {(f.operadoresPresentes?.length || 0) > 0 && <p className="text-[11px] text-zinc-500 break-words flex items-center gap-1"><Users className="w-3 h-3 text-zinc-400" />{f.operadoresPresentes!.map(o => o.nome).join(', ')}</p>}
+                      {(f.fotoSizeBytes || f.fotoStorageSizeBytes || f.thumbnailSizeBytes) && (
+                        <p className="text-[10px] text-zinc-400 break-words">
+                          Imagem: {[formatBytes(f.fotoSizeBytes), formatBytes(f.fotoStorageSizeBytes), formatBytes(f.thumbnailSizeBytes)]
+                            .filter(Boolean)
+                            .join(' / ')}
+                        </p>
+                      )}
                       <div className="flex items-center justify-between pt-1 text-[10px] text-zinc-400">
                         <span className="flex items-center gap-1 truncate"><User className="w-3 h-3" />{f.criadoPorNome || '—'}</span>
                         {f.cartaoFinal && <span className="font-mono">•••• {f.cartaoFinal}</span>}

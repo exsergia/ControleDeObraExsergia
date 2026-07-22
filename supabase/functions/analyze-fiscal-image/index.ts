@@ -4,6 +4,8 @@ const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || '';
 const SUPABASE_AUTH_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || Deno.env.get('SUPABASE_ANON_KEY') || '';
 const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY') || '';
 const OPENAI_MODEL = Deno.env.get('OPENAI_VISION_MODEL') || 'gpt-4o-mini';
+const OPENAI_INPUT_USD_PER_1M_TOKENS = Number(Deno.env.get('OPENAI_INPUT_USD_PER_1M_TOKENS') || 0.15);
+const OPENAI_OUTPUT_USD_PER_1M_TOKENS = Number(Deno.env.get('OPENAI_OUTPUT_USD_PER_1M_TOKENS') || 0.6);
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -23,6 +25,17 @@ type FiscalAnalysis = {
   rawTextSummary: string;
   model: string;
   analyzedAt: string;
+  tokenUsage?: {
+    inputTokens: number;
+    outputTokens: number;
+    totalTokens: number;
+  };
+  cost?: {
+    amountUsd: number | null;
+    inputUsd: number | null;
+    outputUsd: number | null;
+    source: 'estimated_from_tokens' | 'not_returned_by_openai';
+  };
 };
 
 function json(data: unknown, status = 200) {
@@ -37,7 +50,34 @@ function safeNumber(value: unknown) {
   return Number.isFinite(n) ? Math.max(0, Math.min(1, n)) : 0;
 }
 
-function normalizeAnalysis(input: any): FiscalAnalysis {
+function safePrice(value: number) {
+  return Number.isFinite(value) && value >= 0 ? value : 0;
+}
+
+function normalizeUsage(usage: any) {
+  const inputTokens = Number(usage?.input_tokens || 0);
+  const outputTokens = Number(usage?.output_tokens || 0);
+  const totalTokens = Number(usage?.total_tokens || inputTokens + outputTokens);
+  const hasUsage = inputTokens > 0 || outputTokens > 0 || totalTokens > 0;
+  const inputUsd = hasUsage ? (inputTokens / 1_000_000) * safePrice(OPENAI_INPUT_USD_PER_1M_TOKENS) : null;
+  const outputUsd = hasUsage ? (outputTokens / 1_000_000) * safePrice(OPENAI_OUTPUT_USD_PER_1M_TOKENS) : null;
+
+  return {
+    tokenUsage: {
+      inputTokens: Number.isFinite(inputTokens) ? inputTokens : 0,
+      outputTokens: Number.isFinite(outputTokens) ? outputTokens : 0,
+      totalTokens: Number.isFinite(totalTokens) ? totalTokens : 0,
+    },
+    cost: {
+      amountUsd: inputUsd !== null && outputUsd !== null ? Number((inputUsd + outputUsd).toFixed(8)) : null,
+      inputUsd: inputUsd !== null ? Number(inputUsd.toFixed(8)) : null,
+      outputUsd: outputUsd !== null ? Number(outputUsd.toFixed(8)) : null,
+      source: hasUsage ? 'estimated_from_tokens' : 'not_returned_by_openai',
+    },
+  };
+}
+
+function normalizeAnalysis(input: any, usage?: any): FiscalAnalysis {
   const status = ['aprovado', 'revisar', 'reprovado'].includes(input?.status) ? input.status : 'revisar';
   const documentType = ['NF', 'Cupom', 'Outro', 'Indefinido'].includes(input?.documentType) ? input.documentType : 'Indefinido';
   const extractedValue = Number.isFinite(Number(input?.extractedValue)) ? Number(input.extractedValue) : null;
@@ -56,6 +96,7 @@ function normalizeAnalysis(input: any): FiscalAnalysis {
     rawTextSummary: typeof input?.rawTextSummary === 'string' ? input.rawTextSummary.slice(0, 500) : '',
     model: OPENAI_MODEL,
     analyzedAt: new Date().toISOString(),
+    ...normalizeUsage(usage),
   };
 }
 
@@ -101,6 +142,7 @@ function pending(reason: string, warning: string) {
     model: OPENAI_MODEL,
     analyzedAt: new Date().toISOString(),
     configured: false,
+    ...normalizeUsage(null),
   };
 }
 
@@ -244,7 +286,7 @@ Critérios:
       };
     }
 
-    return json({ ...normalizeAnalysis(parsed), configured: true });
+    return json({ ...normalizeAnalysis(parsed, result?.usage), configured: true });
   } catch (error) {
     console.error('Fiscal analysis unexpected error', error);
     return json(pending('Scanner da imagem nao conseguiu concluir a leitura.', error instanceof Error ? error.message : 'Erro inesperado na Edge Function.'), 200);
