@@ -2,9 +2,9 @@ import React, { useState } from 'react';
 import { useCollection } from '../lib/supabaseHooks';
 import { collection, addDoc, deleteDoc, doc, serverTimestamp, query, orderBy, updateDoc } from '../lib/supabaseDb';
 import { db, handleFirestoreError, OperationType, auth } from '../lib/supabase';
-import { FiscalAiAnalysis, FiscalDoc } from '../types';
+import { FiscalDoc } from '../types';
 import { useAuth } from '../App';
-import { analyzeFiscalImage, scanFiscalImageFile, uploadPhoto } from '../lib/services';
+import { uploadPhoto } from '../lib/services';
 import { CameraCapture } from '../components/CameraCapture';
 import { CurrencyInput } from '../components/CurrencyInput';
 import { useAutoSaveForm } from '../hooks/useAutoSaveForm';
@@ -14,7 +14,7 @@ import { cn } from '../lib/utils';
 import {
   Receipt, Plus, Camera, X, Search, CreditCard, Calendar,
   AlertCircle, Trash2, CheckCircle2, User,
-  HardHat, Users, Edit2, Download, RefreshCw,
+  HardHat, Users, Edit2, Download,
 } from 'lucide-react';
 import { Obra, Operator } from '../types';
 
@@ -75,7 +75,6 @@ export default function NotasFiscais() {
   const [search, setSearch] = useState('');
   const [obraFilter, setObraFilter] = useState('Todas');
   const [pessoaFilter, setPessoaFilter] = useState('Todas');
-  const [reanalyzingId, setReanalyzingId] = useState<string | null>(null);
 
   const docs = (docsSnap?.docs.map(d => ({ id: d.id, ...d.data() })) as FiscalDoc[]) || [];
   const obraOptions = Array.from(
@@ -133,33 +132,6 @@ export default function NotasFiscais() {
     } catch (err: any) {
       notify('error', 'Erro ao excluir', err.message || 'Não foi possível remover.');
       handleFirestoreError(err, OperationType.DELETE, 'fiscal_docs');
-    }
-  };
-
-  const handleReanalyze = async (fiscalDoc: FiscalDoc) => {
-    if (!fiscalDoc.fotoUrl || reanalyzingId) return;
-    setReanalyzingId(fiscalDoc.id);
-    try {
-      const analysis = await analyzeFiscalImage({
-        imageUrl: fiscalDoc.fotoUrl,
-        tipo: fiscalDoc.tipo,
-        valor: fiscalDoc.valor || 0,
-        data: parseDate(fiscalDoc.data) ? format(parseDate(fiscalDoc.data)!, 'yyyy-MM-dd') : '',
-        despesa: fiscalDoc.fornecedor || '',
-      });
-      await updateDoc(doc(db, 'fiscal_docs', fiscalDoc.id), {
-        aiAnalysis: analysis,
-        updatedAt: serverTimestamp(),
-      });
-      notify(
-        analysis.status === 'pendente' ? 'warning' : 'success',
-        analysis.status === 'pendente' ? 'IA pendente' : 'IA atualizada',
-        analysis.reasons?.[0] || 'Analise da imagem atualizada.'
-      );
-    } catch (err: any) {
-      notify('error', 'Erro na IA', err?.message || 'Nao foi possivel reanalisar a imagem.');
-    } finally {
-      setReanalyzingId(null);
     }
   };
 
@@ -287,7 +259,6 @@ export default function NotasFiscais() {
                   {d.obraNome && <p className="text-xs text-zinc-600 break-words flex items-center gap-1"><HardHat className="w-3 h-3 text-zinc-400" />{d.obraNome}</p>}
                   {(d.operadoresPresentes?.length || 0) > 0 && <p className="text-[11px] text-zinc-500 break-words flex items-center gap-1"><Users className="w-3 h-3 text-zinc-400" />{d.operadoresPresentes!.map(p => p.nome).join(', ')}</p>}
                   {d.observacoes && <p className="text-[11px] text-zinc-400 break-words">{d.observacoes}</p>}
-                  {d.aiAnalysis && <FiscalAiBadge analysis={d.aiAnalysis} />}
                   <div className="flex items-center justify-between pt-1 gap-2">
                     <span className="text-[10px] text-zinc-400 flex items-center gap-1 truncate"><User className="w-3 h-3" />{d.criadoPorNome || '—'}</span>
                     <div className="flex items-center gap-1 shrink-0">
@@ -296,16 +267,6 @@ export default function NotasFiscais() {
                           {d.fotoUrl && (
                             <button onClick={() => downloadFiscalImage(d.fotoUrl, downloadName)} className="p-1.5 text-zinc-300 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="Baixar imagem">
                               <Download className="w-3.5 h-3.5" />
-                            </button>
-                          )}
-                          {d.fotoUrl && (
-                            <button
-                              onClick={() => handleReanalyze(d)}
-                              disabled={reanalyzingId === d.id}
-                              className="p-1.5 text-zinc-300 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors disabled:opacity-40"
-                              title="Reanalisar imagem com IA"
-                            >
-                              <RefreshCw className={cn('w-3.5 h-3.5', reanalyzingId === d.id && 'animate-spin')} />
                             </button>
                           )}
                           <button onClick={() => setEditingDoc(d)} className="p-1.5 text-zinc-300 hover:text-zinc-900 hover:bg-zinc-100 rounded-lg transition-colors" title="Editar">
@@ -386,8 +347,6 @@ function FiscalModal({
   const [showCamera, setShowCamera] = useState(false);
   const [loading, setLoading] = useState(false);
   const [savingStep, setSavingStep] = useState('');
-  const [scanning, setScanning] = useState(false);
-  const [scanAnalysis, setScanAnalysis] = useState<FiscalAiAnalysis | null>(editingDoc?.aiAnalysis || null);
   const [error, setError] = useState<string | null>(null);
   const previewDownloadName = `${sanitizeFileName(`${tipo}-${fornecedor || editingDoc?.obraNome || editingDoc?.id || 'documento'}-${data || 'sem-data'}`)}.jpg`;
 
@@ -416,47 +375,12 @@ function FiscalModal({
     : [];
   const operadoresDaObra = operadores.filter(o => idsEquipe.includes(o.id));
 
-  const runImageScan = async (file: File) => {
-    setScanning(true);
-    setScanAnalysis(null);
-    try {
-      const result = await scanFiscalImageFile(file, {
-        tipo,
-        valor: typeof valor === 'number' ? valor : 0,
-        data,
-        despesa: fornecedor.trim(),
-      });
-      setScanAnalysis(result);
-      if (!editingDoc) {
-        if (result.documentType === 'NF' || result.documentType === 'Cupom') setTipo(result.documentType);
-        if ((!valor || Number(valor) <= 0) && result.extractedValue && result.extractedValue > 0) setValor(result.extractedValue);
-        if (result.extractedDate) setData(result.extractedDate);
-      }
-    } catch (err: any) {
-      setScanAnalysis({
-        status: 'pendente',
-        confidence: 0,
-        documentType: 'Indefinido',
-        extractedValue: null,
-        extractedDate: null,
-        vendor: null,
-        reasons: ['Scanner da imagem nao conseguiu concluir a leitura.'],
-        warnings: [err?.message || 'Tente salvar para registrar sem leitura automatica.'],
-        analyzedAt: new Date().toISOString(),
-        configured: false,
-      });
-    } finally {
-      setScanning(false);
-    }
-  };
-
   const setFoto = (file: File) => {
     if (fotoPreview?.startsWith('blob:')) URL.revokeObjectURL(fotoPreview);
     setFotoFile(file);
     setFotoPreview(URL.createObjectURL(file));
     setShowCamera(false);
     setError(null);
-    runImageScan(file);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -471,16 +395,6 @@ function FiscalModal({
     setSavingStep('Enviando foto...');
     try {
       const fotoUrl = fotoFile.size > 0 ? await uploadPhoto(fotoFile, 'fiscal') : editingDoc?.fotoUrl || '';
-      setSavingStep('Analisando imagem com IA...');
-      const aiAnalysis = scanAnalysis && fotoFile.size > 0
-        ? scanAnalysis
-        : await analyzeFiscalImage({
-          imageUrl: fotoUrl,
-          tipo,
-          valor: valorNum,
-          data,
-          despesa: fornecedor.trim(),
-        });
       const obraSel = obras.find(o => o.id === obraId);
       const presentes = operadores
         .filter(o => operadoresPresentes.includes(o.id))
@@ -498,7 +412,6 @@ function FiscalModal({
           obraId: obraId || '',
           obraNome: obraSel?.nome || '',
           operadoresPresentes: presentes,
-          aiAnalysis,
           updatedAt: serverTimestamp(),
         });
         if (fotoPreview?.startsWith('blob:')) URL.revokeObjectURL(fotoPreview);
@@ -517,7 +430,6 @@ function FiscalModal({
         obraId: obraId || '',
         obraNome: obraSel?.nome || '',
         operadoresPresentes: presentes,
-        aiAnalysis,
         criadoPorNome: userName,
         criadoPorId: userId,
         createdAt: serverTimestamp(),
@@ -584,13 +496,6 @@ function FiscalModal({
                     </button>
                   )}
                 </div>
-                {scanning ? (
-                  <div className="rounded-xl border border-blue-100 bg-blue-50 px-3 py-2 text-xs font-bold text-blue-700">
-                    Scanner IA lendo a imagem...
-                  </div>
-                ) : scanAnalysis ? (
-                  <FiscalAiBadge analysis={scanAnalysis} />
-                ) : null}
                 <button type="button" onClick={() => setShowCamera(true)} className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-zinc-200 bg-zinc-50 text-xs font-bold text-zinc-600 hover:bg-zinc-100"><Camera className="w-4 h-4" /> Trocar foto</button>
               </div>
             ) : (
@@ -691,9 +596,9 @@ function FiscalModal({
             )}
           </div>
 
-          <button type="submit" disabled={loading || scanning}
+          <button type="submit" disabled={loading}
             className={cn('w-full py-4 rounded-2xl font-bold transition-all flex items-center justify-center gap-2 shadow-lg',
-              (loading || scanning) ? 'bg-zinc-100 text-zinc-300' : 'bg-zinc-900 text-white hover:bg-zinc-800')}>
+              loading ? 'bg-zinc-100 text-zinc-300' : 'bg-zinc-900 text-white hover:bg-zinc-800')}>
             {loading ? (savingStep || 'Salvando...') : <>{editingDoc ? 'Salvar Alterações' : 'Lançar'} <CheckCircle2 className="w-5 h-5" /></>}
           </button>
         </form>
@@ -716,59 +621,3 @@ function FiscalLoadError({ title, message }: { title: string; message?: string }
   );
 }
 
-function FiscalAiBadge({ analysis }: { analysis: FiscalAiAnalysis }) {
-  const cleanAiMessage = (message?: string) => {
-    if (!message) return '';
-    if (/invalid_api_key|incorrect api key/i.test(message)) {
-      return 'Chave OpenAI invalida. Atualize a OPENAI_API_KEY no Supabase e reanalise a imagem.';
-    }
-    if (/insufficient_quota|billing|quota/i.test(message)) {
-      return 'Conta OpenAI sem saldo/cota para executar a analise.';
-    }
-    if (/model_not_found|does not have access to model/i.test(message)) {
-      return 'Chave OpenAI sem acesso ao modelo configurado para analise.';
-    }
-    if (/failed to send a request to the edge function|edge function/i.test(message)) {
-      return 'Scanner de IA pendente. Reanalise a imagem para atualizar este documento.';
-    }
-    if (/openai_api_key/i.test(message)) {
-      return 'Scanner de IA aguardando configuracao da chave OpenAI.';
-    }
-    return message;
-  };
-
-  const tone = analysis.status === 'aprovado'
-    ? 'bg-green-50 text-green-700 border-green-100'
-    : analysis.status === 'reprovado'
-      ? 'bg-red-50 text-red-700 border-red-100'
-      : analysis.status === 'pendente'
-        ? 'bg-zinc-50 text-zinc-600 border-zinc-100'
-        : 'bg-amber-50 text-amber-700 border-amber-100';
-
-  const label = {
-    aprovado: 'IA aprovou',
-    revisar: 'IA pediu revisão',
-    reprovado: 'IA reprovou',
-    pendente: 'IA pendente',
-  }[analysis.status];
-
-  const confidence = Math.round((analysis.confidence || 0) * 100);
-  const reason = cleanAiMessage(analysis.reasons?.[0] || analysis.warnings?.[0]) || 'Analise registrada.';
-  const warning = cleanAiMessage(analysis.warnings?.[0]);
-
-  return (
-    <div className={cn('rounded-xl border px-3 py-2 text-[11px]', tone)}>
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <span className="font-black uppercase tracking-wide">{label}</span>
-        {confidence > 0 && <span className="font-bold">{confidence}%</span>}
-      </div>
-      <p className="mt-1 font-medium leading-snug">{reason}</p>
-      {analysis.extractedValue !== null && analysis.extractedValue !== undefined && (
-        <p className="mt-1 opacity-80">Valor lido: {brl(Number(analysis.extractedValue))}</p>
-      )}
-      {analysis.extractedDate && <p className="mt-1 opacity-80">Data lida: {analysis.extractedDate}</p>}
-      {analysis.vendor && <p className="mt-1 opacity-80">Emitente: {analysis.vendor}</p>}
-      {warning && warning !== reason && <p className="mt-1 font-semibold opacity-80">Aviso: {warning}</p>}
-    </div>
-  );
-}
