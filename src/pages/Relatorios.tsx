@@ -109,6 +109,10 @@ export default function Relatorios() {
 
   const [search, setSearch] = useState('');
   const [selectedDate, setSelectedDate] = useState('');
+  const [toolCategoryFilter, setToolCategoryFilter] = useState('Todas');
+  const [toolStatusFilter, setToolStatusFilter] = useState('Todos');
+  const [toolLocationFilter, setToolLocationFilter] = useState('Todos');
+  const [toolMovementStatusFilter, setToolMovementStatusFilter] = useState('Todos');
   const [selectedChecklist, setSelectedChecklist] = useState<Checklist | null>(null);
 
   const checklists = (checklistsSnap?.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Checklist[]) || [];
@@ -154,25 +158,66 @@ export default function Relatorios() {
     if (url) window.open(url, '_blank', 'noopener,noreferrer');
   };
 
+  const toolCategoryOptions = Array.from(
+    new Set(tools.map(t => (t.categoria || '').trim()).filter(Boolean))
+  ).sort((a, b) => a.localeCompare(b, 'pt-BR'));
+
+  const getOpenToolLog = (tool: Tool) => (
+    toolLogs.find(l => (l.id === tool.lastLogId || l.toolId === tool.id) && l.statusLog === 'Aberta')
+  );
+
+  const toolMatchesLocation = (tool: Tool) => {
+    if (toolLocationFilter === 'Todos') return true;
+    const openLog = getOpenToolLog(tool);
+    if (toolLocationFilter === 'Estoque') return !openLog && tool.status === 'Disponível';
+    if (toolLocationFilter === 'Manutenção') return tool.status === 'Manutenção';
+    if (toolLocationFilter.startsWith('obra:')) return openLog?.obraId === toolLocationFilter.slice(5);
+    return true;
+  };
+
+  const logMatchesLocation = (log: ToolLog) => {
+    if (toolLocationFilter === 'Todos') return true;
+    if (toolLocationFilter === 'Estoque') return false;
+    if (toolLocationFilter === 'Manutenção') return false;
+    if (toolLocationFilter.startsWith('obra:')) return log.obraId === toolLocationFilter.slice(5);
+    return true;
+  };
+
   const filteredTools = tools.filter(t => {
-    if (!search) return true;
-    const q = search.toLowerCase();
+    const q = search.trim().toLowerCase();
+    if (toolCategoryFilter !== 'Todas' && (t.categoria || '') !== toolCategoryFilter) return false;
+    if (toolStatusFilter !== 'Todos' && (t.status || '') !== toolStatusFilter) return false;
+    if (!toolMatchesLocation(t)) return false;
+    if (!q) return true;
+    const openLog = getOpenToolLog(t);
+    const obra = openLog ? obras.find(o => o.id === openLog.obraId) : null;
     return (
       (t.nome || '').toLowerCase().includes(q) ||
       (t.codigo || '').toLowerCase().includes(q) ||
       (t.modelo || '').toLowerCase().includes(q) ||
-      (t.categoria || '').toLowerCase().includes(q)
+      (t.categoria || '').toLowerCase().includes(q) ||
+      (t.status || '').toLowerCase().includes(q) ||
+      (t.descricao || '').toLowerCase().includes(q) ||
+      (obra?.nome || '').toLowerCase().includes(q) ||
+      (obra?.cliente || '').toLowerCase().includes(q) ||
+      (openLog?.responsavelNome || '').toLowerCase().includes(q)
     );
   });
 
   const filteredToolLogs = toolLogs.filter(l => {
+    const tool = tools.find(t => t.id === l.toolId);
+    if (toolCategoryFilter !== 'Todas' && (tool?.categoria || '') !== toolCategoryFilter) return false;
+    if (toolStatusFilter !== 'Todos' && (tool?.status || '') !== toolStatusFilter) return false;
+    if (toolMovementStatusFilter !== 'Todos' && l.statusLog !== toolMovementStatusFilter) return false;
+    if (!logMatchesLocation(l)) return false;
     if (search) {
       const q = search.toLowerCase();
-      const tool = tools.find(t => t.id === l.toolId);
       const obra = obras.find(o => o.id === l.obraId);
       if (!(
         (tool?.nome || '').toLowerCase().includes(q) ||
         (tool?.codigo || '').toLowerCase().includes(q) ||
+        (tool?.modelo || '').toLowerCase().includes(q) ||
+        (tool?.categoria || '').toLowerCase().includes(q) ||
         (obra?.nome || '').toLowerCase().includes(q) ||
         (obra?.cliente || '').toLowerCase().includes(q) ||
         (l.responsavelNome || '').toLowerCase().includes(q)
@@ -261,8 +306,12 @@ export default function Relatorios() {
   };
 
   const handleExportInventario = () => {
+    if (filteredTools.length === 0) {
+      notify('warning', 'Sem dados para exportar', 'Nenhuma ferramenta corresponde aos filtros selecionados.');
+      return;
+    }
     const wb = utils.book_new();
-    const data = tools.map(t => {
+    const data = filteredTools.map(t => {
       const openLog = toolLogs.find(l => l.toolId === t.id && l.statusLog === 'Aberta');
       let localizacao = 'Em estoque';
       if (openLog) {
@@ -293,8 +342,12 @@ export default function Relatorios() {
   };
 
   const handleExportFerramentas = () => {
+    if (filteredToolLogs.length === 0) {
+      notify('warning', 'Sem dados para exportar', 'Nenhuma movimentacao corresponde aos filtros selecionados.');
+      return;
+    }
     const wb = utils.book_new();
-    const data = toolLogs.map(l => {
+    const data = filteredToolLogs.map(l => {
       const tool = tools.find(t => t.id === l.toolId);
       const obra = obras.find(o => o.id === l.obraId);
       const saida = parseDate(l.dataSaida);
@@ -625,7 +678,16 @@ export default function Relatorios() {
         ] as const).map(tab => (
           <button
             key={tab.id}
-            onClick={() => { setActiveTab(tab.id); setSearch(''); setSelectedDate(''); setSelectedChecklist(null); }}
+            onClick={() => {
+              setActiveTab(tab.id);
+              setSearch('');
+              setSelectedDate('');
+              setSelectedChecklist(null);
+              setToolCategoryFilter('Todas');
+              setToolStatusFilter('Todos');
+              setToolLocationFilter('Todos');
+              setToolMovementStatusFilter('Todos');
+            }}
             className={cn(
               'flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-2 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-bold transition-all',
               activeTab === tab.id
@@ -697,6 +759,80 @@ export default function Relatorios() {
           )}
         </div>
       </div>}
+
+      {activeTab === 'ferramentas' && (
+        <div className="bg-white border border-zinc-200 rounded-2xl shadow-sm p-3 sm:p-4 space-y-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div>
+              <p className="text-xs font-black uppercase tracking-widest text-zinc-400">Filtros de ferramentas</p>
+              <p className="text-xs text-zinc-500">
+                Inventario: {filteredTools.length} item(ns) · Movimentacoes: {filteredToolLogs.length} registro(s)
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setSearch('');
+                setSelectedDate('');
+                setToolCategoryFilter('Todas');
+                setToolStatusFilter('Todos');
+                setToolLocationFilter('Todos');
+                setToolMovementStatusFilter('Todos');
+              }}
+              className="w-full sm:w-auto px-3 py-2 rounded-xl border border-zinc-200 bg-zinc-50 text-xs font-bold text-zinc-600 hover:bg-zinc-100 transition-colors"
+            >
+              Limpar filtros
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-2">
+            <select
+              value={toolCategoryFilter}
+              onChange={(e) => setToolCategoryFilter(e.target.value)}
+              className="w-full px-3 py-2.5 bg-zinc-50 border border-zinc-200 rounded-xl text-sm font-semibold text-zinc-700 focus:outline-none focus:ring-2 focus:ring-zinc-900/10"
+            >
+              <option value="Todas">Todas as categorias</option>
+              {toolCategoryOptions.map(categoria => (
+                <option key={categoria} value={categoria}>{categoria}</option>
+              ))}
+            </select>
+
+            <select
+              value={toolStatusFilter}
+              onChange={(e) => setToolStatusFilter(e.target.value)}
+              className="w-full px-3 py-2.5 bg-zinc-50 border border-zinc-200 rounded-xl text-sm font-semibold text-zinc-700 focus:outline-none focus:ring-2 focus:ring-zinc-900/10"
+            >
+              <option value="Todos">Todos os status</option>
+              <option value="Disponível">Disponivel</option>
+              <option value="Em Uso">Em uso</option>
+              <option value="Manutenção">Manutencao</option>
+            </select>
+
+            <select
+              value={toolLocationFilter}
+              onChange={(e) => setToolLocationFilter(e.target.value)}
+              className="w-full px-3 py-2.5 bg-zinc-50 border border-zinc-200 rounded-xl text-sm font-semibold text-zinc-700 focus:outline-none focus:ring-2 focus:ring-zinc-900/10"
+            >
+              <option value="Todos">Todos os locais</option>
+              <option value="Estoque">Em estoque</option>
+              <option value="Manutenção">Em manutencao</option>
+              {obras.map(obra => (
+                <option key={obra.id} value={`obra:${obra.id}`}>{obra.nome}</option>
+              ))}
+            </select>
+
+            <select
+              value={toolMovementStatusFilter}
+              onChange={(e) => setToolMovementStatusFilter(e.target.value)}
+              className="w-full px-3 py-2.5 bg-zinc-50 border border-zinc-200 rounded-xl text-sm font-semibold text-zinc-700 focus:outline-none focus:ring-2 focus:ring-zinc-900/10"
+            >
+              <option value="Todos">Todas as movimentacoes</option>
+              <option value="Aberta">Retiradas abertas</option>
+              <option value="Concluída">Devolvidas</option>
+            </select>
+          </div>
+        </div>
+      )}
 
       {/* ── NF / CUPOM FISCAL TAB ── */}
       {activeTab === 'fiscal' && (
