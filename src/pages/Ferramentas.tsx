@@ -274,7 +274,7 @@ export default function Ferramentas() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Tool Inventory */}
         <div data-tour="tools-inventory" className="lg:col-span-2 space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex min-h-[46px] flex-col sm:flex-row sm:items-center justify-between gap-3">
             <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-widest pl-1">Inventário de Equipamentos</h3>
             <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
               <div className="relative w-full sm:w-72">
@@ -323,7 +323,9 @@ export default function Ferramentas() {
         {/* Recent History */}
         <div data-tour="tools-history" className="space-y-4">
           <div className="hidden lg:block space-y-3">
-            <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-widest pl-1">Ferramentas comigo</h3>
+            <div className="flex min-h-[46px] items-start pt-1">
+              <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-widest pl-1">Ferramentas comigo</h3>
+            </div>
             <div className="bg-white rounded-3xl border border-zinc-200 overflow-hidden shadow-sm">
               <div className="p-4 bg-zinc-50 border-b border-zinc-200 flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2 min-w-0">
