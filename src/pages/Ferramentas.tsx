@@ -323,7 +323,7 @@ export default function Ferramentas() {
         {/* My tools */}
         <div data-tour="tools-history" className="space-y-4">
           <div className="hidden lg:block space-y-3">
-            <div className="flex min-h-[46px] items-start pt-1">
+            <div className="flex min-h-[46px] items-center">
               <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-widest pl-1">Ferramentas comigo</h3>
             </div>
             <div className="bg-white rounded-3xl border border-zinc-200 overflow-hidden shadow-sm">
@@ -336,7 +336,7 @@ export default function Ferramentas() {
                   {minhasRetiradas.length}
                 </span>
               </div>
-              <div className="divide-y divide-zinc-100 max-h-[52vh] sm:max-h-[520px] lg:max-h-[calc(100dvh-260px)] lg:min-h-[520px] overflow-y-auto">
+              <div className="divide-y divide-zinc-100 max-h-[52vh] sm:max-h-[520px] lg:max-h-[calc(100dvh-260px)] overflow-y-auto">
                 {minhasRetiradas.length === 0 ? (
                   <div className="p-8 text-center">
                     <Wrench className="w-8 h-8 text-zinc-200 mx-auto mb-3" />

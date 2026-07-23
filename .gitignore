@@ -9,3 +9,5 @@ coverage/
 
 # Supabase CLI temp
 supabase/.temp/
+
+.vercel
