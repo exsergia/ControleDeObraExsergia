@@ -234,6 +234,8 @@ function EncarregadosTab({ isAdmin }: { isAdmin: boolean }) {
   }, [encarregadosSnap, optimisticEncs]);
 
   const obras = (obrasSnap?.docs?.map(d => ({ id: d.id, ...d.data() })) as Obra[]) || [];
+  const obrasDisponiveis = obras.filter(o => o.status !== 'Concluída');
+  const obrasDisponiveisIds = useMemo(() => new Set(obrasDisponiveis.map(o => o.id)), [obrasDisponiveis]);
   const operadores = (operadoresSnap?.docs?.map(d => ({ id: d.id, ...d.data() })) as Operator[]) || [];
 
   const filtered = encarregados.filter(e =>
@@ -245,7 +247,13 @@ function EncarregadosTab({ isAdmin }: { isAdmin: boolean }) {
 
   const handleEdit = (enc: any) => {
     setEditingEnc(enc);
-    setFormData({ nome: enc.nome || '', sobrenome: enc.sobrenome || '', funcao: enc.funcao || 'Encarregado de Obra', email: enc.email || '', obraIds: enc.obraIds || [] });
+    setFormData({
+      nome: enc.nome || '',
+      sobrenome: enc.sobrenome || '',
+      funcao: enc.funcao || 'Encarregado de Obra',
+      email: enc.email || '',
+      obraIds: (enc.obraIds || []).filter((id: string) => obrasDisponiveisIds.has(id))
+    });
     setIsModalOpen(true);
   };
 
@@ -425,9 +433,9 @@ function EncarregadosTab({ isAdmin }: { isAdmin: boolean }) {
                     Obras Atribuídas <span className="text-zinc-300">({formData.obraIds.length} selecionadas)</span>
                   </label>
                   <div className="max-h-44 overflow-y-auto rounded-xl border border-zinc-200 bg-zinc-50 divide-y divide-zinc-100">
-                    {obras.length === 0 ? (
+                    {obrasDisponiveis.length === 0 ? (
                       <p className="text-xs text-zinc-400 p-3 text-center">Nenhuma obra cadastrada.</p>
-                    ) : obras.map(obra => (
+                    ) : obrasDisponiveis.map(obra => (
                       <label key={obra.id} className="flex items-center gap-3 px-4 py-2.5 cursor-pointer hover:bg-zinc-100 transition-colors">
                         <input type="checkbox" className="w-4 h-4 accent-amber-500"
                           checked={formData.obraIds.includes(obra.id)}

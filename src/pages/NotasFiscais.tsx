@@ -407,6 +407,7 @@ function FiscalModal({
   const [obrasSnap, , obrasError] = useCollection(query(collection(db, 'obras'), orderBy('nome', 'asc')));
   const [operadoresSnap, , operadoresError] = useCollection(query(collection(db, 'operadores'), orderBy('nome', 'asc')));
   const obras = (obrasSnap?.docs.map(d => ({ id: d.id, ...d.data() })) as Obra[]) || [];
+  const obrasDisponiveis = obras.filter(o => o.status !== 'Concluída');
   const operadores = (operadoresSnap?.docs.map(d => ({ id: d.id, ...d.data() })) as Operator[]) || [];
 
   const editDate = editingDoc ? parseDate(editingDoc.data) : null;
@@ -493,6 +494,10 @@ function FiscalModal({
     if (editingDoc && !isAdmin) { setError('Somente administradores podem editar lançamentos fiscais.'); return; }
     const valorNum = typeof valor === 'number' ? valor : NaN;
     if (!Number.isFinite(valorNum) || valorNum <= 0) { setError('Informe um valor válido.'); return; }
+    if (!editingDoc && obraId && !obrasDisponiveis.some(o => o.id === obraId)) {
+      setError('Esta obra foi concluída e está arquivada para novos lançamentos.');
+      return;
+    }
 
     setLoading(true);
     setSavingStep('Enviando foto...');
@@ -690,7 +695,7 @@ function FiscalModal({
               <select value={obraId} onChange={e => { setObraId(e.target.value); setOperadoresPresentes([]); }}
                 className="w-full pl-9 pr-4 py-2.5 bg-zinc-50 border border-zinc-200 rounded-xl text-sm focus:outline-none focus:border-zinc-900 appearance-none">
                 <option value="">Nenhuma</option>
-                {obras.map(o => <option key={o.id} value={o.id}>{o.nome}</option>)}
+                {obrasDisponiveis.map(o => <option key={o.id} value={o.id}>{o.nome}</option>)}
               </select>
             </div>
           </div>

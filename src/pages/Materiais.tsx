@@ -44,12 +44,16 @@ export default function Materiais() {
   });
 
   const obras = (obrasSnap?.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Obra[]) || [];
+  const obrasDisponiveis = obras.filter(o => o.status !== 'Concluída');
   const materiais = (materiaisSnap?.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Material[]) || [];
   const loadError = obrasError || materiaisError;
 
   const handleAddMaterial = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.obraId) return notify('warning', 'Atenção', 'Por favor, selecione uma obra de destino.');
+    if (!obrasDisponiveis.some(o => o.id === formData.obraId)) {
+      return notify('warning', 'Obra arquivada', 'Esta obra foi concluída e não aceita novos lançamentos.');
+    }
 
     setUploading(true);
     try {
@@ -306,7 +310,7 @@ export default function Materiais() {
                       onChange={(e) => setFormData({...formData, obraId: e.target.value})}
                     >
                       <option value="">Selecione a Obra...</option>
-                      {obras.map(o => <option key={o.id} value={o.id}>{o.nome}</option>)}
+                      {obrasDisponiveis.map(o => <option key={o.id} value={o.id}>{o.nome}</option>)}
                     </select>
                     <ChevronDown className="absolute right-3 top-3 w-4 h-4 text-zinc-400 pointer-events-none" />
                   </div>

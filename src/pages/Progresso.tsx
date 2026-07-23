@@ -85,6 +85,10 @@ export default function ProgressoFisico() {
       notify('warning', 'Acesso restrito', 'Somente administradores podem cadastrar atividades.');
       return;
     }
+    if (formData.obraId && !activeObraIds.has(formData.obraId)) {
+      notify('warning', 'Obra arquivada', 'Esta obra foi concluída e não aceita novas atividades.');
+      return;
+    }
     try {
       await addDoc(collection(db, 'atividades'), {
         ...formData,
