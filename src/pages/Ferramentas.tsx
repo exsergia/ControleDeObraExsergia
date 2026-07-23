@@ -336,7 +336,7 @@ export default function Ferramentas() {
                   {minhasRetiradas.length}
                 </span>
               </div>
-              <div className="divide-y divide-zinc-100 max-h-[36vh] sm:max-h-[360px] overflow-y-auto">
+              <div className="divide-y divide-zinc-100 max-h-[52vh] sm:max-h-[520px] lg:max-h-[calc(100dvh-260px)] lg:min-h-[520px] overflow-y-auto">
                 {minhasRetiradas.length === 0 ? (
                   <div className="p-8 text-center">
                     <Wrench className="w-8 h-8 text-zinc-200 mx-auto mb-3" />
@@ -752,7 +752,7 @@ function MyToolsPanel({ logs, tools, obras, onReturn }: { logs: ToolLog[], tools
             {logs.length}
           </span>
         </div>
-        <div className="divide-y divide-zinc-100 max-h-[42vh] sm:max-h-[360px] overflow-y-auto">
+        <div className="divide-y divide-zinc-100 max-h-[56vh] sm:max-h-[520px] overflow-y-auto">
           {logs.length === 0 ? (
             <div className="p-8 text-center">
               <Wrench className="w-8 h-8 text-zinc-200 mx-auto mb-3" />
