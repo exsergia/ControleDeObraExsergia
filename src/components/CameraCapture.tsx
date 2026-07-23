@@ -4,7 +4,21 @@ import { X, AlertCircle, CheckCircle2 } from 'lucide-react';
 // Câmera in-browser (getUserMedia). Abre a câmera direto no app sem sair dele,
 // evitando o reload causado por capture="environment" no Android Chrome.
 // Componente compartilhado por Ferramentas, Frota e Materiais.
-export function CameraCapture({ onCapture, onClose }: { onCapture: (file: File) => void; onClose: () => void }) {
+type CameraCaptureProps = {
+  onCapture: (file: File) => void;
+  onClose: () => void;
+  quality?: number;
+  idealWidth?: number;
+  idealHeight?: number;
+};
+
+export function CameraCapture({
+  onCapture,
+  onClose,
+  quality = 0.9,
+  idealWidth = 1920,
+  idealHeight = 1080,
+}: CameraCaptureProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -65,8 +79,8 @@ export function CameraCapture({ onCapture, onClose }: { onCapture: (file: File) 
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
           facingMode: { ideal: 'environment' },
-          width: { ideal: 1920 },
-          height: { ideal: 1080 },
+          width: { ideal: idealWidth },
+          height: { ideal: idealHeight },
           frameRate: { ideal: 30 },
         },
         audio: false,
@@ -115,7 +129,7 @@ export function CameraCapture({ onCapture, onClose }: { onCapture: (file: File) 
       mountedRef.current = false;
       stopStream();
     };
-  }, []);
+  }, [idealHeight, idealWidth]);
 
   const handleCapture = () => {
     if (!videoRef.current || !ready) return;
@@ -129,7 +143,7 @@ export function CameraCapture({ onCapture, onClose }: { onCapture: (file: File) 
       stopStream();
       setCapturedFile(file);
       setCaptured(URL.createObjectURL(blob));
-    }, 'image/jpeg', 0.88);
+    }, 'image/jpeg', quality);
   };
 
   const handleConfirm = () => {

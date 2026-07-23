@@ -103,11 +103,17 @@ export const uploadPhoto = uploadImage;
 
 export type FiscalPhotoUpload = {
   fotoPath: string;
+  fotoUrl?: string;
   fotoSizeBytes: number;
   fotoStorageSizeBytes: number;
   thumbnailPath: string;
   thumbnailSizeBytes: number;
 };
+
+function isStorageBucketMissing(error: unknown) {
+  const message = String((error as any)?.message || (error as any)?.error_description || error || '');
+  return /bucket not found|bucket.*not.*exist|not_found/i.test(message);
+}
 
 async function uploadBlobToBucket(bucket: string, fileName: string, body: Blob, contentType = 'image/jpeg') {
   const { error } = await supabase.storage.from(bucket).upload(fileName, body, {
@@ -124,13 +130,13 @@ export async function uploadFiscalPhoto(file: File): Promise<FiscalPhotoUpload> 
   let thumbnail: Blob = file;
 
   try {
-    fullImage = await compressImage(file, 1600, 0.72);
+    fullImage = await compressImage(file, 2400, 0.9);
   } catch {
     fullImage = file;
   }
 
   try {
-    thumbnail = await compressImage(file, 480, 0.62);
+    thumbnail = await compressImage(file, 720, 0.72);
   } catch {
     thumbnail = fullImage;
   }
@@ -138,16 +144,37 @@ export async function uploadFiscalPhoto(file: File): Promise<FiscalPhotoUpload> 
   const fotoPath = `fiscal/${baseName}.jpg`;
   const thumbnailPath = `fiscal/thumbs/${baseName}.jpg`;
 
-  await uploadBlobToBucket(FISCAL_BUCKET, fotoPath, fullImage);
-  await uploadBlobToBucket(FISCAL_BUCKET, thumbnailPath, thumbnail);
+  try {
+    await uploadBlobToBucket(FISCAL_BUCKET, fotoPath, fullImage);
+    await uploadBlobToBucket(FISCAL_BUCKET, thumbnailPath, thumbnail);
 
-  return {
-    fotoPath,
-    fotoSizeBytes: file.size,
-    fotoStorageSizeBytes: fullImage.size,
-    thumbnailPath,
-    thumbnailSizeBytes: thumbnail.size,
-  };
+    return {
+      fotoPath,
+      fotoSizeBytes: file.size,
+      fotoStorageSizeBytes: fullImage.size,
+      thumbnailPath,
+      thumbnailSizeBytes: thumbnail.size,
+    };
+  } catch (error) {
+    if (!isStorageBucketMissing(error)) throw error;
+
+    const fallbackPath = `fiscal/${baseName}.jpg`;
+    const { error: fallbackError } = await supabase.storage.from(UPLOADS_BUCKET).upload(fallbackPath, fullImage, {
+      cacheControl: '3600',
+      upsert: false,
+      contentType: 'image/jpeg',
+    });
+    if (fallbackError) throw fallbackError;
+
+    return {
+      fotoPath: '',
+      fotoUrl: await buildAccessUrl(UPLOADS_BUCKET, fallbackPath),
+      fotoSizeBytes: file.size,
+      fotoStorageSizeBytes: fullImage.size,
+      thumbnailPath: '',
+      thumbnailSizeBytes: 0,
+    };
+  }
 }
 
 export async function getFiscalPhotoUrl(path?: string, ttlSeconds = FISCAL_SIGNED_URL_TTL_SECONDS) {

@@ -473,7 +473,7 @@ function FiscalModal({
       const uploaded = fotoFile.size > 0 ? await uploadFiscalPhoto(fotoFile) : null;
       const fotoPayload = uploaded
         ? {
-          fotoUrl: '',
+          fotoUrl: uploaded.fotoUrl || '',
           fotoPath: uploaded.fotoPath,
           thumbnailPath: uploaded.thumbnailPath,
           fotoSizeBytes: uploaded.fotoSizeBytes,
@@ -704,7 +704,15 @@ function FiscalModal({
         </form>
       </div>
 
-      {showCamera && <CameraCapture onCapture={setFoto} onClose={() => setShowCamera(false)} />}
+      {showCamera && (
+        <CameraCapture
+          onCapture={setFoto}
+          onClose={() => setShowCamera(false)}
+          quality={0.96}
+          idealWidth={2560}
+          idealHeight={1440}
+        />
+      )}
     </div>
   );
 }

@@ -150,7 +150,7 @@ export interface Checklist {
 export interface FiscalDoc {
   id: string;
   tipo: 'NF' | 'Cupom';
-  fotoUrl?: string;           // legado: URL assinada antiga
+  fotoUrl?: string;           // legado/fallback: URL assinada antiga
   fotoPath?: string;          // caminho privado no Storage
   thumbnailPath?: string;     // miniatura privada no Storage
   fotoSizeBytes?: number;     // tamanho original enviado
