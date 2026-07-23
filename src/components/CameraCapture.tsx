@@ -10,6 +10,7 @@ type CameraCaptureProps = {
   quality?: number;
   idealWidth?: number;
   idealHeight?: number;
+  documentMode?: boolean;
 };
 
 export function CameraCapture({
@@ -18,6 +19,7 @@ export function CameraCapture({
   quality = 0.9,
   idealWidth = 1920,
   idealHeight = 1080,
+  documentMode = false,
 }: CameraCaptureProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -40,6 +42,21 @@ export function CameraCapture({
       if (capabilities.focusMode.includes('continuous')) advanced.push({ focusMode: 'continuous' });
       else if (capabilities.focusMode.includes('single-shot')) advanced.push({ focusMode: 'single-shot' });
       else if (capabilities.focusMode.includes('auto')) advanced.push({ focusMode: 'auto' });
+    }
+
+    if (documentMode && Array.isArray(capabilities.exposureMode) && capabilities.exposureMode.includes('continuous')) {
+      advanced.push({ exposureMode: 'continuous' });
+    }
+
+    if (documentMode && Array.isArray(capabilities.whiteBalanceMode) && capabilities.whiteBalanceMode.includes('continuous')) {
+      advanced.push({ whiteBalanceMode: 'continuous' });
+    }
+
+    if (documentMode && typeof capabilities.zoom?.min === 'number' && typeof capabilities.zoom?.max === 'number') {
+      const minZoom = capabilities.zoom.min;
+      const maxZoom = capabilities.zoom.max;
+      const documentZoom = Math.min(maxZoom, Math.max(minZoom, 1.35));
+      if (documentZoom > minZoom) advanced.push({ zoom: documentZoom });
     }
 
     if (point && 'pointsOfInterest' in capabilities) {
@@ -81,6 +98,7 @@ export function CameraCapture({
           facingMode: { ideal: 'environment' },
           width: { ideal: idealWidth },
           height: { ideal: idealHeight },
+          aspectRatio: documentMode ? { ideal: idealWidth / idealHeight } : undefined,
           frameRate: { ideal: 30 },
         },
         audio: false,
@@ -129,10 +147,27 @@ export function CameraCapture({
       mountedRef.current = false;
       stopStream();
     };
-  }, [idealHeight, idealWidth]);
+  }, [documentMode, idealHeight, idealWidth]);
 
-  const handleCapture = () => {
+  const handleCapture = async () => {
     if (!videoRef.current || !ready) return;
+    const track = streamRef.current?.getVideoTracks()[0];
+
+    if (documentMode && track && 'ImageCapture' in window) {
+      try {
+        await applyFocus(streamRef.current);
+        await new Promise(resolve => window.setTimeout(resolve, 250));
+        const photo = await new (window as any).ImageCapture(track).takePhoto();
+        const file = new File([photo], `foto-${Date.now()}.jpg`, { type: photo.type || 'image/jpeg' });
+        stopStream();
+        setCapturedFile(file);
+        setCaptured(URL.createObjectURL(photo));
+        return;
+      } catch {
+        // Nem todo navegador implementa ImageCapture de forma confiavel; o canvas fica como fallback.
+      }
+    }
+
     const canvas = document.createElement('canvas');
     canvas.width = videoRef.current.videoWidth;
     canvas.height = videoRef.current.videoHeight;

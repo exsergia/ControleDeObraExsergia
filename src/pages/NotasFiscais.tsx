@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useCollection } from '../lib/supabaseHooks';
-import { collection, addDoc, deleteDoc, doc, serverTimestamp, query, orderBy, updateDoc } from '../lib/supabaseDb';
+import { collection, addDoc, deleteDoc, doc, serverTimestamp, query, orderBy, updateDoc, where } from '../lib/supabaseDb';
 import { db, handleFirestoreError, OperationType, auth } from '../lib/supabase';
 import { FiscalDoc } from '../types';
 import { useAuth } from '../App';
@@ -85,8 +85,13 @@ type FiscalDraft = {
 };
 export default function NotasFiscais() {
   const { userProfile, isAdmin, notify } = useAuth();
+  const currentUserId = userProfile?.id || auth.currentUser?.id || '';
   const [docsSnap, loading, docsError] = useCollection(
-    isAdmin ? query(collection(db, 'fiscal_docs'), orderBy('createdAt', 'desc')) : null
+    isAdmin
+      ? query(collection(db, 'fiscal_docs'), orderBy('createdAt', 'desc'))
+      : currentUserId
+        ? query(collection(db, 'fiscal_docs'), where('criadoPorId', '==', currentUserId), orderBy('createdAt', 'desc'))
+        : null
   );
   const [showModal, setShowModal] = useState(false);
   const [editingDoc, setEditingDoc] = useState<FiscalDoc | null>(null);
@@ -245,14 +250,36 @@ export default function NotasFiscais() {
         </div>
       ) : (
         <div className="rounded-3xl border border-blue-100 bg-blue-50 p-5 text-blue-900">
-          <p className="text-sm font-black">Acesso de operador</p>
+          <p className="text-sm font-black">Meus lancamentos fiscais</p>
           <p className="text-xs sm:text-sm font-medium mt-1 text-blue-800">
+            Voce visualiza apenas as notas e cupons fiscais que lancou no sistema.
+          </p>
+          <p className="hidden">
             Você pode cadastrar uma nova nota ou cupom fiscal, mas a consulta dos documentos já lançados fica restrita aos administradores.
           </p>
         </div>
       )}
 
-      {isAdmin && (docsError ? (
+      {!isAdmin && (
+        <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_auto] gap-3">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
+            <input
+              type="text"
+              placeholder="Buscar nos meus lancamentos..."
+              className="w-full pl-10 pr-4 py-2.5 bg-white border border-zinc-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900/10 shadow-sm"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
+          <div className="flex items-center justify-center gap-2 px-4 py-2.5 bg-zinc-900 text-white rounded-xl shrink-0">
+            <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">Meu total</span>
+            <span className="text-sm font-black">{brl(total)}</span>
+          </div>
+        </div>
+      )}
+
+      {docsError ? (
         <FiscalLoadError title="Erro ao carregar documentos fiscais" message={docsError.message} />
       ) : loading ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -344,7 +371,7 @@ export default function NotasFiscais() {
             );
           })}
         </div>
-      ))}
+      )}
 
       {(showModal || editingDoc) && (
         <FiscalModal
@@ -711,6 +738,7 @@ function FiscalModal({
           quality={0.96}
           idealWidth={2560}
           idealHeight={1440}
+          documentMode
         />
       )}
     </div>
