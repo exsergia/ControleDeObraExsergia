@@ -320,7 +320,7 @@ export default function Ferramentas() {
           </div>
         </div>
 
-        {/* Recent History */}
+        {/* My tools */}
         <div data-tour="tools-history" className="space-y-4">
           <div className="hidden lg:block space-y-3">
             <div className="flex min-h-[46px] items-start pt-1">
@@ -352,28 +352,6 @@ export default function Ferramentas() {
                   />
                 ))}
               </div>
-            </div>
-          </div>
-
-          <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-widest pl-1">Atividade Recente</h3>
-          <div className="bg-white rounded-3xl border border-zinc-200 overflow-hidden shadow-sm">
-            <div className="p-4 bg-zinc-50 border-b border-zinc-200 flex items-center gap-2">
-              <History className="w-4 h-4 text-zinc-400" />
-              <span className="text-xs font-bold text-zinc-600">Logs de Movimentação</span>
-            </div>
-            <div className="divide-y divide-zinc-100 max-h-[40vh] sm:max-h-[600px] overflow-y-auto">
-              {logs.length === 0 ? (
-                <div className="p-8 text-center text-zinc-400 text-xs font-bold uppercase tracking-widest">
-                  Nenhuma movimentação recente
-                </div>
-              ) : logs.map((log) => (
-                <LogItem
-                  key={log.id}
-                  log={log}
-                  tool={tools.find(t => t.id === log.toolId)}
-                  obra={obras.find(o => o.id === log.obraId)}
-                />
-              ))}
             </div>
           </div>
         </div>
