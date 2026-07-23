@@ -44,6 +44,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { cn } from './lib/utils';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { sendBrowserNotification } from './lib/services';
+import { registerPushForUser } from './lib/push';
 
 const AuthContext = createContext<{
   user: SupabaseUser | null;
@@ -94,6 +95,7 @@ const Equipamentos = React.lazy(() => import('./pages/Equipamentos'));
 const SettingsPage = React.lazy(() => import('./pages/Settings'));
 
 const REPORTS_EMAILS = ['contasapagar@exsergia.eng.br'];
+const TOOL_OVERDUE_MANAGER_EMAIL = 'nascimentoerick446@gmail.com';
 const BOOTSTRAP_ADMIN_EMAILS = [
   'nascimentoerick446@gmail.com',
   'exsergiacel7234@gmail.com',
@@ -506,10 +508,19 @@ function App() {
 function OverdueToolsAlert() {
   const { userProfile, user, notify } = useAuth();
   const meuId = userProfile?.id || user?.id || '';
+  const recebeTodosAtrasos = normalizeLoginEmail(userProfile?.email || user?.email || '') === TOOL_OVERDUE_MANAGER_EMAIL;
   const [logsSnap] = useCollection(
-    meuId ? query(collection(db, 'toolLogs'), where('responsavelId', '==', meuId)) : null
+    meuId
+      ? recebeTodosAtrasos
+        ? query(collection(db, 'toolLogs'), where('statusLog', '==', 'Aberta'))
+        : query(collection(db, 'toolLogs'), where('responsavelId', '==', meuId), where('statusLog', '==', 'Aberta'))
+      : null
   );
   const alertedRef = useRef(false);
+
+  useEffect(() => {
+    if (meuId) registerPushForUser(meuId);
+  }, [meuId]);
 
   useEffect(() => {
     if (alertedRef.current || !logsSnap) return;
@@ -517,7 +528,6 @@ function OverdueToolsAlert() {
     const atrasados = (logsSnap.docs || [])
       .map((d: any) => d.data())
       .filter((l: any) =>
-        l?.statusLog === 'Aberta' &&
         l?.previsaoDevolucao &&
         new Date(l.previsaoDevolucao).getTime() < now
       );
@@ -525,6 +535,15 @@ function OverdueToolsAlert() {
 
     alertedRef.current = true; // garante 1 alerta por entrada no app
     const n = atrasados.length;
+    const pessoas = new Set(atrasados.map((l: any) => l.responsavelNome).filter(Boolean));
+    const appMessage = recebeTodosAtrasos
+      ? `${n} ferramenta(s) atrasada(s) com ${pessoas.size || 'colaborador(es)'}. Acompanhe em Ferramentas ou Relatorios.`
+      : `Voce tem ${n} ferramenta(s) fora do prazo de devolucao. Renove ou devolva o quanto antes.`;
+    if (recebeTodosAtrasos) {
+      notify('warning', 'Ferramenta em atraso', appMessage);
+      sendBrowserNotification('Ferramenta em atraso', `${n} ferramenta(s) atrasada(s) no sistema.`);
+      return;
+    }
     notify(
       'warning',
       'Ferramenta em atraso',
@@ -534,7 +553,7 @@ function OverdueToolsAlert() {
       'Ferramenta em atraso',
       `Você tem ${n} ferramenta(s) fora do prazo. Renove ou devolva.`
     );
-  }, [logsSnap, notify]);
+  }, [logsSnap, notify, recebeTodosAtrasos]);
 
   return null;
 }

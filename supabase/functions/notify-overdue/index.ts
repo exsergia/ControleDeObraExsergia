@@ -22,6 +22,7 @@ const VAPID_PUBLIC = Deno.env.get('VAPID_PUBLIC_KEY')!;
 const VAPID_PRIVATE = Deno.env.get('VAPID_PRIVATE_KEY')!;
 const VAPID_SUBJECT = Deno.env.get('VAPID_SUBJECT') || 'mailto:naoresponda@exsergia.eng.br';
 const CRON_SECRET = Deno.env.get('CRON_SECRET') || '';
+const OVERDUE_MANAGER_EMAIL = 'nascimentoerick446@gmail.com';
 
 // SMTP (opcional)
 const SMTP_HOST = Deno.env.get('SMTP_HOST') || '';
@@ -103,11 +104,17 @@ Deno.serve(async (req) => {
   // Mapa de e-mails dos responsáveis (operadores.id == auth.uid).
   const { data: opRows } = await supabase.from('operadores').select('*');
   const emailById: Record<string, string> = {};
+  const operatorIdByEmail: Record<string, string> = {};
   for (const r of opRows || []) {
     const d = (r as any).data || {};
-    const email = d.email || (r as any).email;
-    if (email) emailById[(r as any).id] = email;
+    const id = (r as any).id;
+    const email = String(d.email || (r as any).email || '').trim().toLowerCase();
+    if (email) {
+      emailById[id] = email;
+      operatorIdByEmail[email] = id;
+    }
   }
+  const overdueManagerId = operatorIdByEmail[OVERDUE_MANAGER_EMAIL] || '';
 
   const { data: subRows } = await supabase.from('push_subscriptions').select('*');
   const subsByUser: Record<string, Array<{ id: string; endpoint: string; keys: any }>> = {};
@@ -129,6 +136,10 @@ Deno.serve(async (req) => {
     if (uid) {
       (porUsuario[uid] ||= { email: emailById[uid] || log.responsavelEmail || '', nome: log.responsavelNome || '', tools: [] }).tools.push(toolName);
     }
+    if (overdueManagerId && overdueManagerId !== uid) {
+      const detalhe = log.responsavelNome ? `${toolName} - responsavel: ${log.responsavelNome}` : toolName;
+      (porUsuario[overdueManagerId] ||= { email: emailById[overdueManagerId] || OVERDUE_MANAGER_EMAIL, nome: 'Erick', tools: [] }).tools.push(detalhe);
+    }
 
     // Push (um por ferramenta).
     const subs = subsByUser[uid] || [];
@@ -145,6 +156,26 @@ Deno.serve(async (req) => {
       } catch (err: any) {
         if (err?.statusCode === 404 || err?.statusCode === 410) {
           await supabase.from('push_subscriptions').delete().eq('id', s.id);
+        }
+      }
+    }
+    if (overdueManagerId && overdueManagerId !== uid) {
+      const managerSubs = subsByUser[overdueManagerId] || [];
+      if (managerSubs.length === 0) continue;
+      const adminPayload = JSON.stringify({
+        title: 'Ferramenta em atraso',
+        body: `"${toolName}" esta atrasada${log.responsavelNome ? ` com ${log.responsavelNome}` : ''}.`,
+        url: '/#/ferramentas',
+        tag: `atraso-admin-${log.id}`,
+      });
+      for (const s of managerSubs) {
+        try {
+          await webpush.sendNotification({ endpoint: s.endpoint, keys: s.keys }, adminPayload);
+          sent += 1;
+        } catch (err: any) {
+          if (err?.statusCode === 404 || err?.statusCode === 410) {
+            await supabase.from('push_subscriptions').delete().eq('id', s.id);
+          }
         }
       }
     }
